@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExploreMap - 18k POI Modular</title>
+
+<!-- 1. CSS külön fájlban -->
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css">
+
+</head>
+<body>
+
+<!-- OLDALSÁV -->
+<div id="sidebar">
+  <div class="sidebar-header">
+    <div style="display:flex;gap:10px;align-items:center">
+      <div class="logo">E</div>
+      <div>
+        <div class="title">ExploreMap • Modular</div>
+        <div class="subtitle">HTML + CSS + JS külön • 18k READY</div>
+      </div>
+    </div>
+    <div class="stats" style="margin-top:12px">
+      <div class="stat"><b id="statTotal">0</b><span>Összes</span></div>
+      <div class="stat"><b id="statVisible">0</b><span>Látható</span></div>
+      <div class="stat"><b id="statLoaded">0</b><span>Betöltve</span></div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input id="search" class="search-input" placeholder="Keresés 18k-ban...">
+    <div id="searchMeta" style="font-size:11px;color:#78716c;margin-top:6px">Indulás...</div>
+  </div>
+
+  <div id="filters" class="cat-list">
+    <!-- JS tölti -->
+  </div>
+
+  <div id="list" class="results"></div>
+
+  <div style="padding:10px;border-top:1px solid #e7e5e4;font-size:10px;color:#a8a29e">
+    💡 Tipp: Cseréld a <code>js/tourismData.js</code> fájlt a saját 18k-s JSON-odra.<br>
+    Formátum: const tourismData = { hotels:[{id,n,lat,lng,c,d}], ... }
+  </div>
+</div>
+
+<!-- TÉRKÉP -->
+<div class="progress"><div id="progressBar" class="progress-bar"></div></div>
+<div id="map"></div>
+
+<!-- ================== SCRIPTEK SORRENDBEN ================== -->
+<!-- 1. Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
+<!-- 2. POI ADATOK - EZT CSERÉLD! KÜLÖN FÁJL! -->
+<script src="js/tourismData.js"></script>
+
+<!-- 3. APP LOGIKA - KÜLÖN FÁJL! -->
+<script src="js/app.js"></script>
+
+</body>
+</html>

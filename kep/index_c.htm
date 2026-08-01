@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Photo Viewer MVP</title>
+<style>
+:root{
+ --accent:#3b82f6; --bg:#0f172a; --panel:rgba(255,255,255,.1); --text:#fff;
+}
+body.light{--bg:#f5f7fa;--panel:rgba(255,255,255,.8);--text:#111;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif;overflow:hidden}
+#ui{position:fixed;left:15px;top:15px;width:320px;padding:12px;border-radius:16px;
+backdrop-filter:blur(12px);background:var(--panel);z-index:10}
+label{display:block;margin-top:8px}
+select,input,button{width:100%;padding:6px;margin-top:4px}
+#stage{perspective:1200px;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
+#carousel{position:relative;transform-style:preserve-3d;width:500px;height:350px}
+.photo{position:absolute;width:240px;height:160px;left:130px;top:95px;
+background-size:cover;background-position:center;border-radius:12px;
+box-shadow:0 8px 30px rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<div id="ui">
+<h3>Photo Viewer MVP</h3>
+<input type="file" id="files" webkitdirectory multiple>
+<label>Téma
+<select id="theme">
+<option value="#f97316">Narancs</option>
+<option value="#8b5a2b">Barna</option>
+<option value="#3b82f6" selected>Kék</option>
+<option value="#22c55e">Zöld</option>
+</select></label>
+<label>Mód
+<select id="mode">
+<option value="dark">Sötét</option>
+<option value="light">Világos</option>
+</select></label>
+<label>Térforma
+<select id="shape">
+<option value="cylinder">Henger</option>
+<option value="sphere">Gömb</option>
+<option value="flat">Sík</option>
+</select></label>
+<label>Sebesség
+<select id="speed">
+<option value="0.002">Lassú</option>
+<option value="0.005" selected>Közepes</option>
+<option value="0.01">Gyors</option>
+</select></label>
+<button onclick="toggleFS()">Teljes képernyő</button>
+</div>
+
+<div id="stage"><div id="carousel"></div></div>
+
+<script>
+const carousel=document.getElementById('carousel');
+let imgs=[],angle=0,speed=.005;
+
+function render(){
+ carousel.innerHTML='';
+ if(!imgs.length)return;
+ const shape=document.getElementById('shape').value;
+ imgs.forEach((src,i)=>{
+   const d=document.createElement('div');
+   d.className='photo';
+   d.style.backgroundImage=`url(${src})`;
+   const a=(360/imgs.length)*i;
+   if(shape==='cylinder')
+      d.style.transform=`rotateY(${a}deg) translateZ(450px)`;
+   else if(shape==='sphere')
+      d.style.transform=`rotateY(${a}deg) rotateX(${(i%6)*20-50}deg) translateZ(350px)`;
+   else
+      d.style.transform=`translateX(${(i-imgs.length/2)*260}px)`;
+   carousel.appendChild(d);
+ });
+}
+
+function anim(){
+ angle+=speed;
+ carousel.style.transform=`rotateY(${angle*180/Math.PI}deg)`;
+ requestAnimationFrame(anim);
+}
+anim();
+
+document.getElementById('files').addEventListener('change',e=>{
+ imgs=[];
+ [...e.target.files].forEach(f=>{
+   if(f.type.startsWith('image/')) imgs.push(URL.createObjectURL(f));
+ });
+ render();
+});
+
+document.getElementById('theme').onchange=e=>{
+ document.documentElement.style.setProperty('--accent',e.target.value);
+};
+document.getElementById('mode').onchange=e=>{
+ document.body.className=e.target.value==='light'?'light':'';
+};
+document.getElementById('speed').onchange=e=> speed=parseFloat(e.target.value);
+
+function toggleFS(){
+ if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+ else document.exitFullscreen();
+}
+</script>
+</body>
+</html>

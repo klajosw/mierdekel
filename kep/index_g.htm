@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnimáLátvány - Képgaléria</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --bg: #f8fafc;
+            --text: #1e2937;
+        }
+        [data-theme="dark"] {
+            --primary: #60a5fa;
+            --bg: #0f172a;
+            --text: #e2e8f0;
+        }
+        [data-color="orange"] { --primary: #f97316; }
+        [data-color="brown"] { --primary: #92400e; }
+        [data-color="blue"] { --primary: #3b82f6; }
+        [data-color="green"] { --primary: #22c55e; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: rgba(255,255,255,0.95);
+            border-right: 1px solid #e2e8f0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+
+        [data-theme="dark"] .sidebar {
+            background: rgba(15,23,42,0.95);
+            border-right-color: #334155;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .header {
+            padding: 15px 25px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        [data-theme="dark"] .header {
+            background: #1e2937;
+            border-bottom-color: #334155;
+        }
+
+        .gallery {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .scene {
+            position: absolute;
+            inset: 0;
+            perspective: 1200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slideshow {
+            position: relative;
+            width: 70vmin;
+            height: 70vmin;
+            transform-style: preserve-3d;
+            transition: transform 0.6s ease;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            backface-visibility: hidden;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: rotateY(0deg) rotateX(0deg);
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 50px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            z-index: 20;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 9999px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+        }
+
+        .select {
+            padding: 8px 14px;
+            border-radius: 9999px;
+            border: 2px solid var(--primary);
+            background: white;
+            color: var(--text);
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .setting {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--primary), #a5b4fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body data-theme="light" data-color="blue" data-lang="hu">
+
+<div class="sidebar">
+    <div>
+        <h1 class="title">AnimáLátvány</h1>
+        <p id="app-desc">Személyes animált galéria</p>
+    </div>
+
+    <!-- Nyelv -->
+    <div class="setting">
+        <label id="lang-label">Nyelv / Sprache / Language</label>
+        <select id="lang-select" class="select" onchange="changeLanguage(this.value)">
+            <option value="hu">Magyar</option>
+            <option value="de">Deutsch</option>
+            <option value="en">English</option>
+        </select>
+    </div>
+
+    <!-- Téma -->
+    <div class="setting">
+        <label id="theme-label">Téma</label>
+        <div style="display:flex; gap:8px;">
+            <button onclick="setTheme('light')" style="padding:8px 16px; background:var(--bg); color:var(--text)">☀️</button>
+            <button onclick="setTheme('dark')" style="padding:8px 16px; background:var(--bg); color:var(--text)">🌙</button>
+        </div>
+    </div>
+
+    <!-- Színek -->
+    <div class="setting">
+        <label id="color-label">Szín téma</label>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button onclick="setColor('blue')" style="width:32px;height:32px;border-radius:50%;background:#3b82f6;border:2px solid white"></button>
+            <button onclick="setColor('green')" style="width:32px;height:32px;border-radius:50%;background:#22c55e;border:2px solid white"></button>
+            <button onclick="setColor('orange')" style="width:32px;height:32px;border-radius:50%;background:#f97316;border:2px solid white"></button>
+            <button onclick="setColor('brown')" style="width:32px;height:32px;border-radius:50%;background:#92400e;border:2px solid white"></button>
+        </div>
+    </div>
+
+    <hr style="opacity:0.2">
+
+    <!-- Képek betöltése -->
+    <div class="setting">
+        <label id="load-label">Képek betöltése</label>
+        <input type="file" id="folder-input" webkitdirectory directory multiple accept="image/*" style="width:100%">
+        <button onclick="loadSelectedImages()" style="width:100%; margin-top:8px;">Betöltés</button>
+    </div>
+
+    <!-- Animáció beállítások -->
+    <div>
+        <h3 id="anim-title">Animáció beállítások</h3>
+        
+        <div class="settings-grid">
+            <div class="setting">
+                <label id="movement-label">Mozgás iránya</label>
+                <select id="movement" class="select">
+                    <option value="horizontal">Vízszintes</option>
+                    <option value="vertical">Függőleges</option>
+                    <option value="diagonal">Átlós</option>
+                </select>
+            </div>
+
+            <div class="setting">
+                <label id="direction-label">Forgás irány</label>
+                <select id="direction" class="select">
+                    <option value="right">Jobbról</option>
+                    <option value="left">Balról</option>
+                    <option value="top">Fentről</option>
+                    <option value="bottom">Lentről</option>
+                </select>
+            </div>
+
+            <div class="setting">
+                <label id="area-label">Mozgási terület</label>
+                <select id="area" class="select" onchange="updateScene()">
+                    <option value="plane">Sík</option>
+                    <option value="cylinder">Henger</option>
+                    <option value="sphere">Gömb</option>
+                </select>
+            </div>
+
+            <div class="setting">
+                <label id="effect-label">Effekt</label>
+                <select id="effect" class="select">
+                    <option value="none">Nincs</option>
+                    <option value="axis">Tengely forgatás</option>
+                    <option value="center">Középpont forgatás</option>
+                    <option value="flip">Lapozás</option>
+                </select>
+            </div>
+
+            <div class="setting">
+                <label id="speed-label">Sebesség</label>
+                <select id="speed" class="select">
+                    <option value="slow">Lassú</option>
+                    <option value="medium" selected>Közepes</option>
+                    <option value="fast">Gyors</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <button onclick="toggleSlideshow()" id="play-btn" style="margin-top:auto">▶ Lejátszás</button>
+</div>
+
+<div class="main">
+    <div class="header">
+        <div style="display:flex; align-items:center; gap:15px;">
+            <span id="current-index">1 / 0</span>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button onclick="prevSlide()">← Előző</button>
+            <button onclick="nextSlide()">Következő →</button>
+        </div>
+    </div>
+
+    <div class="gallery">
+        <div class="scene" id="scene">
+            <div class="slideshow" id="slideshow"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="prevSlide()">‹</button>
+        <button onclick="toggleSlideshow()" id="play-pause">▶</button>
+        <button onclick="nextSlide()">›</button>
+    </div>
+</div>
+
+<script>
+    let images = [];
+    let currentIndex = 0;
+    let isPlaying = false;
+    let interval = null;
+    let lang = 'hu';
+
+    const translations = {
+        hu: {
+            title: "AnimáLátvány",
+            desc: "Személyes animált galéria",
+            langLabel: "Nyelv",
+            themeLabel: "Téma",
+            colorLabel: "Szín téma",
+            loadLabel: "Képek betöltése",
+            animTitle: "Animáció beállítások",
+            movementLabel: "Mozgás iránya",
+            directionLabel: "Forgás irány",
+            areaLabel: "Mozgási terület",
+            effectLabel: "Effekt",
+            speedLabel: "Sebesség"
+        },
+        de: {
+            title: "AnimáLátvány",
+            desc: "Persönliche animierte Galerie",
+            langLabel: "Sprache",
+            themeLabel: "Thema",
+            colorLabel: "Farbthema",
+            loadLabel: "Bilder laden",
+            animTitle: "Animations-Einstellungen",
+            movementLabel: "Bewegungsrichtung",
+            directionLabel: "Drehrichtung",
+            areaLabel: "Bewegungsfläche",
+            effectLabel: "Effekt",
+            speedLabel: "Geschwindigkeit"
+        },
+        en: {
+            title: "AnimáLátvány",
+            desc: "Personal Animated Gallery",
+            langLabel: "Language",
+            themeLabel: "Theme",
+            colorLabel: "Color Theme",
+            loadLabel: "Load Images",
+            animTitle: "Animation Settings",
+            movementLabel: "Movement",
+            directionLabel: "Rotation Direction",
+            areaLabel: "Movement Area",
+            effectLabel: "Effect",
+            speedLabel: "Speed"
+        }
+    };
+
+    function changeLanguage(l) {
+        lang = l;
+        document.documentElement.setAttribute('data-lang', l);
+        const t = translations[l];
+        document.getElementById('app-desc').textContent = t.desc;
+        document.getElementById('lang-label').textContent = t.langLabel;
+        document.getElementById('theme-label').textContent = t.themeLabel;
+        document.getElementById('color-label').textContent = t.colorLabel;
+        document.getElementById('load-label').textContent = t.loadLabel;
+        document.getElementById('anim-title').textContent = t.animTitle;
+        document.getElementById('movement-label').textContent = t.movementLabel;
+        document.getElementById('direction-label').textContent = t.directionLabel;
+        document.getElementById('area-label').textContent = t.areaLabel;
+        document.getElementById('effect-label').textContent = t.effectLabel;
+        document.getElementById('speed-label').textContent = t.speedLabel;
+    }
+
+    function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+    }
+
+    function setColor(color) {
+        document.documentElement.setAttribute('data-color', color);
+    }
+
+    // Képek betöltése
+    async function loadSelectedImages() {
+        const input = document.getElementById('folder-input');
+        if (!input.files.length) return;
+
+        images = [];
+        const files = Array.from(input.files).filter(f => f.type.startsWith('image/'));
+
+        for (let file of files) {
+            const url = URL.createObjectURL(file);
+            images.push(url);
+        }
+
+        renderSlides();
+        currentIndex = 0;
+        showSlide(0);
+    }
+
+    function renderSlides() {
+        const container = document.getElementById('slideshow');
+        container.innerHTML = '';
+
+        images.forEach((src, i) => {
+            const div = document.createElement('div');
+            div.className = 'slide';
+            div.style.backgroundImage = `url(${src})`;
+            div.style.transform = `rotateY(${i * 15}deg) translateZ(300px)`;
+            container.appendChild(div);
+        });
+    }
+
+    function showSlide(index) {
+        if (!images.length) return;
+        currentIndex = (index + images.length) % images.length;
+        
+        document.querySelectorAll('.slide').forEach((slide, i) => {
+            slide.classList.toggle('active', i === currentIndex);
+        });
+
+        document.getElementById('current-index').textContent = `${currentIndex + 1} / ${images.length}`;
+        applyCurrentAnimation();
+    }
+
+    function nextSlide() {
+        showSlide(currentIndex + 1);
+    }
+
+    function prevSlide() {
+        showSlide(currentIndex - 1);
+    }
+
+    function toggleSlideshow() {
+        isPlaying = !isPlaying;
+        const btn = document.getElementById('play-pause');
+        
+        if (isPlaying) {
+            btn.textContent = '❚❚';
+            const speed = document.getElementById('speed').value;
+            let ms = speed === 'slow' ? 4000 : speed === 'fast' ? 1500 : 2500;
+            interval = setInterval(nextSlide, ms);
+        } else {
+            btn.textContent = '▶';
+            clearInterval(interval);
+        }
+    }
+
+    function applyCurrentAnimation() {
+        const slideshow = document.getElementById('slideshow');
+        const movement = document.getElementById('movement').value;
+        const area = document.getElementById('area').value;
+        const effect = document.getElementById('effect').value;
+
+        let transform = '';
+
+        if (area === 'cylinder') {
+            transform = 'rotateY(30deg)';
+        } else if (area === 'sphere') {
+            transform = 'rotateX(25deg) rotateY(35deg)';
+        }
+
+        if (effect === 'axis') {
+            transform += ' rotateY(360deg)';
+        } else if (effect === 'center') {
+            transform += ' rotate(15deg)';
+        } else if (effect === 'flip') {
+            transform += ' rotateX(180deg)';
+        }
+
+        slideshow.style.transform = transform;
+    }
+
+    function updateScene() {
+        applyCurrentAnimation();
+    }
+
+    // Billentyűk
+    document.addEventListener('keydown', e => {
+        if (e.key === 'ArrowRight') nextSlide();
+        if (e.key === 'ArrowLeft') prevSlide();
+        if (e.key === ' ') {
+            e.preventDefault();
+            toggleSlideshow();
+        }
+    });
+
+    // Inicializálás
+    window.onload = () => {
+        // Demo képek (helyettesíthető saját URL-ekkel)
+        images = [
+            'https://picsum.photos/id/1015/800/800',
+            'https://picsum.photos/id/102/800/800',
+            'https://picsum.photos/id/106/800/800',
+            'https://picsum.photos/id/133/800/800'
+        ];
+        renderSlides();
+        showSlide(0);
+
+        // Automatikus nyelv beállítás böngésző alapján
+        const browserLang = navigator.language.substring(0,2);
+        if (browserLang === 'de') changeLanguage('de');
+        else if (browserLang === 'en') changeLanguage('en');
+    };
+</script>
+</body>
+</html>

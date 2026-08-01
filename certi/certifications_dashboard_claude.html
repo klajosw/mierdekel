@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Certification Analytics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07080f;
+    --surface: #0e1020;
+    --surface2: #151829;
+    --border: #1e2340;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --accent3: #f59e0b;
+    --accent4: #10b981;
+    --accent5: #f43f5e;
+    --text: #e2e8f8;
+    --muted: #6b7280;
+    --glow: rgba(0, 229, 255, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 60px;
+    position: relative;
+  }
+
+  .header-tag {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(0,229,255,0.3);
+    padding: 6px 16px;
+    margin-bottom: 20px;
+    animation: fadeIn 0.6s ease;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.4rem, 5vw, 4.5rem);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: fadeIn 0.8s ease;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    letter-spacing: 1px;
+    animation: fadeIn 1s ease;
+  }
+
+  /* KPI Cards */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, transform 0.3s;
+    animation: slideUp 0.6s ease both;
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-accent, var(--accent));
+  }
+
+  .kpi-card::after {
+    content: '';
+    position: absolute;
+    top: -50%; right: -50%;
+    width: 100%; height: 100%;
+    background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .kpi-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+  .kpi-card:hover::after { opacity: 1; }
+
+  .kpi-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .kpi-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--card-accent, var(--accent));
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Section headers */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .section-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .section-tag {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  /* Charts section */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 900px) {
+    .charts-grid { grid-template-columns: 1fr; }
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 28px;
+    animation: slideUp 0.7s ease both;
+  }
+
+  .chart-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 24px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chart-title .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* Bar chart */
+  .bar-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .bar-label {
+    font-size: 11px;
+    width: 130px;
+    flex-shrink: 0;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 24px;
+    background: rgba(255,255,255,0.04);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    position: relative;
+    transform: scaleX(0);
+    transform-origin: left;
+    animation: barGrow 1s cubic-bezier(0.23,1,0.32,1) both;
+  }
+
+  .bar-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1));
+  }
+
+  .bar-count {
+    font-size: 11px;
+    width: 30px;
+    text-align: right;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  /* Timeline chart */
+  .timeline-wrap {
+    overflow-x: auto;
+  }
+
+  .timeline-grid {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    min-height: 180px;
+    padding-bottom: 30px;
+    position: relative;
+    min-width: 400px;
+  }
+
+  .timeline-grid::before {
+    content: '';
+    position: absolute;
+    bottom: 30px; left: 0; right: 0;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .timeline-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .timeline-bar-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .timeline-bar {
+    width: 80%;
+    background: linear-gradient(180deg, var(--accent) 0%, var(--accent2) 100%);
+    transform: scaleY(0);
+    transform-origin: bottom;
+    animation: barGrowY 1s cubic-bezier(0.23,1,0.32,1) both;
+    position: relative;
+    min-height: 4px;
+  }
+
+  .timeline-bar:hover {
+    filter: brightness(1.3);
+  }
+
+  .timeline-bar .tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 10;
+  }
+
+  .timeline-bar:hover .tooltip { opacity: 1; }
+
+  .timeline-label {
+    font-size: 9px;
+    color: var(--muted);
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .timeline-count {
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* Category cards */
+  .categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  .cat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 22px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    animation: slideUp 0.6s ease both;
+  }
+
+  .cat-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--cat-color, var(--accent));
+    transform: scaleY(0);
+    transition: transform 0.3s;
+  }
+
+  .cat-card:hover {
+    border-color: var(--cat-color, var(--accent));
+    transform: translateX(4px);
+  }
+
+  .cat-card:hover::before { transform: scaleY(1); }
+
+  .cat-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .cat-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+
+  .cat-badge {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--cat-color, var(--accent));
+    line-height: 1;
+  }
+
+  .cat-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .cat-percent-bar {
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    margin-top: 12px;
+    overflow: hidden;
+  }
+
+  .cat-percent-fill {
+    height: 100%;
+    background: var(--cat-color, var(--accent));
+    transform: scaleX(0);
+    transform-origin: left;
+    animation: barGrow 1.2s cubic-bezier(0.23,1,0.32,1) both;
+  }
+
+  /* Cert table */
+  .table-section {
+    margin-bottom: 48px;
+  }
+
+  .filter-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--muted); }
+
+  .filter-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .filter-select:focus { border-color: var(--accent); }
+
+  .cert-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .cert-table th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .cert-table th:hover { color: var(--accent); }
+
+  .cert-table td {
+    padding: 11px 16px;
+    border-bottom: 1px solid rgba(30,35,64,0.5);
+    vertical-align: middle;
+  }
+
+  .cert-table tr {
+    transition: background 0.2s;
+    animation: fadeIn 0.4s ease both;
+  }
+
+  .cert-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+  .cert-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 11px;
+    border: 1px solid rgba(0,229,255,0.25);
+    padding: 3px 10px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .cert-link:hover {
+    background: rgba(0,229,255,0.1);
+    border-color: var(--accent);
+  }
+
+  .authority-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 0;
+    font-size: 10px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .category-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 10px;
+    border: 1px solid;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    max-height: 520px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+  }
+
+  .table-wrapper::-webkit-scrollbar { width: 6px; height: 6px; }
+  .table-wrapper::-webkit-scrollbar-track { background: var(--surface); }
+  .table-wrapper::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .results-count {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 12px;
+  }
+
+  .results-count span { color: var(--accent); }
+
+  /* Donut chart */
+  .donut-wrap {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  svg.donut { flex-shrink: 0; }
+
+  .donut-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+    min-width: 160px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+  }
+
+  .legend-dot {
+    width: 10px; height: 10px;
+    flex-shrink: 0;
+  }
+
+  .legend-name { flex: 1; color: var(--text); }
+  .legend-val { color: var(--muted); }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes barGrow {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+
+  @keyframes barGrowY {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+  }
+
+  @keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .loader {
+    text-align: center;
+    padding: 80px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .loader::before {
+    content: '';
+    display: block;
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    animation: rotate 0.8s linear infinite;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+    .charts-grid { grid-template-columns: 1fr; }
+    .categories-grid { grid-template-columns: 1fr; }
+  }
+
+  .sort-arrow { opacity: 0.4; margin-left: 4px; }
+  .sort-active .sort-arrow { opacity: 1; color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="header-tag">// certification analytics</div>
+    <h1>Learning Portfolio</h1>
+    <p class="subtitle">Tanúsítványok elemzése · Platformok, kategóriák, időbeli trendek</p>
+  </header>
+
+  <div id="kpi-grid" class="kpi-grid">
+    <div class="loader" style="grid-column: 1/-1">Adatok betöltése...</div>
+  </div>
+
+  <div class="section-header">
+    <span class="section-tag">01</span>
+    <h2>Platformok szerinti megoszlás</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title"><span class="dot"></span> Tanúsítványok platformonként</div>
+      <div id="authority-bars"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><span class="dot" style="background:var(--accent2)"></span> Platform arányok</div>
+      <div class="donut-wrap">
+        <svg class="donut" id="donut-svg" width="160" height="160" viewBox="0 0 160 160"></svg>
+        <div class="donut-legend" id="donut-legend"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <span class="section-tag">02</span>
+    <h2>Időbeli aktivitás</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom: 40px;">
+    <div class="chart-title"><span class="dot" style="background:var(--accent3)"></span> Tanúsítványok idősorban (hónap/év)</div>
+    <div class="timeline-wrap">
+      <div class="timeline-grid" id="timeline-chart"></div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <span class="section-tag">03</span>
+    <h2>Kategóriák</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div id="categories-grid" class="categories-grid"></div>
+
+  <div class="section-header">
+    <span class="section-tag">04</span>
+    <h2>Összes tanúsítvány</h2>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="table-section">
+    <div class="filter-bar">
+      <input type="text" class="search-input" id="search-input" placeholder="Keresés névben, platformban...">
+      <select class="filter-select" id="filter-authority">
+        <option value="">Összes platform</option>
+      </select>
+      <select class="filter-select" id="filter-category">
+        <option value="">Összes kategória</option>
+      </select>
+      <select class="filter-select" id="filter-year">
+        <option value="">Összes év</option>
+      </select>
+    </div>
+    <div class="table-wrapper">
+      <table class="cert-table" id="cert-table">
+        <thead>
+          <tr>
+            <th onclick="sortTable('name')" class="sort-col" data-col="name">#  Tanúsítvány <span class="sort-arrow">↕</span></th>
+            <th onclick="sortTable('authority')" data-col="authority">Platform <span class="sort-arrow">↕</span></th>
+            <th onclick="sortTable('category')" data-col="category">Kategória <span class="sort-arrow">↕</span></th>
+            <th onclick="sortTable('date')" data-col="date">Dátum <span class="sort-arrow">↕</span></th>
+            <th>Link</th>
+          </tr>
+        </thead>
+        <tbody id="cert-tbody"></tbody>
+      </table>
+    </div>
+    <div class="results-count" id="results-count"></div>
+  </div>
+
+</div>
+
+<script>
+// ---- DATA ----
+const CSV = `Name,Url,Authority,Started On,Finished On,License Number
+Python 3,https://www.sololearn.com/Certificate/1073-19704734/pdf/,SoloLearn,Sep 2020,,#1073-19704734
+Intermediate Python,https://www.datacamp.com/statement-of-accomplishment/course/3b94418faea9d528bdfff27914693dab0590abee,DataCamp,Sep 2020,,15695155
+Database Design,https://www.datacamp.com/statement-of-accomplishment/course/f1f2ee1c993adcd0eceae7303da5ad2b770ded9f,DataCamp,Sep 2020,,15732812
+Intermediate SQL,https://www.datacamp.com/statement-of-accomplishment/course/443b8bf58b4f2b2347e0dad50090e7cebfbb1373,DataCamp,Sep 2020,,15873410
+Python,https://www.kaggle.com/learn/certification/klajosw/python,Kaggle,Sep 2020,,156951545
+Advanced SQL,https://www.kaggle.com/learn/certification/klajosw/advanced-sql,Kaggle,Sep 2020,,15695127
+Python Fundamentals Track,https://www.datacamp.com/statement-of-accomplishment/track/7cf939899b435e2c5f5fdbb251781a4b234e7554,DataCamp,Sep 2020,,"171,955"
+Python Data Science Toolbox (Part 2),https://www.datacamp.com/statement-of-accomplishment/course/307d58e0f992853ca8a9ec671c9f1468c8514d7a,DataCamp,Sep 2020,,15774778
+Python Data Science Toolbox (Part 1),https://www.datacamp.com/statement-of-accomplishment/course/88fc61b35e742e62927ff61507d8feba24237eec,DataCamp,Sep 2020,,15732364
+Data Visualization,https://www.kaggle.com/learn/certification/klajosw/data-visualization,Kaggle,Sep 2020,,156957655
+Pandas (python),https://www.kaggle.com/learn/certification/klajosw/pandas,Kaggle,Sep 2020,,202009301
+Data Cleaning.,https://www.kaggle.com/learn/certification/klajosw/data-cleaning,Kaggle,Sep 2020,,2020093002
+SQL,https://www.sololearn.com/Certificate/1060-19704734/pdf/,SoloLearn,Sep 2020,,1060-19704734
+Geospatial Analysis.,https://www.kaggle.com/learn/certification/klajosw/geospatial-analysis,Kaggle,Oct 2020,,1569512105
+Natural Language Processing.,https://www.kaggle.com/learn/certification/klajosw/natural-language-processing,Kaggle,Oct 2020,,156951551005
+Data Science with Python,https://www.sololearn.com/Certificate/1093-19704734/png,SoloLearn,Oct 2020,,1093-19704734
+HTML,https://www.sololearn.com/Certificate/1014-19704734/pdf,SoloLearn,Oct 2020,,1014-19704734
+Intermediate machine learning,https://www.kaggle.com/learn/certification/klajosw/intermediate-machine-learning,Kaggle,Oct 2020,,156951555623
+Machine Learning Feature engineering,https://www.kaggle.com/learn/certification/klajosw/feature-engineering,Kaggle,Oct 2020,,156951553324
+Machine learning explainability,https://www.kaggle.com/learn/certification/klajosw/machine-learning-explainability,Kaggle,Oct 2020,,15695155535
+JavaScript,https://www.sololearn.com/Certificate/1024-19704734/pdf/,SoloLearn,Oct 2020,,1024-19704734
+CSS,https://www.sololearn.com/Certificate/1023-19704734/png,SoloLearn,Oct 2020,,1023-19704734
+JQuery,https://www.sololearn.com/Certificate/1082-19704734/png,SoloLearn,Nov 2020,,1082-19704734
+PHP,https://www.sololearn.com/Certificate/1059-19704734/png,SoloLearn,Nov 2020,,1059-19704734
+SQL Tutorial for Marketers,https://www.datacamp.com/statement-of-accomplishment/course/2c2b4ead475a121fd3b8970b187f0f91980b142f?share=true,DataCamp,Nov 2020,,"16,878,926"
+Machine Learning,https://www.sololearn.com/Certificate/1094-19704734/png,SoloLearn,Nov 2020,,1094-19704734
+C#,https://www.sololearn.com/Certificate/1080-19704734/png,SoloLearn,Nov 2020,,1080-19704734
+Java,https://www.sololearn.com/Certificate/1068-19704734/png,SoloLearn,Nov 2020,,1068-19704734
+Computer Vision,https://www.kaggle.com/learn/certification/klajosw/computer-vision,Kaggle,Dec 2020,,156951552020
+C ,https://www.sololearn.com/Certificate/1089-19704734/png,SoloLearn,Dec 2020,,1089-19704734
+React + Redux,https://www.sololearn.com/Certificate/1097-19704734/png,SoloLearn,Dec 2020,,1097-19704734
+C++,https://www.sololearn.com/Certificate/1051-19704734/png,SoloLearn,Dec 2020,,1051-19704734
+Angular + NestJS,https://www.sololearn.com/Certificate/1092-19704734/png,SoloLearn,Jan 2021,,1092-19704734
+Kotlin,https://www.sololearn.com/certificates/course/en/19704734/1160/landscape/png,SoloLearn,Feb 2021,,19704734/1160
+Python Core,https://www.sololearn.com/certificates/course/en/19704734/1073/landscape/png,SoloLearn,Feb 2021,,19704734/1073
+Python Data Stuctures,https://www.sololearn.com/certificates/course/en/19704734/1159/landscape/png,SoloLearn,Feb 2021,,19704734/1159
+Diploma in Project Management,https://alison.com/profile/public/19762137,Alison,Feb 2021,,1266-19762137
+Data Analytics - Mining and Analysis of Big Data,https://1.bp.blogspot.com/-H0cL_xWB4Qk/YDvK1aBppII/AAAAAAAApbo/Maztx7HjtMcCF-7XothWjlw83cycMz6GQCLcBGAsYHQ/s1754/Alison_Certificate-1663-19762137_dataanalytics-page-001.jpg,Alison,Feb 2021,,1663-19762137
+Intermediate Python,https://www.sololearn.com/certificates/course/en/19704734/1158/landscape/png,SoloLearn,Feb 2021,,19704734/1158
+Diploma in Modern Project Management,https://1.bp.blogspot.com/-_ZSGEP6Wsj4/YDvK1rbKvsI/AAAAAAAApbs/OGVGtM11-a8ZaMMuxcYuNWv5XdSHsLjXQCLcBGAsYHQ/s1754/Alison_Diploma-1511-19762137_modern_project_mgmt.jpg,Alison,Feb 2021,,1511-19762137
+Advanced Diploma in Database Systems,https://1.bp.blogspot.com/-CdLLUFAXmkQ/YDvK1jah8qI/AAAAAAAApbw/w8z9Jq7Zyy0XwFd2PqxHsK_v9XbJ5pUWwCLcBGAsYHQ/s1754/Alison_Advanced_Diploma-2131-19762137_database-page-001.jpg,Alison,Feb 2021,,2131-19762137
+Diploma in DevOps Engineering - Kubernetes Docker and Google Cloud,https://1.bp.blogspot.com/-ri2mtg8f5sQ/YDvK2TFSFAI/AAAAAAAApb0/I2nJUluOavI8jvZzEC6V0ZYoxAfb8zRZACLcBGAsYHQ/s1754/Alison_Diploma-1696-19762137_devops-page-001.jpg,Alison,Feb 2021,,1696-19762137
+Scientific Computing with Python,https://freecodecamp.org/certification/klajosw/scientific-computing-with-python-v7,freeCodeCamp,Mar 2021,,1089-1970473411
+Data Analysis with Python,https://freecodecamp.org/certification/klajosw/data-analysis-with-python-v7,freeCodeCamp,Mar 2021,,1089-1970473415
+Diploma in Python Programming,https://1.bp.blogspot.com/-53yMcjpXAkA/YEZqXICf75I/AAAAAAAApkw/TfcZoAKHgRM75IUI6rbq23CMHnchLEPbACLcBGAsYHQ/s1754/Diploma-python_1535-19762137.jpg,Alison,Mar 2021,,1535-19762137
+Diploma in Software Project Management,https://1.bp.blogspot.com/-TAMDFybhXl8/YEZqXMj9ypI/AAAAAAAApks/inKqVBU5gZUkgLXgM9-cmfFNOEJi_wICwCLcBGAsYHQ/s1754/Diploma-sz_proj_man_2589-19762137.jpg,Alison,Mar 2021,,2589-19762137
+feature-engineering,https://www.kaggle.com/learn/certification/klajosw/feature-engineering,Kaggle,Mar 2021,,1089-1970473488
+Diploma in Databases and T-SQL,https://1.bp.blogspot.com/-Yap2QH7zfDo/YE-OdhnHF-I/AAAAAAAApvw/EfxCCy7qlC8DmeYtaJaTY6Udm3d-LiCGACLcBGAsYHQ/s1754/Alison_Diploma-1448-19762137_database_t-sql-page-001.jpg,Alison,Mar 2021,,1448-19762137
+Responsive Web Design,https://www.sololearn.com/Certificate/1162-19704734/jpg,SoloLearn,Apr 2021,,1162-19704734
+Go programming,https://www.sololearn.com/certificates/course/en/19704734/1164/landscape/png,SoloLearn,May 2021,,19704734/1164
+Python for Data Science,https://www.sololearn.com/certificates/course/en/19704734/1161/landscape/png,SoloLearn,May 2021,,19704734/1161
+R programmig,https://www.sololearn.com/certificates/course/en/19704734/1147/landscape/png,Sololearn,Dec 2021,,19704734/1147
+Python for Finance,https://www.sololearn.com/Certificate/1139-19704734/jpg,Sololearn,Dec 2021,,1139-19704734
+Web Development,https://www.sololearn.com/Certificate/1141-19704734/jpg,Sololearn,2022,,1141-19704734
+Basic Proficiency in KNIME Analytics Platform,https://www.credly.com/badges/61bfeacc-0963-4420-bf73-2f26d35f6b62,KNIME,Mar 2022,,20220326-46
+Power BI for Beginners,https://certificates.simplicdn.net/share/4037440_1671826036.pdf,Simplilearn,Dec 2022,,4037440
+Automate the Boring Stuff with Python Programming,https://udemy-certificate.s3.amazonaws.com/image/UC-3992d78a-6f5e-4925-b749-b4af6b242635.jpg,Udemy,Feb 2023,,UC-3992d78a
+Python and Flask Bootcamp,https://udemy-certificate.s3.amazonaws.com/image/UC-97d7ba70-6138-4a6b-a897-469584a7191e.jpg,Udemy,Feb 2023,,UC-97d7ba70
+Modeling Data Warehouse with Data Vault 2.0,https://udemy-certificate.s3.amazonaws.com/image/UC-88a03a9f-a67a-4a35-b5d2-d620b9248cd0.jpg,Udemy,Feb 2023,,UC-88a03a9f
+Excel Power Query Power Pivot Power Map and DAX Masterclass,https://udemy-certificate.s3.amazonaws.com/image/UC-f60941f7-1984-4f7c-92f0-85388c22f2f6.jpg,Udemy,Feb 2023,,UC-f60941f7
+Data Warehouse - The Ultimate Guide,https://udemy-certificate.s3.amazonaws.com/image/UC-9571ca91-52fc-45cf-8d4b-cddc6e2f795d.jpg,Udemy,Feb 2023,,UC-9571ca91
+Python for Data Science and Machine Learning Bootcamp,https://udemy-certificate.s3.amazonaws.com/image/UC-936082e9-81c8-4558-814f-f56e8f9babcd.jpg,Udemy,Feb 2023,,UC-936082e9
+Certificate of completion - Data Analysis in Power BI with ChatGPT,https://learn.365datascience.com/c/5933139e8b,365 Data Science,Nov 2023,,CC-92CEA640AB
+Certificate of completion - Advanced SQL for Data Engineering,https://learn.365datascience.com/c/df787631fd,365 Data Science,Nov 2023,,CC-65B97BF7BC
+Certificate of completion - Intro to ChatGPT and Generative AI,https://learn.365datascience.com/c/c6f2aae7df,365 Data Science,Nov 2023,,CC-92D332D2ED
+Certificate of completion - Introduction to DAX,https://learn.365datascience.com/c/cfb98c58bf,365 Data Science,Nov 2023,,CC-7FFD7A81B5
+Certificate of completion - Building Business Reports Using Power BI,https://learn.365datascience.com/c/995bab5a2f,365 Data Science,Nov 2023,,CC-A6958A0533
+Certificate of completion - Introduction to Tableau,https://learn.365datascience.com/c/6265bc8fc2,365 Data Science,Nov 2023,,CC-4DDDF7ADCB
+Certificate of completion - Product Management for AI and Data Science,https://learn.365datascience.com/c/f613d4fc75,365 Data Science,Nov 2023,,CC-2C4B8D9B4B
+Certificate of completion - Advanced SQL,https://learn.365datascience.com/c/2acd1a9c53,365 Data Science,Nov 2023,,CC-A610B342C1
+Certificate of completion - Web Scraping and API Fundamentals in Python,https://learn.365datascience.com/c/48b4380c67,365 Data Science,Nov 2023,,CC-2A747FCE5B
+Certificate of completion - Intro to NLP for AI,https://learn.365datascience.com/c/7e61227542,365 Data Science,Nov 2023,,CC-150230922C
+Certificate of completion - AI Applications for Business Success,https://learn.365datascience.com/c/95a448c054,365 Data Science,Nov 2023,,CC-858055587D
+Certificate of completion - Power BI,https://learn.365datascience.com/c/144dd1cd07,365 Data Science,Nov 2023,,CC-1C0F421CDE
+Certificate of completion - Power Query and Data Modeling,https://learn.365datascience.com/c/bdbf5e1088,365 Data Science,Nov 2023,,CC-AE117A7CAB
+Certificate of completion - Data Analysis with ChatGPT,https://learn.365datascience.com/c/6d77e0c356,365 Data Science,Nov 2023,,CC-1EA45F0EC9
+Certificate of completion - Git and GitHub,https://learn.365datascience.com/c/1b80fab124,365 Data Science,Nov 2023,,CC-4AFF0C74EF
+Power BI Beginner to Pro Workshop,https://certificationcompletion.blob.core.windows.net/certifications/PowerBIBeginnertoProWorkshop,Pragmatic Works,Jan 2024,,
+Data Modeling for Power BI Workshop,https://certificationcompletion.blob.core.windows.net/certifications/DataModelingforPowerBIWorkshop,Pragmatic Works,Jan 2024,,
+Angular,https://www.sololearn.com/Certificate/CC-KGX5B8ZD/png,Sololearn,Feb 2024,,CC-KGX5B8ZD
+Data programming,https://www.sololearn.com/Certificate/CC-NB27IXS8/png,Sololearn,Feb 2024,,CC-NB27IXS8
+ChatGPT Complete Guide: Learn Midjourney ChatGPT 4 and More,https://udemy-certificate.s3.amazonaws.com/image/UC-3386af0e-c508-439e-a10e-2c1ca79c5e2a.jpg,Udemy,Feb 2024,,UC-3386af0e
+Artificial Intelligence A-Z 2024: Build 5 AI LLM and ChatGPT,https://udemy-certificate.s3.amazonaws.com/image/UC-8f1feddc-31e2-4654-bfab-5a5f3bb92fa3.jpg,Udemy,Feb 2024,,UC-8f1feddc
+Modern Artificial Intelligence with Zero Coding,https://udemy-certificate.s3.amazonaws.com/image/UC-01ae5603-fbaa-49e9-8fc9-4eed88910f21.jpg,Udemy,Feb 2024,,UC-01ae5603
+GitHub Copilot: Use AI to write code for you!,https://udemy-certificate.s3.amazonaws.com/image/UC-0e070236-b10d-4309-83dc-ce70bd3040ec.jpg,Udemy,Feb 2024,,UC-0e070236
+The Product Management for AI and Data Science Course,https://udemy-certificate.s3.amazonaws.com/image/UC-276996fe-56e0-40c8-8492-faa9c918cd2f.jpg,Udemy,Feb 2024,,UC-276996fe
+ChatGPT: Complete ChatGPT Course For Work 2023,https://udemy-certificate.s3.amazonaws.com/image/UC-c113d260-c302-4070-bf5e-bbceada097ba.jpg,Udemy,Feb 2024,,UC-c113d260
+Executive Briefing: Artificial Intelligence (AI) + ChatGPT,https://udemy-certificate.s3.amazonaws.com/image/UC-c14140ab-b34e-45da-a2c0-f331fa908a8b.jpg,Udemy,Feb 2024,,UC-c14140ab
+AI Chatbots Development Exploring Generative AI with ChatGPT,https://udemy-certificate.s3.amazonaws.com/image/UC-86b801b7-f5c3-4cb9-9240-478c11960326.jpg,Udemy,Feb 2024,,UC-86b801b7
+ChatGPT Accelerated Python: Complete Python Guide 2024,https://udemy-certificate.s3.amazonaws.com/image/UC-3689eb21-74e7-42b6-8dd3-941495542a63.jpg,Udemy,Feb 2024,,UC-3689eb21
+ChatGPT Masterclass - Build Solutions and Apps with ChatGPT,https://udemy-certificate.s3.amazonaws.com/image/UC-c4148750-ccde-41f6-8ac8-73b364b240f7.jpg,Udemy,Feb 2024,,UC-c4148750
+ChatGPT Masters: Generative AI Prompt Engineering Chat GPT,https://udemy-certificate.s3.amazonaws.com/image/UC-908ede20-d8b7-466a-862a-7556855ca409.jpg,Udemy,Feb 2024,,UC-908ede20
+2024 Tableau Certified Data Analyst Training,https://udemy-certificate.s3.amazonaws.com/image/UC-b349c066-d90f-4bc8-8d4c-f85fe3b5aa83.jpg,Udemy,Feb 2024,,UC-b349c066
+Tableau A-Z: Hands-On Tableau Training for Data Science,https://udemy-certificate.s3.amazonaws.com/image/UC-d9a20b43-41d2-4e88-9bdb-f5fe93e49a3b.jpg,Udemy,Feb 2024,,UC-d9a20b43
+Talend + SQL + Datawarehousing - Beginner to Professional,https://udemy-certificate.s3.amazonaws.com/image/UC-7f12dbf6-4c1f-4ba8-a937-e031ccbc5c44.jpg,Udemy,Feb 2024,,UC-7f12dbf6
+ChatGPT Masterclass - The Ultimate Guide,https://udemy-certificate.s3.amazonaws.com/image/UC-f0b70551-8e55-469e-aa33-3b63bcff5e3f.jpg,Udemy,Feb 2024,,UC-f0b70551
+Introduction to Artificial Intelligence (AI),https://www.coursera.org/account/accomplishments/certificate/QW1YM7D0O99F,Coursera,Oct 2024,,QW1YM7D0O99F
+From Excel to Power BI,https://www.coursera.org/account/accomplishments/certificate/420URZZ5AXB3,Coursera,Oct 2024,,420URZZ5AXB3
+Machine Learning with Python,https://www.coursera.org/account/accomplishments/certificate/MVALX2XWU5M7,Coursera,Oct 2024,,MVALX2XWU5M7
+Introduction to Data Engineering,https://www.coursera.org/account/accomplishments/certificate/0HBUVUHU46SQ,Coursera,Oct 2024,,0HBUVUHU46SQ
+Google Foundations: Data Data Everywhere,https://www.coursera.org/account/accomplishments/certificate/4935GKSTNXX8,Coursera,Oct 2024,,4935GKSTNXX8
+Introduction to Information Technology and AWS Cloud,https://www.coursera.org/account/accomplishments/certificate/68RLQX8BEE8T,Coursera,Oct 2024,,68RLQX8BEE8T
+Introduction to Data Analytics in Google Cloud,https://www.coursera.org/account/accomplishments/certificate/JGHANWOWNKSG,Coursera,Oct 2024,,JGHANWOWNKSG
+SQL: A Practical Introduction for Querying Databases,https://www.coursera.org/account/accomplishments/certificate/2PD293XOH2OV,Coursera,Nov 2024,,2PD293XOH2OV
+Data Visualization and Dashboards with Excel and Cognos,https://www.coursera.org/account/accomplishments/certificate/EOQ1GKBSGO99,Coursera,Nov 2024,,EOQ1GKBSGO99
+What is Data Science?,https://www.coursera.org/account/accomplishments/certificate/UKM5OROU532N,Coursera,Nov 2024,,UKM5OROU532N
+Foundations of Project Management,https://www.coursera.org/account/accomplishments/records/IWEVUBSQ068Q,Coursera,Nov 2024,,IWEVUBSQ068Q
+Introduction to Scrum Master Profession,https://www.coursera.org/account/accomplishments/certificate/5W2KLOFKO2YZ,Coursera,Nov 2024,,5W2KLOFKO2YZ
+Project Initiation: Starting a Successful Project,https://www.coursera.org/account/accomplishments/certificate/FGEZYQG0W5YN,Coursera,Nov 2024,,FGEZYQG0W5YN
+Introduction to Databases,https://www.coursera.org/account/accomplishments/certificate/0Q4QCMC1H5XJ,Coursera,Nov 2024,,0Q4QCMC1H5XJ
+Project Planning: Putting It All Together,https://www.coursera.org/account/accomplishments/certificate/7VJ7WKMKXEII,Coursera,Nov 2024,,7VJ7WKMKXEII
+Agile Project Management,https://www.coursera.org/account/accomplishments/certificate/L1RXT04EAQRZ,Coursera,Nov 2024,,L1RXT04EAQRZ
+Exploratory Data Analysis for Machine Learning,https://www.coursera.org/account/accomplishments/certificate/YO37OPHSS6S7,Coursera,Nov 2024,,YO37OPHSS6S7
+Excel Basics for Data Analysis,https://www.coursera.org/account/accomplishments/certificate/7N5OZXSU16ZZ,Coursera,Nov 2024,,7N5OZXSU16ZZ
+Data Integration Data Storage and Data Migration,https://www.coursera.org/account/accomplishments/certificate/GGWSDYDV1GTK,Coursera,Nov 2024,,GGWSDYDV1GTK
+Prepare for DP-100: Data Science on Microsoft Azure Exam,https://www.coursera.org/account/accomplishments/verify/OMHW64AJVDBU,Coursera,Dec 2024,,OMHW64AJVDBU
+Microsoft Azure Machine Learning for Data Scientists,https://www.coursera.org/account/accomplishments/certificate/CC1OHMGN6PDI,Coursera,Dec 2024,,CC1OHMGN6PDI
+Introduction to CIP,https://learn.opswatacademy.com/certificate/ZYzP1MN3jg,OPSWAT Academy,Dec 2024,,ZYzP1MN3jg
+Generative AI: Introduction and Applications,https://www.coursera.org/account/accomplishments/verify/4HZ3JF3QOJ12,Coursera,Dec 2024,,4HZ3JF3QOJ12
+Introduction to Cybersecurity Careers,https://www.coursera.org/account/accomplishments/verify/3AI9HMITQT4S,Coursera,Dec 2024,,3AI9HMITQT4S
+Create Machine Learning Models in Microsoft Azure,https://www.coursera.org/account/accomplishments/verify/41O1HFVHQGIG,Coursera,Dec 2024,,41O1HFVHQGIG
+Introduction to Cybersecurity Essentials,https://www.coursera.org/account/accomplishments/verify/QFG3685KUMR0,Coursera,Dec 2024,,QFG3685KUMR0
+Generatív AI: Prompt Engineering alapjai,https://www.coursera.org/account/accomplishments/verify/V5DPIY2SPRBZ,Coursera,Dec 2024,,V5DPIY2SPRBZ
+Generative AI: Elevate Your Data Science Career,https://www.coursera.org/account/accomplishments/records/B5Q65UFBN6JN,Coursera,Dec 2024,,B5Q65UFBN6JN
+Generative AI for Data Scientists specializáció,https://www.coursera.org/account/accomplishments/specialization/DPJ2FYEM8WJL,Coursera,Dec 2024,,DPJ2FYEM8WJL
+Incident Response and Digital Forensics,https://www.coursera.org/account/accomplishments/records/409U6FGIKTM9,Coursera,Dec 2024,,409U6FGIKTM9
+Cybersecurity Architecture,https://www.coursera.org/account/accomplishments/verify/I07JD3E5WS19,Coursera,Dec 2024,,I07JD3E5WS19
+Foundations of Cybersecurity,https://www.coursera.org/account/accomplishments/verify/N89X3LS34PIS,Coursera,Dec 2024,,N89X3LS34PIS
+Cybersecurity Assessment: CompTIA Security+ and CYSA+ (IBM),https://www.coursera.org/account/accomplishments/verify/WCHA5UN3HL8W,Coursera,Jan 2025,,WCHA5UN3HL8W
+Perform data science with Azure Databricks (MS),https://www.coursera.org/account/accomplishments/verify/KBSYCTA02S06,Coursera,Jan 2025,,KBSYCTA02S06
+Generative AI: Boost Your Cybersecurity Career (IBM),https://www.coursera.org/account/accomplishments/verify/PGKOZH4ABN5O,Coursera,Jan 2025,,PGKOZH4ABN5O
+IBM Generative AI for Cybersecurity Professionals Specialization,https://www.coursera.org/account/accomplishments/specialization/EUJQAN1I71QP,Coursera,Jan 2025,,EUJQAN1I71QP
+Generative AI for Business Intelligence (BI) Analysts,https://www.coursera.org/account/accomplishments/specialization/BIU4XKBFAB07,Coursera,Jan 2025,,BIU4XKBFAB07
+Generative AI: Elevate your Business Intelligence Career,https://www.coursera.org/account/accomplishments/records/QDVJQKR61X9X,Coursera,Jan 2025,,QDVJQKR61X9X
+Cybersecurity Compliance Framework Standards and Regulations (IBM),https://www.coursera.org/account/accomplishments/verify/PO9ON7P1XW9N,Coursera,Jan 2025,,PO9ON7P1XW9N
+Computer Networks and Network Security (IBM),https://www.coursera.org/account/accomplishments/verify/OO52H5KM1JO6,Coursera,Jan 2025,,OO52H5KM1JO6
+Official ISC2 Certified in Cybersecurity (CC) Self-Paced Training,https://www.credly.com/badges/af6ceed9-beed-450e-95ad-9136eb82b55b/public_url,ISC2,Jan 2025,,af6ceed9
+Microsoft Azure Data Scientist Associate (DP-100) Exam Prep,https://www.coursera.org/account/accomplishments/specialization/certificate/9T9LUCH6GRI1,Coursera,Jan 2025,,9T9LUCH6GRI1
+Build and Operate Machine Learning Solutions with Azure,https://www.coursera.org/account/accomplishments/verify/LRXLNRP6DTVJ,Coursera,Jan 2025,,LRXLNRP6DTVJ
+Aws cloud alapok,https://www.credly.com/badges/50e787bf-1855-4fd0-8965-eb0b40411aba/public_url,AWS Training Online,Jan 2025,,klajosw
+Automate tasks and processes with Jira,https://www.coursera.org/account/accomplishments/verify/TVSUK9CJIX3P,Coursera,Mar 2025,,TVSUK9CJIX3P
+Introduction to Cybersecurity,https://www.credly.com/badges/d8e9b3b2-6283-4ea7-a4ae-b731112dc5e3,Cisco Networking Academy,Jul 2025,,
+Etikus hacker,https://www.credly.com/badges/de8a92e2-3e82-4f87-a0c6-45dfa08a6025,Cisco Networking Academy,Jul 2025,,a0c6-45dfa08a6025
+Ethical Hacking; Network Analysis and Vulnerability Scanning,https://alison.com/certification/check/2d79b2a16e,Alison,Jun 2025,,2278-19762137
+Advanced Diploma in Computer Vision,https://alison.com/certification/check/ba137c0f4a,Alison,Jun 2025,,2240-19762137
+Diploma in Six Sigma,https://alison.com/certification/check/ca40bc88ca,Alison,Jun 2025,,1289-19762137
+Diploma in Data Analytics with Python,https://alison.com/certification/check/589ff202ec,Alison,Jun 2025,,2429-19762137
+Diploma in Databases and T-SQL,https://alison.com/certification/check/e986d9cee1,Alison,Mar 2021,,1448-19762137
+Data-Aware Agentic AI - Getting Started,https://www.credly.com/earner/earned/badge/b1cfda5b-b821-4d05-8f77-505b7b60ee86,KNIME,Jul 2025,,
+Databricks and KNIME for Machine Learning - Getting Started,https://www.credly.com/earner/earned/badge/dafd1df4-ca35-48ce-8e21-46fff71b6b83,KNIME,Jul 2025,,
+Data Visualization,https://freecodecamp.org/certification/klajosw/data-visualization,freeCodeCamp,Aug 2025,,klajosw-dv
+Foundational C# with Microsoft,https://freecodecamp.org/certification/klajosw/foundational-c-sharp-with-microsoft,freeCodeCamp,Aug 2025,,klajosw-fcswm
+Master ChatGPT,https://docs.uniathena.com/prod/course/certificate/810_1757180920_certificate.jpg,UniAthena,Sep 2025,,810_1757180920
+Basics of Agents and Environments in AI,https://docs.uniathena.com/prod/course/certificate/895_1757184223_certificate.jpg,UniAthena,Sep 2025,,895_1757184223
+Essentials of AI Learning Frameworks and Advanced Models,https://docs.uniathena.com/prod/course/certificate/897_1757188044_certificate.jpg,UniAthena,Sep 2025,,897_1757188044
+Basics of Artificial Intelligence: Learnings Models,https://docs.uniathena.com/prod/course/certificate/896_1757191630_certificate.jpg,UniAthena,Sep 2025,,896_1757191630
+Basics of Machine Learning Algorithms,https://docs.uniathena.com/prod/course/certificate/322_1757191761_certificate.jpg,UniAthena,Sep 2025,,322_1757191761
+Basics of Python,https://docs.uniathena.com/prod/course/certificate/323_1757224520_certificate.jpg,UniAthena,Sep 2025,,323_1757224520
+Basics of Data Visualization Using Python,https://docs.uniathena.com/prod/course/certificate/685_1757224430_certificate.jpg,UniAthena,Sep 2025,,685_1757224430
+Basics of Artificial Intelligence,https://docs.uniathena.com/prod/course/certificate/894_1757224326_certificate.jpg,UniAthena,Sep 2025,,894_1757224326
+Basics of Data Science,https://docs.uniathena.com/prod/course/certificate/117_1757224280_certificate.jpg,UniAthena,Sep 2025,,117_1757224280
+Certified AI Engineering Masterclass: From Zero to AI Hero,https://www.udemy.com/certificate/UC-3e96a88e-a9da-4317-b80e-13d23fa6310a/,Udemy,Oct 2025,,UC-3e96a88e
+Complete N8N and AI Automation Masterclass,https://www.udemy.com/certificate/UC-ff49e138-6e34-4522-b233-1da164be4b1e/,Udemy,Oct 2025,,UC-ff49e138
+CoPilot and AI Agents for Data Science Bootcamp,https://www.udemy.com/certificate/UC-283e9cad-3f90-4b1b-858d-32fd377a988e/,Udemy,Oct 2025,,UC-283e9cad
+Basics of Matplotlib,https://docs.uniathena.com/prod/course/certificate/1108_1761751739_certificate.jpg,UniAthena,Oct 2025,,1108_1761751739
+Basics of NumPy,https://docs.uniathena.com/prod/course/certificate/1107_1761751484_certificate.jpg,UniAthena,Oct 2025,,1107_1761751484
+Essentials of Data Visualization using MS Excel,https://docs.uniathena.com/prod/course/certificate/124_1761751241_certificate.jpg,UniAthena,Oct 2025,,124_1761751241
+Basics of Data Cleaning,https://docs.uniathena.com/prod/course/certificate/1120_1761754623_certificate.jpg,UniAthena,Oct 2025,,1120_1761754623
+Basics of Pandas,https://docs.uniathena.com/prod/course/certificate/1119_1761754910_certificate.jpg,UniAthena,Oct 2025,,1119_1761754910
+Certificate of completion - Intro to Microsoft Azure,https://learn.365datascience.com/c/90e475acb0,365 Data Science,Nov 2025,,CC-25339D5DC5
+Certificate of completion - Machine Learning Deep Dive,https://learn.365datascience.com/c/0d5b05b872,365 Data Science,Nov 2025,,CC-1B9ECD8B69
+Certificate of completion - Communication and Presentation Skills,https://learn.365datascience.com/c/ebe29ccffc,365 Data Science,Nov 2025,,CC-247216E123
+Certificate of completion - Introduction to Data and Data Science,https://learn.365datascience.com/c/d4dc03b74a,365 Data Science,Nov 2025,,CC-BA2A70E1CA
+Certificate of completion - Introduction to Business Analytics,https://learn.365datascience.com/c/4469a3ce58,365 Data Science,Nov 2025,,CC-7D9F8DAE6F
+Certificate of completion - Data-Driven Business Growth,https://learn.365datascience.com/c/7e74aa73f2,365 Data Science,Nov 2025,,CC-C6AE5F5839
+Certificate of completion - The Machine Learning Process A-Z,https://learn.365datascience.com/c/3466ad22e4,365 Data Science,Nov 2025,,CC-C0F6A667A7
+Certificate of completion - ChatGPT at Work,https://learn.365datascience.com/c/d6f997d091,365 Data Science,Nov 2025,,CC-BAA53CE2B3
+Certificate of completion - Data Cleaning and Preprocessing with pandas,https://learn.365datascience.com/c/7a6b651afa,365 Data Science,Nov 2025,,CC-7F3A14C5CD
+Certificate of completion - Intro to Data Engineering,https://learn.365datascience.com/c/6bf6305583,365 Data Science,Nov 2025,,CC-7C3EDE2774
+Certificate of completion - Intermediate Python Programming,https://learn.365datascience.com/c/c61fee4ae1,365 Data Science,Nov 2025,,CC-5CDCFD13A0
+Certificate of completion - Data Strategy,https://learn.365datascience.com/c/60af7f8cca,365 Data Science,Nov 2025,,CC-09E54154BD
+Certificate of completion - Power BI Data Visualization Hero,https://learn.365datascience.com/c/49bdf51787,365 Data Science,Nov 2025,,CC-467A1C6008
+Certificate of completion - SQL + Tableau,https://learn.365datascience.com/c/0c460888d8,365 Data Science,Nov 2025,,CC-1134B2CB48
+Gemini Certified University Student,https://edu.google.accredible.com/645f361c-a9b9-438a-8adb-2903c58a9d6f,Google,Dec 2025,,170324830
+Gemini Certified Faculty,https://edu.google.accredible.com/e485576e-cdd3-41ad-8865-6a69018e8c75,Google,Dec 2025,,170324146
+Gemini Certified Educator,https://edu.google.accredible.com/e556cb87-28a0-4d86-8119-bdb2fb69ad35,Google,Dec 2025,,170326037
+Claude Code in Action,https://verify.skilljar.com/c/yiritx3pq9ax,Anthropic,Mar 2026,,yiritx3pq9ax
+Certificate of completion: Claude 101,https://verify.skilljar.com/c/c9eruryqa3zj,Anthropic,Mar 2026,,c9eruryqa3zj
+Certificate of completion: AI Fluency for nonprofits,https://verify.skilljar.com/c/e4v5zrf2ty7d,Anthropic,Mar 2026,,e4v5zrf2ty7d
+Certificate of Completion: Al Fluency Framework and Foundations,https://verify.skilljar.com/c/t8yz3cw76o3p,Anthropic,Mar 2026,,t8yz3cw76o3p
+Certificate of completion: Introduction to agent skills,https://verify.skilljar.com/c/9yfnrq2py3nh,Anthropic,Mar 2026,,9yfnrq2py3nh
+Introduction to Model Context Protocol,https://verify.skilljar.com/c/8p24eojkqbi4,Anthropic,Mar 2026,,8p24eojkqbi4
+Model Context Protocol: Advanced Topics,https://verify.skilljar.com/c/pcqpgb2wf5yj,Anthropic,Mar 2026,,pcqpgb2wf5yj
+Claude with Google Cloud's Vertex AI,https://verify.skilljar.com/c/3q4u9kcb4sq5,Anthropic,Mar 2026,,3q4u9kcb4sq5
+Building with the Claude API,https://verify.skilljar.com/c/zkxff7yhusk7,Anthropic,Mar 2026,,zkxff7yhusk7
+Certificate of completion: AI Fluency for educators,https://verify.skilljar.com/c/sq6b9t8ye2f4,Anthropic,Mar 2026,,sq6b9t8ye2f4
+Certificate of completion: Introduction to Claude Cowork,https://verify.skilljar.com/c/ekk9vdhjzada,Anthropic,Mar 2026,,ekk9vdhjzada
+Certificate of completion: Introduction to subagents,https://verify.skilljar.com/c/bnj47tgmjo93,Anthropic,Mar 2026,,bnj47tgmjo93
+Certificate of completion: Teaching the AI Fluency Framework,https://verify.skilljar.com/c/3i4vafvbdq6c,Anthropic,Mar 2026,,3i4vafvbdq6c`;
+
+// ---- PARSE CSV ----
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',');
+  return lines.slice(1).map(line => {
+    const vals = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+      else { cur += c; }
+    }
+    vals.push(cur.trim());
+    const obj = {};
+    headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').replace(/^"|"$/g, '').trim());
+    return obj;
+  }).filter(r => r.Name);
+}
+
+// ---- CATEGORIZE ----
+function categorize(name) {
+  const n = name.toLowerCase();
+  if (n.includes('python') || n.includes('pandas') || n.includes('numpy') || n.includes('matplotlib') || n.includes('flask') || n.includes('r program') || n.includes('kotlin') || n.includes('java') && !n.includes('script') || n.includes('c#') || n.includes('c++') || n.includes(' c ') || n.includes('go program') || n.includes('php') || n.includes('angular') || n.includes('react') || n.includes('javascript') || n.includes('typescript') || n.includes('jquery') || n.includes('html') || n.includes('css') || n.includes('web dev') || n.includes('responsive web'))
+    return 'Programozás & Web';
+  if (n.includes('machine learning') || n.includes('ml ') || n.includes('deep learning') || n.includes('feature engineering') || n.includes('explainability') || n.includes('computer vision') || n.includes('nlp') || n.includes('natural language') || n.includes('neural'))
+    return 'Machine Learning & AI';
+  if (n.includes('ai') || n.includes('artificial intelligence') || n.includes('chatgpt') || n.includes('generative') || n.includes('llm') || n.includes('claude') || n.includes('gemini') || n.includes('copilot') || n.includes('agent') || n.includes('mcp') || n.includes('prompt') || n.includes('n8n') || n.includes('automation'))
+    return 'AI & Generatív AI';
+  if (n.includes('sql') || n.includes('database') || n.includes('data warehouse') || n.includes('data vault') || n.includes('data engineering') || n.includes('t-sql') || n.includes('talend') || n.includes('databricks') || n.includes('knime') || n.includes('data integration') || n.includes('data migrat'))
+    return 'Adatmérnökség & DB';
+  if (n.includes('data science') || n.includes('data analysis') || n.includes('data analytics') || n.includes('data cleaning') || n.includes('data visualiz') || n.includes('exploratory') || n.includes('big data') || n.includes('statistics') || n.includes('geospatial'))
+    return 'Data Science & Elemzés';
+  if (n.includes('power bi') || n.includes('tableau') || n.includes('excel') || n.includes('dax') || n.includes('power query') || n.includes('cognos') || n.includes('business report') || n.includes('business intelligence') || n.includes('bi '))
+    return 'BI & Vizualizáció';
+  if (n.includes('cybersecurity') || n.includes('cyber') || n.includes('security') || n.includes('hacker') || n.includes('ethical hack') || n.includes('network') || n.includes('forensic') || n.includes('vulnerability') || n.includes('isc2') || n.includes('cip') || n.includes('opswat') || n.includes('compliance'))
+    return 'Kiberbiztonság';
+  if (n.includes('project management') || n.includes('scrum') || n.includes('agile') || n.includes('jira') || n.includes('six sigma') || n.includes('software project') || n.includes('modern project') || n.includes('devops') || n.includes('product management'))
+    return 'Projektmenedzsment';
+  if (n.includes('azure') || n.includes('aws') || n.includes('google cloud') || n.includes('cloud') || n.includes('vertex') || n.includes('kubernetes') || n.includes('docker'))
+    return 'Cloud & DevOps';
+  return 'Egyéb';
+}
+
+// ---- COLORS ----
+const CAT_COLORS = {
+  'Programozás & Web':     '#00e5ff',
+  'Machine Learning & AI': '#7c3aed',
+  'AI & Generatív AI':     '#f59e0b',
+  'Adatmérnökség & DB':    '#10b981',
+  'Data Science & Elemzés':'#3b82f6',
+  'BI & Vizualizáció':     '#ec4899',
+  'Kiberbiztonság':        '#f43f5e',
+  'Projektmenedzsment':    '#8b5cf6',
+  'Cloud & DevOps':        '#06b6d4',
+  'Egyéb':                 '#6b7280'
+};
+
+const CAT_ICONS = {
+  'Programozás & Web':     '💻',
+  'Machine Learning & AI': '🤖',
+  'AI & Generatív AI':     '✨',
+  'Adatmérnökség & DB':    '🗄️',
+  'Data Science & Elemzés':'📊',
+  'BI & Vizualizáció':     '📈',
+  'Kiberbiztonság':        '🔐',
+  'Projektmenedzsment':    '📋',
+  'Cloud & DevOps':        '☁️',
+  'Egyéb':                 '📜'
+};
+
+const AUTH_COLORS = [
+  '#00e5ff','#7c3aed','#f59e0b','#10b981','#f43f5e',
+  '#3b82f6','#ec4899','#8b5cf6','#06b6d4','#84cc16',
+  '#fb923c','#a78bfa','#34d399','#fbbf24','#60a5fa'
+];
+
+// ---- MAIN ----
+const data = parseCSV(CSV);
+data.forEach(r => r.category = categorize(r.Name));
+
+function parseDate(s) {
+  if (!s) return null;
+  const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  const parts = s.trim().split(' ');
+  if (parts.length === 2) {
+    const m = months[parts[0]];
+    const y = parseInt(parts[1]);
+    if (!isNaN(m) && !isNaN(y)) return new Date(y, m, 1);
+  }
+  if (parts.length === 1) {
+    const y = parseInt(parts[0]);
+    if (!isNaN(y)) return new Date(y, 0, 1);
+  }
+  return null;
+}
+
+// KPI
+const totalCerts = data.length;
+const authorities = {};
+data.forEach(r => {
+  const a = r.Authority || 'Unknown';
+  authorities[a] = (authorities[a] || 0) + 1;
+});
+const topPlatform = Object.entries(authorities).sort((a,b)=>b[1]-a[1])[0];
+const years = {};
+data.forEach(r => {
+  const d = parseDate(r['Started On']);
+  if (d) { const y = d.getFullYear(); years[y] = (years[y] || 0) + 1; }
+});
+const topYear = Object.entries(years).sort((a,b)=>b[1]-a[1])[0];
+const cats = {};
+data.forEach(r => cats[r.category] = (cats[r.category] || 0) + 1);
+
+// KPI Grid
+const kpiGrid = document.getElementById('kpi-grid');
+kpiGrid.innerHTML = '';
+const kpis = [
+  { label: 'Összes tanúsítvány', value: totalCerts, sub: 'teljes portfólió', accent: '#00e5ff' },
+  { label: 'Platform', value: Object.keys(authorities).length, sub: 'különböző forrás', accent: '#7c3aed' },
+  { label: 'Legtöbb cert', value: topPlatform[1], sub: topPlatform[0], accent: '#f59e0b' },
+  { label: 'Kategória', value: Object.keys(cats).length, sub: 'szakterület', accent: '#10b981' },
+  { label: 'Legjobb év', value: topYear ? topYear[1] : '–', sub: topYear ? topYear[0] : '', accent: '#f43f5e' },
+];
+
+kpis.forEach((k, i) => {
+  const card = document.createElement('div');
+  card.className = 'kpi-card';
+  card.style.setProperty('--card-accent', k.accent);
+  card.style.animationDelay = (i * 0.1) + 's';
+  card.innerHTML = `<div class="kpi-label">${k.label}</div>
+    <div class="kpi-value">${k.value}</div>
+    <div class="kpi-sub">${k.sub}</div>`;
+  kpiGrid.appendChild(card);
+});
+
+// Authority bars
+const authSorted = Object.entries(authorities).sort((a,b)=>b[1]-a[1]);
+const maxAuth = authSorted[0][1];
+const authBars = document.getElementById('authority-bars');
+authSorted.forEach(([name, count], i) => {
+  const pct = (count / maxAuth * 100).toFixed(1);
+  const color = AUTH_COLORS[i % AUTH_COLORS.length];
+  authBars.innerHTML += `<div class="bar-item">
+    <div class="bar-label" title="${name}">${name}</div>
+    <div class="bar-track">
+      <div class="bar-fill" style="width:${pct}%; background:${color}; animation-delay:${i*0.07}s"></div>
+    </div>
+    <div class="bar-count">${count}</div>
+  </div>`;
+});
+
+// Donut chart
+const donutSvg = document.getElementById('donut-svg');
+const donutLegend = document.getElementById('donut-legend');
+const top8 = authSorted.slice(0, 8);
+const others = authSorted.slice(8).reduce((s, [,v]) => s + v, 0);
+if (others > 0) top8.push(['Egyéb', others]);
+const totalD = top8.reduce((s, [,v]) => s + v, 0);
+let startAngle = -Math.PI / 2;
+const cx = 80, cy = 80, r = 65, ri = 42;
+top8.forEach(([name, count], i) => {
+  const angle = (count / totalD) * 2 * Math.PI;
+  const x1 = cx + r * Math.cos(startAngle);
+  const y1 = cy + r * Math.sin(startAngle);
+  const x2 = cx + r * Math.cos(startAngle + angle);
+  const y2 = cy + r * Math.sin(startAngle + angle);
+  const xi1 = cx + ri * Math.cos(startAngle);
+  const yi1 = cy + ri * Math.sin(startAngle);
+  const xi2 = cx + ri * Math.cos(startAngle + angle);
+  const yi2 = cy + ri * Math.sin(startAngle + angle);
+  const large = angle > Math.PI ? 1 : 0;
+  const color = AUTH_COLORS[i % AUTH_COLORS.length];
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${xi2} ${yi2} A ${ri} ${ri} 0 ${large} 0 ${xi1} ${yi1} Z`);
+  path.setAttribute('fill', color);
+  path.setAttribute('stroke', '#07080f');
+  path.setAttribute('stroke-width', '2');
+  path.style.opacity = '0.9';
+  path.style.transition = 'opacity 0.2s';
+  path.addEventListener('mouseenter', () => path.style.opacity = '1');
+  path.addEventListener('mouseleave', () => path.style.opacity = '0.9');
+  donutSvg.appendChild(path);
+  startAngle += angle;
+
+  donutLegend.innerHTML += `<div class="legend-item">
+    <div class="legend-dot" style="background:${color}"></div>
+    <div class="legend-name">${name}</div>
+    <div class="legend-val">${count}</div>
+  </div>`;
+});
+// Center text
+donutSvg.innerHTML += `<text x="${cx}" y="${cy-6}" text-anchor="middle" font-family="Syne,sans-serif" font-size="22" font-weight="800" fill="#e2e8f8">${totalCerts}</text>
+<text x="${cx}" y="${cy+14}" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#6b7280">TOTAL</text>`;
+
+// Timeline
+const monthMap = {};
+data.forEach(r => {
+  const d = parseDate(r['Started On']);
+  if (d) {
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    monthMap[key] = (monthMap[key] || 0) + 1;
+  }
+});
+const timelineKeys = Object.keys(monthMap).sort();
+const maxTL = Math.max(...Object.values(monthMap));
+const tlChart = document.getElementById('timeline-chart');
+const barMaxH = 150;
+timelineKeys.forEach((key, i) => {
+  const count = monthMap[key];
+  const h = Math.max(4, (count / maxTL) * barMaxH);
+  const [yr, mo] = key.split('-');
+  const moNames = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Szep','Okt','Nov','Dec'];
+  const label = moNames[parseInt(mo)-1] + ' ' + yr.slice(2);
+  const col = document.createElement('div');
+  col.className = 'timeline-col';
+  col.innerHTML = `
+    <div class="timeline-count">${count}</div>
+    <div class="timeline-bar-wrap" style="height:${barMaxH}px; align-items:flex-end; display:flex; justify-content:center;">
+      <div class="timeline-bar" style="height:${h}px; animation-delay:${i*0.04}s;">
+        <div class="tooltip">${label}: ${count} cert</div>
+      </div>
+    </div>
+    <div class="timeline-label">${label}</div>`;
+  tlChart.appendChild(col);
+});
+
+// Categories
+const catGrid = document.getElementById('categories-grid');
+const catSorted = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+const maxCat = catSorted[0][1];
+catSorted.forEach(([name, count], i) => {
+  const color = CAT_COLORS[name] || '#6b7280';
+  const icon = CAT_ICONS[name] || '📜';
+  const pct = ((count / totalCerts) * 100).toFixed(1);
+  const card = document.createElement('div');
+  card.className = 'cat-card';
+  card.style.setProperty('--cat-color', color);
+  card.style.animationDelay = (i * 0.08) + 's';
+  card.innerHTML = `
+    <div class="cat-header">
+      <div>
+        <div class="cat-icon">${icon}</div>
+        <div class="cat-name">${name}</div>
+      </div>
+      <div class="cat-badge">${count}</div>
+    </div>
+    <div style="font-size:10px; color:var(--muted);">${pct}% · az összes tanúsítvány</div>
+    <div class="cat-percent-bar">
+      <div class="cat-percent-fill" style="width:${(count/maxCat*100).toFixed(1)}%; animation-delay:${i*0.1}s"></div>
+    </div>`;
+  card.addEventListener('click', () => {
+    document.getElementById('filter-category').value = name;
+    filterTable();
+    document.getElementById('cert-table').scrollIntoView({ behavior: 'smooth' });
+  });
+  catGrid.appendChild(card);
+});
+
+// Table
+let tableData = [...data];
+let sortCol = 'date';
+let sortDir = 1;
+
+// Populate filters
+const authFilter = document.getElementById('filter-authority');
+authSorted.forEach(([name]) => {
+  const opt = document.createElement('option');
+  opt.value = name; opt.textContent = name;
+  authFilter.appendChild(opt);
+});
+
+const catFilter = document.getElementById('filter-category');
+catSorted.forEach(([name]) => {
+  const opt = document.createElement('option');
+  opt.value = name; opt.textContent = name;
+  catFilter.appendChild(opt);
+});
+
+const yearFilter = document.getElementById('filter-year');
+Object.keys(years).sort().reverse().forEach(y => {
+  const opt = document.createElement('option');
+  opt.value = y; opt.textContent = y;
+  yearFilter.appendChild(opt);
+});
+
+document.getElementById('search-input').addEventListener('input', filterTable);
+document.getElementById('filter-authority').addEventListener('change', filterTable);
+document.getElementById('filter-category').addEventListener('change', filterTable);
+document.getElementById('filter-year').addEventListener('change', filterTable);
+
+function filterTable() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const auth = document.getElementById('filter-authority').value;
+  const cat = document.getElementById('filter-category').value;
+  const year = document.getElementById('filter-year').value;
+  tableData = data.filter(r => {
+    const matchQ = !q || r.Name.toLowerCase().includes(q) || (r.Authority||'').toLowerCase().includes(q);
+    const matchA = !auth || r.Authority === auth;
+    const matchC = !cat || r.category === cat;
+    let matchY = true;
+    if (year) {
+      const d = parseDate(r['Started On']);
+      matchY = d && d.getFullYear() == year;
+    }
+    return matchQ && matchA && matchC && matchY;
+  });
+  renderTable();
+}
+
+function sortTable(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = 1; }
+  document.querySelectorAll('.sort-col').forEach(th => th.classList.remove('sort-active'));
+  document.querySelector(`[data-col="${col}"]`)?.classList.add('sort-active');
+  filterTable();
+}
+
+function renderTable() {
+  const sorted = [...tableData].sort((a, b) => {
+    let va, vb;
+    if (sortCol === 'date') {
+      va = parseDate(a['Started On']) || new Date(0);
+      vb = parseDate(b['Started On']) || new Date(0);
+    } else if (sortCol === 'name') {
+      va = a.Name.toLowerCase(); vb = b.Name.toLowerCase();
+    } else if (sortCol === 'authority') {
+      va = (a.Authority||'').toLowerCase(); vb = (b.Authority||'').toLowerCase();
+    } else if (sortCol === 'category') {
+      va = a.category.toLowerCase(); vb = b.category.toLowerCase();
+    }
+    if (va < vb) return -sortDir;
+    if (va > vb) return sortDir;
+    return 0;
+  });
+
+  const tbody = document.getElementById('cert-tbody');
+  tbody.innerHTML = '';
+  sorted.forEach((r, idx) => {
+    const color = CAT_COLORS[r.category] || '#6b7280';
+    const aColor = AUTH_COLORS[authSorted.findIndex(([n]) => n === r.Authority) % AUTH_COLORS.length] || '#6b7280';
+    const tr = document.createElement('tr');
+    tr.style.animationDelay = (idx * 0.02) + 's';
+    tr.innerHTML = `
+      <td style="max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+        <span style="color:var(--muted); margin-right:8px; font-size:10px;">${idx+1}</span>${r.Name}
+      </td>
+      <td><span class="authority-badge" style="background:${aColor}22; color:${aColor}; border:1px solid ${aColor}44">${r.Authority || '—'}</span></td>
+      <td><span class="category-pill" style="color:${color}; border-color:${color}44;">${r.category}</span></td>
+      <td style="color:var(--muted); white-space:nowrap;">${r['Started On'] || '—'}</td>
+      <td>${r.Url ? `<a href="${r.Url}" target="_blank" class="cert-link">→ Megnyit</a>` : '<span style="color:var(--muted);">—</span>'}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('results-count').innerHTML =
+    `<span>${sorted.length}</span> tanúsítvány megjelenítve / ${data.length} összesen`;
+}
+
+// Initial render
+sortTable('date');
+</script>
+</body>
+</html>

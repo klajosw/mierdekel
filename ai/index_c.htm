@@ -1,0 +1,601 @@
+﻿<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Prompt Generátor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        .left-panel {
+            padding: 30px;
+            background: #f8f9fa;
+            border-right: 2px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .right-panel {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: #667eea;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .templates {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .template-btn {
+            padding: 12px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            color: #667eea;
+        }
+
+        .template-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .output-box {
+            flex: 1;
+            background: #f8f9fa;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            line-height: 1.6;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .canvas-preview {
+            margin-top: 15px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .canvas-box {
+            display: inline-block;
+            border: 3px solid #667eea;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .canvas-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #667eea;
+            font-weight: 600;
+            font-size: 1.2em;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .left-panel {
+                border-right: none;
+                border-bottom: 2px solid #e0e0e0;
+                max-height: none;
+            }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4caf50;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 AI Kép és Videó Prompt Generátor</h1>
+            <p>Részletes prompt szövegek készítése AI generáláshoz</p>
+        </div>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="section">
+                    <div class="section-title">Sablon választás</div>
+                    <div class="templates">
+                        <button class="template-btn" onclick="loadTemplate('magyar')">Magyar Örökség</button>
+                        <button class="template-btn" onclick="loadTemplate('termeszet')">Természet</button>
+                        <button class="template-btn" onclick="loadTemplate('varos')">Városképek</button>
+                        <button class="template-btn" onclick="loadTemplate('muveszet')">Művészet</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Alapbeállítások</div>
+                    <label>Kategória:</label>
+                    <select id="category" onchange="generatePrompt()">
+                        <option value="kulturalis">Kulturális örökség</option>
+                        <option value="termeszet">Természeti tájak</option>
+                        <option value="varos">Városi környezet</option>
+                        <option value="muveszet">Művészeti kompozíció</option>
+                        <option value="tortenelmi">Történelmi jelenet</option>
+                    </select>
+                </div>
+
+                <div class="section">
+                    <label>Ország/Régió:</label>
+                    <input type="text" id="region" value="Magyarország" oninput="generatePrompt()">
+                </div>
+
+                <div class="section">
+                    <label>Vizuális stílus:</label>
+                    <select id="style" onchange="generatePrompt()">
+                        <option value="filmszeru">Filmszerű realizmus</option>
+                        <option value="festoi">Festői</option>
+                        <option value="modern">Modern grafikai</option>
+                        <option value="vintage">Vintage</option>
+                        <option value="minimalist">Minimalista</option>
+                    </select>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Tartalmi elemek</div>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="elem1" checked onchange="generatePrompt()">
+                            <label for="elem1">Építészet</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="elem2" checked onchange="generatePrompt()">
+                            <label for="elem2">Természet</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="elem3" checked onchange="generatePrompt()">
+                            <label for="elem3">Emberek</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="elem4" checked onchange="generatePrompt()">
+                            <label for="elem4">Kultúra</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <label>Színpaletta:</label>
+                    <select id="colors" onchange="generatePrompt()">
+                        <option value="meleg">Meleg tónusok (arany, homok, türkiz)</option>
+                        <option value="hideg">Hideg tónusok (kék, ezüst, lila)</option>
+                        <option value="fold">Földtónusok (barna, zöld, bézs)</option>
+                        <option value="elenko">Élénk kontrasztok</option>
+                    </select>
+                </div>
+
+                <div class="section">
+                    <label>Fő felirat szövege:</label>
+                    <input type="text" id="mainText" value="Lajos AI" oninput="generatePrompt()">
+                </div>
+
+                <div class="section">
+                    <label>Alcím (opcionális):</label>
+                    <input type="text" id="subtitle" value="Örökség és bölcsesség" oninput="generatePrompt()">
+                </div>
+
+                <div class="section">
+                    <label>Aláírás:</label>
+                    <input type="text" id="signature" value="Lajos" oninput="generatePrompt()">
+                </div>
+
+                <div class="section">
+                    <label>Képarány:</label>
+                    <select id="aspect" onchange="updateCanvas(); generatePrompt()">
+                        <option value="4:7">4:7 (Portré)</option>
+                        <option value="16:9">16:9 (Szélesvászon)</option>
+                        <option value="1:1">1:1 (Négyzet)</option>
+                        <option value="3:4">3:4 (Klasszikus)</option>
+                    </select>
+                    <div class="canvas-preview">
+                        <div>Vászon előnézet:</div>
+                        <div class="canvas-box" id="canvasBox">
+                            <div class="canvas-label" id="canvasLabel">4:7</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <label>Felbontás:</label>
+                    <select id="resolution" onchange="generatePrompt()">
+                        <option value="8K">8K Ultra HD</option>
+                        <option value="4K">4K Ultra HD</option>
+                        <option value="Full HD">Full HD</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="section-title">Generált Prompt</div>
+                <div class="output-box" id="output">Itt jelenik meg a generált prompt...</div>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="copyToClipboard()">📋 Másolás vágólapra</button>
+                    <button class="btn btn-secondary" onclick="generatePrompt()">🔄 Újragenerálás</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification">Prompt kimásolva a vágólapra! ✓</div>
+
+    <script>
+        function generatePrompt() {
+            const category = document.getElementById('category').value;
+            const region = document.getElementById('region').value;
+            const style = document.getElementById('style').value;
+            const colors = document.getElementById('colors').value;
+            const mainText = document.getElementById('mainText').value;
+            const subtitle = document.getElementById('subtitle').value;
+            const signature = document.getElementById('signature').value;
+            const aspect = document.getElementById('aspect').value;
+            const resolution = document.getElementById('resolution').value;
+
+            const elem1 = document.getElementById('elem1').checked;
+            const elem2 = document.getElementById('elem2').checked;
+            const elem3 = document.getElementById('elem3').checked;
+            const elem4 = document.getElementById('elem4').checked;
+
+            let categoryDesc = '';
+            switch(category) {
+                case 'kulturalis':
+                    categoryDesc = 'kulturális örökség és történelmi jelentőség';
+                    break;
+                case 'termeszet':
+                    categoryDesc = 'lenyűgöző természeti szépség és táji panoráma';
+                    break;
+                case 'varos':
+                    categoryDesc = 'pulzáló városi élet és modern építészet';
+                    break;
+                case 'muveszet':
+                    categoryDesc = 'művészi kifejezés és kreatív látásmód';
+                    break;
+                case 'tortenelmi':
+                    categoryDesc = 'történelmi pillanatok és időbeli folytonosság';
+                    break;
+            }
+
+            let styleDesc = '';
+            switch(style) {
+                case 'filmszeru':
+                    styleDesc = 'Rendkívül részletes, filmszerű, művészi realizmus';
+                    break;
+                case 'festoi':
+                    styleDesc = 'Festői, ecsetvonásokkal gazdagított művészi kidolgozás';
+                    break;
+                case 'modern':
+                    styleDesc = 'Modern, letisztult grafikai megközelítés';
+                    break;
+                case 'vintage':
+                    styleDesc = 'Vintage, nosztalgikus vizuális atmoszféra';
+                    break;
+                case 'minimalist':
+                    styleDesc = 'Minimalista, egyszerű vonalvezetés és tiszta formák';
+                    break;
+            }
+
+            let colorDesc = '';
+            switch(colors) {
+                case 'meleg':
+                    colorDesc = 'Meleg, hagyományos színpaletta (arany, homok, türkiz, mélykék, földtónusok)';
+                    break;
+                case 'hideg':
+                    colorDesc = 'Hideg, elegáns színpaletta (kék árnyalatok, ezüst, lila, fehér)';
+                    break;
+                case 'fold':
+                    colorDesc = 'Természetes földtónusok (barna, zöld, bézs, okker, terra)';
+                    break;
+                case 'elenko':
+                    colorDesc = 'Élénk kontrasztok és vibráló színek (élénkpiros, élénkkék, citromsárga)';
+                    break;
+            }
+
+            let elements = [];
+            if (elem1) elements.push('Hagyományos építészeti nevezetességek és ikonikus helyszínek');
+            if (elem2) elements.push('Természeti tájak, hegyek, folyók és panorámák');
+            if (elem3) elements.push('Jeleneteket a mindennapi életből, hagyományos ruhát viselő emberekkel');
+            if (elem4) elements.push('Kulturális szimbólumok, díszítőelemek és hagyományos minták');
+
+            const prompt = `Tervezzen egy kifinomult, művészi plakátot, amelyet ${region} - ${categoryDesc} ihletett.
+
+A fő vizuális koncepció egy áramló, kifejező művészi ecsetvonás tiszta fehér háttéren, amelyen belül egy gazdag művészi kompozíció bontakozik ki, amely ${region} legikonikusabb elemeit ábrázolja.
+
+A műalkotásnak tartalmaznia kell:
+${elements.map(e => '• ' + e).join('\n')}
+
+Felső közepére helyezzen el egy nagyméretű, elegáns feliratot gyönyörű betűkkel, amely a következő szöveget írja: "${mainText}", luxus arany vagy meleg barna színben.
+
+A cím alatt egy rövid, költői magyar alcímet illeszts be finom betűkkel: "${subtitle}", amely kifejezi az örökséget, a történelmet, a bölcsességet és az időbeli folytonosságot.
+
+A kompozíció mindkét oldalán finom, költői magyar szövegrészeket illeszts be, elegáns díszes betűtípussal, amelyek kiemelik a kulturális és történelmi mélységet anélkül, hogy túlzsúfolnák a dizájnt.
+
+Vizuális stílus:
+${styleDesc}
+${colorDesc}
+Az ecsetvonásokba zökkenőmentesen integrált művészi textúrák
+Erős mélység, lágy árnyékok, luxus szerkesztői plakátdizájn
+
+A terv alsó sarkában helyezzen el egy tiszta és elegáns aláírást a "${signature}" felirattal, a következő követelményekkel:
+• Jól olvasható mobiltelefonok képernyőjén
+• Közepes kontraszt a háttérrel
+• Élénkült arany vagy mély meleg barna szín
+• Fényes ragyogás vagy lágy megvilágítás az áttekinthetőség érdekében
+
+Az aláírásnak professzionalizmust, művészi kidolgozást és magabiztosságot kell közvetítenie anélkül, hogy elvonná a figyelmet a fő műalkotásról.
+
+Általános hangulat:
+Időtlen identitás, örökség, elegancia és bölcsesség.
+Csak magyar szöveg. Angol szöveg nem.
+
+Közösségi médiához optimalizált kompozíció, vizuálisan magával ragadó, múzeumi minőségű kimenet, ${resolution} ultra részletes felbontás, ar ${aspect}`;
+
+            document.getElementById('output').textContent = prompt;
+        }
+
+        function updateCanvas() {
+            const aspect = document.getElementById('aspect').value;
+            const canvasBox = document.getElementById('canvasBox');
+            const canvasLabel = document.getElementById('canvasLabel');
+            
+            let width, height;
+            switch(aspect) {
+                case '4:7':
+                    width = 120; height = 210;
+                    break;
+                case '16:9':
+                    width = 240; height = 135;
+                    break;
+                case '1:1':
+                    width = 180; height = 180;
+                    break;
+                case '3:4':
+                    width = 150; height = 200;
+                    break;
+            }
+            
+            canvasBox.style.width = width + 'px';
+            canvasBox.style.height = height + 'px';
+            canvasLabel.textContent = aspect;
+        }
+
+        function copyToClipboard() {
+            const output = document.getElementById('output').textContent;
+            navigator.clipboard.writeText(output).then(() => {
+                const notification = document.getElementById('notification');
+                notification.classList.add('show');
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            });
+        }
+
+        function loadTemplate(type) {
+            switch(type) {
+                case 'magyar':
+                    document.getElementById('category').value = 'kulturalis';
+                    document.getElementById('region').value = 'Magyarország';
+                    document.getElementById('style').value = 'filmszeru';
+                    document.getElementById('colors').value = 'meleg';
+                    document.getElementById('mainText').value = 'Lajos AI';
+                    document.getElementById('subtitle').value = 'Örökség és bölcsesség';
+                    document.getElementById('signature').value = 'Lajos';
+                    break;
+                case 'termeszet':
+                    document.getElementById('category').value = 'termeszet';
+                    document.getElementById('region').value = 'Kárpátok';
+                    document.getElementById('style').value = 'festoi';
+                    document.getElementById('colors').value = 'fold';
+                    document.getElementById('mainText').value = 'Természet Szépsége';
+                    document.getElementById('subtitle').value = 'A hegyek ősi titkai';
+                    break;
+                case 'varos':
+                    document.getElementById('category').value = 'varos';
+                    document.getElementById('region').value = 'Budapest';
+                    document.getElementById('style').value = 'modern';
+                    document.getElementById('colors').value = 'hideg';
+                    document.getElementById('mainText').value = 'Városi Élet';
+                    document.getElementById('subtitle').value = 'Modern metropolisz';
+                    break;
+                case 'muveszet':
+                    document.getElementById('category').value = 'muveszet';
+                    document.getElementById('region').value = 'Európa';
+                    document.getElementById('style').value = 'festoi';
+                    document.getElementById('colors').value = 'elenko';
+                    document.getElementById('mainText').value = 'Művészet';
+                    document.getElementById('subtitle').value = 'Kreatív kifejezés';
+                    break;
+            }
+            generatePrompt();
+        }
+
+        // Kezdeti betöltés
+        window.onload = function() {
+            updateCanvas();
+            generatePrompt();
+        };
+    </script>
+</body>
+</html>

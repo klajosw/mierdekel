@@ -1,0 +1,184 @@
+﻿<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<title>AI Prompt Generátor – Magyar Örökség</title>
+
+<style>
+body {
+    font-family: "Segoe UI", sans-serif;
+    background: #f4f1ec;
+    margin: 0;
+    padding: 20px;
+    color: #2c2c2c;
+}
+
+.container {
+    max-width: 1100px;
+    margin: auto;
+    background: #ffffff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+}
+
+h1 {
+    text-align: center;
+    color: #6b4e2e;
+}
+
+.section {
+    margin-bottom: 20px;
+}
+
+label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 6px;
+}
+
+select, input, textarea, button {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+}
+
+.checkbox-group label {
+    font-weight: normal;
+}
+
+.checkbox-group input {
+    margin-right: 6px;
+}
+
+button {
+    background: linear-gradient(135deg, #8a6a3f, #c9a55b);
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+textarea {
+    min-height: 280px;
+    resize: vertical;
+    font-family: Consolas, monospace;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+    <h1>AI Kép / Videó Prompt Generátor</h1>
+
+    <div class="section">
+        <label>Generálás típusa</label>
+        <select id="type">
+            <option>Kép</option>
+            <option>Videó</option>
+        </select>
+    </div>
+
+    <div class="section">
+        <label>Fő cím felirat</label>
+        <input type="text" id="title" value="Lajos AI">
+    </div>
+
+    <div class="section">
+        <label>Városok és helyszínek</label>
+        <div class="checkbox-group">
+            <label><input type="checkbox" value="Budapest"> Budapest</label>
+            <label><input type="checkbox" value="Pécs"> Pécs</label>
+            <label><input type="checkbox" value="Sopron"> Sopron</label>
+            <label><input type="checkbox" value="Debrecen történelmi városa"> Debrecen</label>
+            <label><input type="checkbox" value="mezőgazdasági teraszok"> Mezőgazdasági teraszok</label>
+        </div>
+    </div>
+
+    <div class="section">
+        <label>Természeti elemek</label>
+        <select id="nature">
+            <option>Duna és Tisza folyó, alföldi táj</option>
+            <option>Hegyek és városkép</option>
+            <option>Alföld és történelmi városok</option>
+        </select>
+    </div>
+
+    <div class="section">
+        <label>Hangulat</label>
+        <select id="mood">
+            <option>Időtlen identitás, örökség és bölcsesség</option>
+            <option>Elegáns, művészi és ünnepélyes</option>
+            <option>Meleg, hagyománytisztelő és filmes</option>
+        </select>
+    </div>
+
+    <div class="section">
+        <button onclick="generatePrompt()">Prompt generálása</button>
+    </div>
+
+    <div class="section">
+        <label>Generált AI prompt</label>
+        <textarea id="output"></textarea>
+    </div>
+</div>
+
+<script>
+function generatePrompt() {
+    const type = document.getElementById("type").value;
+    const title = document.getElementById("title").value;
+    const nature = document.getElementById("nature").value;
+    const mood = document.getElementById("mood").value;
+
+    const cities = Array.from(
+        document.querySelectorAll(".checkbox-group input:checked")
+    ).map(c => c.value).join(", ");
+
+    let prompt = "";
+
+    if (type === "Videó") {
+        prompt = `
+Hozzon létre egy filmszerű, művészi videókompozíciót, amelyet a magyar–hun örökség és kultúra ihletett.
+
+Időtartam: 10–15 másodperc
+Képarány: 4:7
+Felbontás: 8K ultra részletes
+
+Nyitójelenet:
+Tiszta fehér háttéren lassan áramló, művészi ecsetvonás jelenik meg. Finom kameraközelítés.
+
+Középső jelenetek:
+Filmszerű montázs ${cities} városképeivel, hagyományos piacokkal, népviseletet viselő emberekkel.
+Természeti elemek: ${nature}
+Lassú, lebegő kameramozgás, mélységélesség.
+
+Felirat:
+Felső középen: "${title}" luxus arany vagy meleg barna színben.
+
+Zárás:
+Alsó sarokban elegáns aláírás: "Lajos", finom ragyogással.
+
+Hangulat:
+${mood}
+
+Csak magyar szöveg.
+Közösségi médiára optimalizált, múzeumi minőségű videó.
+        `;
+    } else {
+        // KÉP PROMPT (maradhat az eddigi)
+        prompt = "… (képes prompt szöveg)";
+    }
+
+    document.getElementById("output").value = prompt.trim();
+}
+
+</script>
+
+</body>
+</html>

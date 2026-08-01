@@ -1,0 +1,289 @@
+﻿<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Link Gyűjtemény • 2026</title>
+
+<style>
+    :root {
+        --bg: #0d1117;
+        --card: #161b22;
+        --text: #e6edf3;
+        --text-secondary: #8b949e;
+        --accent: #58a6ff;
+        --accent-glow: rgba(88, 166, 255, 0.4);
+        --border: #30363d;
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-image: 
+            radial-gradient(circle at 20% 30%, rgba(88,166,255,0.08) 0%, transparent 25%),
+            radial-gradient(circle at 80% 70%, rgba(88,166,255,0.06) 0%, transparent 35%);
+        background-attachment: fixed;
+    }
+
+    .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    header {
+        text-align: center;
+        margin: 60px 0 80px;
+    }
+
+    h1 {
+        font-size: 3.6rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        background: linear-gradient(90deg, #58a6ff, #79c0ff, #a5d6ff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        margin-bottom: 0.2em;
+    }
+
+    .subtitle {
+        color: var(--text-secondary);
+        font-size: 1.3rem;
+        margin-top: 0.5em;
+    }
+
+    .links-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 24px;
+    }
+
+    .card {
+        position: relative;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+        transition: all 0.35s ease;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    }
+
+    .card:hover {
+        transform: translateY(-12px);
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5),
+                    0 0 0 2px rgba(88,166,255,0.25);
+    }
+
+    .card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, 
+            transparent 0%, 
+            var(--accent-glow) 40%, 
+            transparent 100%);
+        opacity: 0;
+        transition: opacity 0.6s ease;
+        pointer-events: none;
+    }
+
+    .card:hover::before {
+        opacity: 0.7;
+    }
+
+    .card-content {
+        padding: 32px 28px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .card-title {
+        font-size: 1.6rem;
+        margin-bottom: 0.8rem;
+        font-weight: 600;
+        color: #ffffff;
+    }
+
+    .card-description {
+        color: var(--text-secondary);
+        font-size: 0.98rem;
+        line-height: 1.5;
+        margin-bottom: 1.2rem;
+    }
+
+    .link-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: rgba(88,166,255,0.15);
+        border: 1px solid rgba(88,166,255,0.3);
+        border-radius: 10px;
+        color: #79c0ff;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .link-btn:hover {
+        background: rgba(88,166,255,0.3);
+        color: white;
+        transform: translateX(6px);
+    }
+
+    .link-btn::after {
+        content: "→";
+        font-weight: bold;
+        transition: transform 0.3s ease;
+    }
+
+    .link-btn:hover::after {
+        transform: translateX(4px);
+    }
+
+    footer {
+        text-align: center;
+        margin-top: 100px;
+        padding: 40px 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 600px) {
+        h1 { font-size: 2.8rem; }
+        .container { padding: 20px 16px; }
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <header>
+        <h1>Link Gyűjtemény</h1>
+        <div class="subtitle">Gyors hozzáférés • Kedvencek • Eszközök • Inspiráció</div>
+    </header>
+
+    <div class="links-grid">
+	
+	<!-- -->
+	    <div class="card">
+            <div class="card-content">
+                <h2 class="card-title">ChatGPT prompt gen.</h2>
+                <p class="card-description">ChatGPT – gyors váltás feladattól függően</p>
+                <a href="./index_gp.htm" target="_blank" class="link-btn">Megnyitás</a>
+            </div>
+        </div>
+		
+	    <div class="card">
+            <div class="card-content">
+                <h2 class="card-title">ChatGPT video prompt gen.</h2>
+                <p class="card-description">ChatGPT video – gyors váltás feladattól függően</p>
+                <a href="./index_gp_v.htm" target="_blank" class="link-btn">Megnyitás</a>
+            </div>
+        </div>
+		
+	    <div class="card">
+            <div class="card-content">
+                <h2 class="card-title">Grok prompt gen.</h2>
+                <p class="card-description">Grok – gyors váltás feladattól függően</p>
+                <a href="./index_gk.htm" target="_blank" class="link-btn">Megnyitás</a>
+            </div>
+        </div>
+		
+	    <div class="card">
+            <div class="card-content">
+                <h2 class="card-title">Claude prompt gen.</h2>
+                <p class="card-description">Claude – gyors váltás feladattól függően</p>
+                <a href="./index_c.htm" target="_blank" class="link-btn">Megnyitás</a>
+            </div>
+        </div>
+		
+	    <div class="card">
+            <div class="card-content">
+                <h2 class="card-title">Gemini prompt gen.</h2>
+                <p class="card-description">Gemini – gyors váltás feladattól függően</p>
+                <a href="index_g.htm" target="_blank" class="link-btn">Megnyitás</a>
+            </div>
+        </div>
+	
+	<!-- -->
+
+        <div class="card">
+            <div class="card-content">
+                <h2 class="card-title">ChatGPT / Grok / Claude</h2>
+                <p class="card-description">Különböző nagy nyelvi modellek egy helyen – gyors váltás feladattól függően</p>
+                <a href="https://chat.openai.com" target="_blank" class="link-btn">Megnyitás</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-content">
+                <h2 class="card-title">Midjourney / Flux</h2>
+                <p class="card-description">Képgenerálás – jelenlegi legjobb minőségű modellek</p>
+                <a href="https://www.midjourney.com" target="_blank" class="link-btn">Megnyitás</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-content">
+                <h2 class="card-title">GitHub</h2>
+                <p class="card-description">Kódok, projektek, inspiráció, másolás</p>
+                <a href="https://github.com" target="_blank" class="link-btn">Megnyitás</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-content">
+                <h2 class="card-title">YouTube Music</h2>
+                <p class="card-description">Háttérzene kódoláshoz, tanuláshoz, flow-hoz</p>
+                <a href="https://music.youtube.com" target="_blank" class="link-btn">Megnyitás</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-content">
+                <h2 class="card-title">Figma</h2>
+                <p class="card-description">UI/UX tervezés, prototípusok, wireframe-ek</p>
+                <a href="https://www.figma.com" target="_blank" class="link-btn">Megnyitás</a>
+            </div>
+        </div>
+
+        <!-- További kártya példák amiket beilleszthetsz a .links-grid-be -->
+
+<div class="card">
+    <div class="card-content">
+        <h2 class="card-title">Prompt gyűjtemény</h2>
+        <p class="card-description">Saját és talált legjobb promptok</p>
+        <a href="https://prompts-chat-gpt.hu" target="_blank" class="link-btn">Megnyitás</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-content">
+        <h2 class="card-title">Color Hunt</h2>
+        <p class="card-description">Szép színpaletták kereséséhez</p>
+        <a href="https://colorhunt.co" target="_blank" class="link-btn">Megnyitás</a>
+    </div>
+</div>
+
+    </div>
+
+    <footer>
+        Saját gyorslink gyűjtemény • 2026
+    </footer>
+
+</div>
+
+</body>
+</html>

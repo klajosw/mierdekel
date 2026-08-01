@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pénztárkönyv</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+    --radius:10px;
+    --income:#2E8B57;
+    --income-bg:#E4F3EA;
+    --expense:#C1503A;
+    --expense-bg:#FBE9E5;
+  }
+
+  [data-theme="light"]{
+    --bg:#F6F3EC;
+    --paper:#FFFFFF;
+    --paper-2:#FCFAF4;
+    --text:#211F1A;
+    --text-dim:#6E6A60;
+    --text-faint:#A4A092;
+    --border:#E2DDCE;
+    --border-strong:#CFC8B4;
+    --shadow:0 1px 2px rgba(30,25,10,.06);
+  }
+  [data-theme="dark"]{
+    --bg:#15140F;
+    --paper:#1E1C15;
+    --paper-2:#242118;
+    --text:#F1EEE3;
+    --text-dim:#A7A18F;
+    --text-faint:#726C5C;
+    --border:#332F23;
+    --border-strong:#453F2E;
+    --shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+
+  [data-accent="orange"]{ --accent:#DB7B2B; --accent-bg:#FBEBDA; --accent-dark:#8F4E15; }
+  [data-accent="brown"]{ --accent:#8A5A34; --accent-bg:#EFE3D5; --accent-dark:#5A3A20; }
+  [data-accent="blue"]{ --accent:#2F5FA8; --accent-bg:#DEE8F6; --accent-dark:#1C3B69; }
+  [data-accent="green"]{ --accent:#3E8B5C; --accent-bg:#E1F0E6; --accent-dark:#265837; }
+  [data-theme="dark"][data-accent="orange"]{ --accent-bg:#3A2A16; --accent-dark:#F0B87C; }
+  [data-theme="dark"][data-accent="brown"]{ --accent-bg:#2F2417; --accent-dark:#D8B98F; }
+  [data-theme="dark"][data-accent="blue"]{ --accent-bg:#182636; --accent-dark:#9BC0EE; }
+  [data-theme="dark"][data-accent="green"]{ --accent-bg:#17281C; --accent-dark:#9CD3AF; }
+  [data-theme="dark"]{ --income-bg:#173323; --expense-bg:#341D18; }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--font-body);
+    min-height:100vh; transition:background .2s,color .2s;
+  }
+  h1,h2,h3{font-family:var(--font-display); font-weight:600; margin:0;}
+  .mono{font-family:var(--font-mono);}
+  .hidden{display:none !important;}
+  button{font-family:var(--font-body); cursor:pointer;}
+  input,select,button{font-size:14px;}
+  a{color:var(--accent);}
+
+  /* ---------- AUTH SCREEN ---------- */
+  #authScreen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .auth-card{
+    background:var(--paper); border:1px solid var(--border); border-radius:16px;
+    width:100%; max-width:380px; padding:32px 28px; box-shadow:var(--shadow);
+  }
+  .auth-logo{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .auth-logo .mark{
+    width:34px;height:34px;border-radius:8px;background:var(--accent);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-display);font-weight:700;
+  }
+  .auth-logo span{font-family:var(--font-display); font-size:19px; font-weight:600;}
+  .auth-sub{color:var(--text-dim); font-size:13px; margin-bottom:22px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:5px; font-weight:500;}
+  .field input,.field select{
+    width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-strong);
+    background:var(--paper-2); color:var(--text); outline:none;
+  }
+  .field input:focus,.field select:focus{border-color:var(--accent);}
+  .btn{
+    border-radius:8px; border:1px solid var(--border-strong); background:var(--paper-2); color:var(--text);
+    padding:10px 16px; font-weight:500; transition:.15s;
+  }
+  .btn:hover{border-color:var(--accent);}
+  .btn:active{transform:scale(.98);}
+  .btn-primary{
+    width:100%; background:var(--accent); border-color:var(--accent); color:#fff; padding:11px 16px;
+    font-weight:600; border-radius:8px;
+  }
+  .btn-primary:hover{filter:brightness(1.06);}
+  .auth-switch{text-align:center; font-size:13px; color:var(--text-dim); margin-top:16px;}
+  .auth-switch button{background:none;border:none;color:var(--accent);font-weight:600;padding:0;}
+  .auth-error{
+    background:var(--expense-bg); color:var(--expense); border-radius:8px; padding:8px 12px;
+    font-size:13px; margin-bottom:14px;
+  }
+  .auth-hint{font-size:12px; color:var(--text-faint); margin-top:18px; border-top:1px dashed var(--border-strong); padding-top:12px;}
+
+  /* ---------- APP SHELL ---------- */
+  #appScreen{display:flex; min-height:100vh;}
+  #sidebar{
+    width:230px; flex-shrink:0; background:var(--paper); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; padding:20px 14px; position:sticky; top:0; height:100vh;
+  }
+  .brand{display:flex; align-items:center; gap:9px; padding:0 6px 22px 6px;}
+  .brand .mark{width:28px;height:28px;border-radius:7px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-display);font-weight:700;font-size:14px;}
+  .brand span{font-family:var(--font-display); font-weight:600; font-size:16px;}
+  nav.mainnav{display:flex; flex-direction:column; gap:2px; flex:1;}
+  nav.mainnav button{
+    display:flex; align-items:center; gap:10px; text-align:left; background:none; border:none;
+    padding:10px 10px; border-radius:8px; color:var(--text-dim); font-size:14px; font-weight:500;
+  }
+  nav.mainnav button:hover{background:var(--paper-2); color:var(--text);}
+  nav.mainnav button.active{background:var(--accent-bg); color:var(--accent-dark); font-weight:600;}
+  nav.mainnav .navicon{width:16px; text-align:center;}
+  .sidebar-user{
+    border-top:1px solid var(--border); padding-top:14px; margin-top:10px;
+  }
+  .sidebar-user .who{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .sidebar-user .avatar{
+    width:30px;height:30px;border-radius:50%;background:var(--accent-bg);color:var(--accent-dark);
+    display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;
+  }
+  .sidebar-user .uname{font-size:13px; font-weight:600; line-height:1.2;}
+  .sidebar-user .urole{font-size:11px; color:var(--text-faint);}
+  .settings-row{display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;}
+  .mini-btn{
+    border:1px solid var(--border-strong); background:var(--paper-2); border-radius:7px; padding:5px 8px;
+    font-size:11px; color:var(--text-dim);
+  }
+  .mini-btn.active{border-color:var(--accent); color:var(--accent-dark); background:var(--accent-bg);}
+  .swatch{width:18px;height:18px;border-radius:50%; border:2px solid transparent; padding:0;}
+  .swatch.active{border-color:var(--text);}
+  .logout-btn{width:100%; margin-top:8px;}
+
+  #main{flex:1; padding:28px 34px 60px; max-width:980px;}
+  .page{display:none;}
+  .page.active{display:block;}
+  .page-head{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:22px; flex-wrap:wrap; gap:12px;}
+  .page-head h1{font-size:22px;}
+  .page-head .sub{color:var(--text-dim); font-size:13px; margin-top:4px;}
+
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:26px;}
+  .card{background:var(--paper); border:1px solid var(--border); border-radius:12px; padding:16px 18px;}
+  .card .label{font-size:12px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;}
+  .card .value{font-family:var(--font-mono); font-size:24px; font-weight:600;}
+  .card.income .value{color:var(--income);}
+  .card.expense .value{color:var(--expense);}
+
+  .panel{background:var(--paper); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px;}
+  .panel h3{font-size:15px; margin-bottom:14px;}
+  .formrow{display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto; gap:10px; align-items:end;}
+  .formrow .field{margin-bottom:0;}
+  .type-toggle{display:flex; border:1px solid var(--border-strong); border-radius:8px; overflow:hidden; height:38px;}
+  .type-toggle button{flex:1; border:none; background:var(--paper-2); color:var(--text-dim); font-weight:600; font-size:13px;}
+  .type-toggle button.on-income.active{background:var(--income-bg); color:var(--income);}
+  .type-toggle button.on-expense.active{background:var(--expense-bg); color:var(--expense);}
+
+  /* ledger list */
+  .ledger{border:1px solid var(--border); border-radius:12px; background:var(--paper); overflow:hidden;}
+  .ledger-row{
+    display:grid; grid-template-columns:auto 1fr auto auto auto; gap:14px; align-items:center;
+    padding:13px 18px; border-bottom:1px dashed var(--border-strong);
+  }
+  .ledger-row:last-child{border-bottom:none;}
+  .ledger-row:hover{background:var(--paper-2);}
+  .dot{width:9px;height:9px;border-radius:50%;}
+  .dot.income{background:var(--income);}
+  .dot.expense{background:var(--expense);}
+  .ledger-desc .cat{font-size:13px; font-weight:600;}
+  .ledger-desc .note{font-size:12px; color:var(--text-dim); margin-top:1px;}
+  .ledger-date{font-size:12px; color:var(--text-faint); font-family:var(--font-mono);}
+  .ledger-amt{font-family:var(--font-mono); font-weight:600; font-size:14px; text-align:right; min-width:100px;}
+  .ledger-amt.income{color:var(--income);}
+  .ledger-amt.expense{color:var(--expense);}
+  .del-btn{background:none;border:none;color:var(--text-faint); font-size:16px; line-height:1; padding:4px;}
+  .del-btn:hover{color:var(--expense);}
+  .empty-state{padding:40px 20px; text-align:center; color:var(--text-faint); font-size:13px;}
+
+  .filters{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+  .filters select,.filters input{padding:7px 10px; border-radius:7px; border:1px solid var(--border-strong); background:var(--paper-2); color:var(--text);}
+
+  /* stats */
+  .stat-block{margin-bottom:22px;}
+  .stat-block h3{margin-bottom:12px; font-size:14px; display:flex; justify-content:space-between; align-items:center;}
+  .bar-row{display:grid; grid-template-columns:120px 1fr 78px; gap:10px; align-items:center; margin-bottom:9px;}
+  .bar-row .catname{font-size:12.5px; color:var(--text-dim);}
+  .bar-track{height:10px; background:var(--paper-2); border-radius:6px; overflow:hidden; border:1px solid var(--border);}
+  .bar-fill{height:100%; border-radius:6px;}
+  .bar-fill.expense{background:var(--expense);}
+  .bar-fill.income{background:var(--income);}
+  .bar-val{font-family:var(--font-mono); font-size:12px; text-align:right; color:var(--text-dim);}
+
+  /* admin */
+  table.admin-table{width:100%; border-collapse:collapse; font-size:13px;}
+  table.admin-table th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-faint); padding:8px 10px; border-bottom:1px solid var(--border);}
+  table.admin-table td{padding:10px 10px; border-bottom:1px solid var(--border);}
+  table.admin-table tr:last-child td{border-bottom:none;}
+  .badge{display:inline-block; padding:2px 9px; border-radius:20px; font-size:11px; font-weight:600;}
+  .badge.admin{background:var(--accent-bg); color:var(--accent-dark);}
+  .badge.user{background:var(--paper-2); color:var(--text-dim); border:1px solid var(--border-strong);}
+  .badge.active{background:var(--income-bg); color:var(--income);}
+  .badge.inactive{background:var(--expense-bg); color:var(--expense);}
+  .row-actions{display:flex; gap:6px;}
+  .row-actions button{font-size:11px; padding:5px 9px;}
+
+  .toast{
+    position:fixed; bottom:22px; right:22px; background:var(--text); color:var(--bg);
+    padding:11px 18px; border-radius:8px; font-size:13px; font-weight:500; opacity:0; transform:translateY(8px);
+    transition:.25s; pointer-events:none; z-index:99;
+  }
+  .toast.show{opacity:1; transform:translateY(0);}
+
+  @media(max-width:820px){
+    #appScreen{flex-direction:column;}
+    #sidebar{width:100%; height:auto; position:relative; flex-direction:row; align-items:center; flex-wrap:wrap;}
+    nav.mainnav{flex-direction:row; flex-wrap:wrap;}
+    .brand{padding-bottom:0;}
+    .sidebar-user{border-top:none; margin-top:0; width:100%;}
+    #main{padding:20px;}
+    .cards{grid-template-columns:1fr;}
+    .formrow{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body data-theme="light" data-accent="orange">
+
+<!-- ================= AUTH SCREEN ================= -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo"><div class="mark">Ft</div><span data-i18n="appName">Pénztárkönyv</span></div>
+    <div class="auth-sub" data-i18n="authSub">Személyes bevétel- és kiadáskezelő</div>
+
+    <div id="authError" class="auth-error hidden"></div>
+
+    <form id="loginForm">
+      <div class="field"><label data-i18n="username">Felhasználónév</label><input type="text" id="loginUser" autocomplete="username" required></div>
+      <div class="field"><label data-i18n="password">Jelszó</label><input type="password" id="loginPass" autocomplete="current-password" required></div>
+      <button type="submit" class="btn btn-primary" data-i18n="loginBtn">Bejelentkezés</button>
+    </form>
+
+    <form id="registerForm" class="hidden">
+      <div class="field"><label data-i18n="fullname">Teljes név</label><input type="text" id="regName" required></div>
+      <div class="field"><label data-i18n="username">Felhasználónév</label><input type="text" id="regUser" required></div>
+      <div class="field"><label data-i18n="password">Jelszó</label><input type="password" id="regPass" required></div>
+      <div class="field"><label data-i18n="passwordAgain">Jelszó ismét</label><input type="password" id="regPass2" required></div>
+      <button type="submit" class="btn btn-primary" data-i18n="registerBtn">Regisztráció</button>
+    </form>
+
+    <div class="auth-switch">
+      <span id="switchToRegisterWrap"><span data-i18n="noAccount">Nincs még fiókod?</span> <button type="button" id="showRegister" data-i18n="registerLink">Regisztrálj</button></span>
+      <span id="switchToLoginWrap" class="hidden"><span data-i18n="haveAccount">Már van fiókod?</span> <button type="button" id="showLogin" data-i18n="loginLink">Jelentkezz be</button></span>
+    </div>
+
+    <div class="auth-hint" data-i18n="demoHint">Alapértelmezett adminisztrátor: admin / admin123</div>
+
+    <div class="settings-row" style="margin-top:18px; justify-content:center;">
+      <button class="mini-btn" id="authThemeToggle" data-i18n="themeToggle">Sötét mód</button>
+    </div>
+    <div class="settings-row" style="justify-content:center;">
+      <select id="authLangSelect" class="mini-btn" style="padding:5px 8px;">
+        <option value="hu">Magyar</option>
+        <option value="de">Deutsch</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP SCREEN ================= -->
+<div id="appScreen" class="hidden">
+  <aside id="sidebar">
+    <div class="brand"><div class="mark">Ft</div><span data-i18n="appName">Pénztárkönyv</span></div>
+
+    <nav class="mainnav">
+      <button data-page="dashboard" class="active"><span class="navicon">&#9673;</span> <span data-i18n="nav_dashboard">Áttekintés</span></button>
+      <button data-page="transactions"><span class="navicon">&#9776;</span> <span data-i18n="nav_transactions">Tranzakciók</span></button>
+      <button data-page="stats"><span class="navicon">&#9707;</span> <span data-i18n="nav_stats">Statisztika</span></button>
+      <button data-page="admin" id="navAdmin" class="hidden"><span class="navicon">&#9881;</span> <span data-i18n="nav_admin">Adminisztráció</span></button>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="who">
+        <div class="avatar" id="sbAvatar">?</div>
+        <div>
+          <div class="uname" id="sbName">-</div>
+          <div class="urole" id="sbRole">-</div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <button class="mini-btn" id="themeToggle" data-i18n="themeToggle">Sötét mód</button>
+      </div>
+      <div class="settings-row" id="accentRow">
+        <button class="swatch" data-accent="orange" style="background:#DB7B2B" title="Narancs"></button>
+        <button class="swatch" data-accent="brown" style="background:#8A5A34" title="Barna"></button>
+        <button class="swatch" data-accent="blue" style="background:#2F5FA8" title="Kék"></button>
+        <button class="swatch" data-accent="green" style="background:#3E8B5C" title="Zöld"></button>
+      </div>
+      <div class="settings-row">
+        <select id="langSelect" class="mini-btn" style="padding:5px 8px; width:100%;">
+          <option value="hu">Magyar</option>
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+      <button class="btn logout-btn" id="logoutBtn" data-i18n="logout">Kijelentkezés</button>
+    </div>
+  </aside>
+
+  <main id="main">
+
+    <!-- DASHBOARD -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-head">
+        <div><h1 data-i18n="dashTitle">Áttekintés</h1><div class="sub" id="dashSub"></div></div>
+      </div>
+
+      <div class="cards">
+        <div class="card income"><div class="label" data-i18n="totalIncome">Összes bevétel</div><div class="value mono" id="cardIncome">0 Ft</div></div>
+        <div class="card expense"><div class="label" data-i18n="totalExpense">Összes kiadás</div><div class="value mono" id="cardExpense">0 Ft</div></div>
+        <div class="card"><div class="label" data-i18n="balance">Egyenleg</div><div class="value mono" id="cardBalance">0 Ft</div></div>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="newTx">Új tranzakció felvétele</h3>
+        <div class="formrow">
+          <div class="field">
+            <label data-i18n="type">Típus</label>
+            <div class="type-toggle">
+              <button type="button" class="on-income active" id="typeIncomeBtn" data-i18n="income">Bevétel</button>
+              <button type="button" class="on-expense" id="typeExpenseBtn" data-i18n="expense">Kiadás</button>
+            </div>
+          </div>
+          <div class="field"><label data-i18n="category">Kategória</label><select id="txCategory"></select></div>
+          <div class="field"><label data-i18n="amount">Összeg (Ft)</label><input type="number" id="txAmount" min="0" step="1" placeholder="0"></div>
+          <div class="field"><label data-i18n="date">Dátum</label><input type="date" id="txDate"></div>
+          <div class="field"><button class="btn btn-primary" id="addTxBtn" data-i18n="addBtn">Hozzáadás</button></div>
+        </div>
+        <div class="field" style="margin-top:10px;"><label data-i18n="note">Megjegyzés (opcionális)</label><input type="text" id="txNote" placeholder=""></div>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="recentTx">Legutóbbi tranzakciók</h3>
+        <div class="ledger" id="recentLedger"></div>
+      </div>
+    </section>
+
+    <!-- TRANSACTIONS -->
+    <section class="page" id="page-transactions">
+      <div class="page-head">
+        <div><h1 data-i18n="nav_transactions">Tranzakciók</h1><div class="sub" data-i18n="allTxSub">Az összes saját tranzakciód</div></div>
+      </div>
+      <div class="filters">
+        <select id="filterType">
+          <option value="all" data-i18n="filterAll">Összes típus</option>
+          <option value="income" data-i18n="income">Bevétel</option>
+          <option value="expense" data-i18n="expense">Kiadás</option>
+        </select>
+        <select id="filterCategory"></select>
+        <input type="month" id="filterMonth">
+      </div>
+      <div class="ledger" id="fullLedger"></div>
+    </section>
+
+    <!-- STATS -->
+    <section class="page" id="page-stats">
+      <div class="page-head">
+        <div><h1 data-i18n="nav_stats">Statisztika</h1><div class="sub" data-i18n="statsSub">Fő költési és bevételi területek</div></div>
+      </div>
+      <div class="panel stat-block">
+        <h3 data-i18n="expenseByCategory">Kiadások kategóriánként</h3>
+        <div id="expenseStats"></div>
+      </div>
+      <div class="panel stat-block">
+        <h3 data-i18n="incomeByCategory">Bevételek kategóriánként</h3>
+        <div id="incomeStats"></div>
+      </div>
+    </section>
+
+    <!-- ADMIN -->
+    <section class="page" id="page-admin">
+      <div class="page-head">
+        <div><h1 data-i18n="nav_admin">Adminisztráció</h1><div class="sub" data-i18n="adminSub">Felhasználók és jogosultságok kezelése</div></div>
+      </div>
+      <div class="panel">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th data-i18n="colName">Név</th>
+              <th data-i18n="colUsername">Felhasználónév</th>
+              <th data-i18n="colRole">Szerepkör</th>
+              <th data-i18n="colStatus">Státusz</th>
+              <th data-i18n="colActions">Műveletek</th>
+            </tr>
+          </thead>
+          <tbody id="adminUserTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= I18N ================= */
+const I18N = {
+  hu: {
+    appName:"Pénztárkönyv", authSub:"Személyes bevétel- és kiadáskezelő",
+    username:"Felhasználónév", password:"Jelszó", passwordAgain:"Jelszó ismét", fullname:"Teljes név",
+    loginBtn:"Bejelentkezés", registerBtn:"Regisztráció",
+    noAccount:"Nincs még fiókod?", registerLink:"Regisztrálj", haveAccount:"Már van fiókod?", loginLink:"Jelentkezz be",
+    demoHint:"Alapértelmezett adminisztrátor: admin / admin123",
+    themeToggle:"Sötét mód", themeToggleLight:"Világos mód",
+    nav_dashboard:"Áttekintés", nav_transactions:"Tranzakciók", nav_stats:"Statisztika", nav_admin:"Adminisztráció",
+    logout:"Kijelentkezés",
+    dashTitle:"Áttekintés", totalIncome:"Összes bevétel", totalExpense:"Összes kiadás", balance:"Egyenleg",
+    newTx:"Új tranzakció felvétele", type:"Típus", income:"Bevétel", expense:"Kiadás", category:"Kategória",
+    amount:"Összeg (Ft)", date:"Dátum", addBtn:"Hozzáadás", note:"Megjegyzés (opcionális)",
+    recentTx:"Legutóbbi tranzakciók", allTxSub:"Az összes saját tranzakciód",
+    filterAll:"Összes típus", statsSub:"Fő költési és bevételi területek",
+    expenseByCategory:"Kiadások kategóriánként", incomeByCategory:"Bevételek kategóriánként",
+    adminSub:"Felhasználók és jogosultságok kezelése",
+    colName:"Név", colUsername:"Felhasználónév", colRole:"Szerepkör", colStatus:"Státusz", colActions:"Műveletek",
+    noTx:"Nincs még egyetlen tranzakció sem.", noData:"Nincs megjeleníthető adat.",
+    errUserExists:"Ez a felhasználónév már foglalt.", errPassMismatch:"A két jelszó nem egyezik.",
+    errFillAll:"Tölts ki minden kötelező mezőt.", errLogin:"Hibás felhasználónév vagy jelszó.",
+    errInactive:"Ez a fiók inaktív, kérj segítséget az adminisztrátortól.",
+    toastRegistered:"Sikeres regisztráció! Most már bejelentkezhetsz.", toastLoggedIn:"Sikeres bejelentkezés.",
+    toastAdded:"Tranzakció hozzáadva.", toastDeleted:"Tranzakció törölve.",
+    toastRoleChanged:"Szerepkör módosítva.", toastStatusChanged:"Státusz módosítva.", toastUserDeleted:"Felhasználó törölve.",
+    makeAdmin:"Admin jog", makeUser:"Jog visszavonása", deactivate:"Letiltás", activate:"Engedélyezés", deleteUser:"Törlés",
+    you:"Te", admin:"Admin", user:"Felhasználó", active:"Aktív", inactive:"Inaktív",
+    cat_food:"Élelmiszer", cat_housing:"Lakhatás", cat_transport:"Közlekedés", cat_entertainment:"Szórakozás",
+    cat_health:"Egészség", cat_clothing:"Ruházat", cat_education:"Oktatás", cat_other:"Egyéb",
+    cat_salary:"Fizetés", cat_business:"Vállalkozás", cat_investment:"Befektetés", cat_gift:"Ajándék"
+  },
+  de: {
+    appName:"Haushaltsbuch", authSub:"Persönliche Einnahmen- und Ausgabenverwaltung",
+    username:"Benutzername", password:"Passwort", passwordAgain:"Passwort wiederholen", fullname:"Vollständiger Name",
+    loginBtn:"Anmelden", registerBtn:"Registrieren",
+    noAccount:"Noch kein Konto?", registerLink:"Registrieren", haveAccount:"Schon ein Konto?", loginLink:"Anmelden",
+    demoHint:"Standard-Administrator: admin / admin123",
+    themeToggle:"Dunkelmodus", themeToggleLight:"Hellmodus",
+    nav_dashboard:"Übersicht", nav_transactions:"Transaktionen", nav_stats:"Statistik", nav_admin:"Verwaltung",
+    logout:"Abmelden",
+    dashTitle:"Übersicht", totalIncome:"Gesamteinnahmen", totalExpense:"Gesamtausgaben", balance:"Saldo",
+    newTx:"Neue Transaktion erfassen", type:"Typ", income:"Einnahme", expense:"Ausgabe", category:"Kategorie",
+    amount:"Betrag (Ft)", date:"Datum", addBtn:"Hinzufügen", note:"Notiz (optional)",
+    recentTx:"Letzte Transaktionen", allTxSub:"Alle deine Transaktionen",
+    filterAll:"Alle Typen", statsSub:"Wichtigste Ausgaben- und Einnahmebereiche",
+    expenseByCategory:"Ausgaben nach Kategorie", incomeByCategory:"Einnahmen nach Kategorie",
+    adminSub:"Benutzer und Berechtigungen verwalten",
+    colName:"Name", colUsername:"Benutzername", colRole:"Rolle", colStatus:"Status", colActions:"Aktionen",
+    noTx:"Noch keine Transaktionen.", noData:"Keine Daten vorhanden.",
+    errUserExists:"Dieser Benutzername ist bereits vergeben.", errPassMismatch:"Die Passwörter stimmen nicht überein.",
+    errFillAll:"Bitte alle Pflichtfelder ausfüllen.", errLogin:"Falscher Benutzername oder Passwort.",
+    errInactive:"Dieses Konto ist deaktiviert. Wende dich an den Administrator.",
+    toastRegistered:"Registrierung erfolgreich! Du kannst dich jetzt anmelden.", toastLoggedIn:"Erfolgreich angemeldet.",
+    toastAdded:"Transaktion hinzugefügt.", toastDeleted:"Transaktion gelöscht.",
+    toastRoleChanged:"Rolle geändert.", toastStatusChanged:"Status geändert.", toastUserDeleted:"Benutzer gelöscht.",
+    makeAdmin:"Admin-Rechte", makeUser:"Rechte entziehen", deactivate:"Sperren", activate:"Freigeben", deleteUser:"Löschen",
+    you:"Du", admin:"Admin", user:"Benutzer", active:"Aktiv", inactive:"Inaktiv",
+    cat_food:"Lebensmittel", cat_housing:"Wohnen", cat_transport:"Transport", cat_entertainment:"Unterhaltung",
+    cat_health:"Gesundheit", cat_clothing:"Kleidung", cat_education:"Bildung", cat_other:"Sonstiges",
+    cat_salary:"Gehalt", cat_business:"Geschäft", cat_investment:"Investition", cat_gift:"Geschenk"
+  },
+  en: {
+    appName:"Ledger", authSub:"Personal income and expense manager",
+    username:"Username", password:"Password", passwordAgain:"Repeat password", fullname:"Full name",
+    loginBtn:"Log in", registerBtn:"Register",
+    noAccount:"Don't have an account?", registerLink:"Register", haveAccount:"Already have an account?", loginLink:"Log in",
+    demoHint:"Default administrator: admin / admin123",
+    themeToggle:"Dark mode", themeToggleLight:"Light mode",
+    nav_dashboard:"Overview", nav_transactions:"Transactions", nav_stats:"Statistics", nav_admin:"Administration",
+    logout:"Log out",
+    dashTitle:"Overview", totalIncome:"Total income", totalExpense:"Total expense", balance:"Balance",
+    newTx:"Add a new transaction", type:"Type", income:"Income", expense:"Expense", category:"Category",
+    amount:"Amount (Ft)", date:"Date", addBtn:"Add", note:"Note (optional)",
+    recentTx:"Recent transactions", allTxSub:"All of your own transactions",
+    filterAll:"All types", statsSub:"Main spending and income areas",
+    expenseByCategory:"Expenses by category", incomeByCategory:"Income by category",
+    adminSub:"Manage users and permissions",
+    colName:"Name", colUsername:"Username", colRole:"Role", colStatus:"Status", colActions:"Actions",
+    noTx:"No transactions yet.", noData:"No data to display.",
+    errUserExists:"This username is already taken.", errPassMismatch:"The two passwords don't match.",
+    errFillAll:"Please fill in all required fields.", errLogin:"Incorrect username or password.",
+    errInactive:"This account is disabled. Please contact an administrator.",
+    toastRegistered:"Registered successfully! You can log in now.", toastLoggedIn:"Logged in successfully.",
+    toastAdded:"Transaction added.", toastDeleted:"Transaction deleted.",
+    toastRoleChanged:"Role updated.", toastStatusChanged:"Status updated.", toastUserDeleted:"User deleted.",
+    makeAdmin:"Grant admin", makeUser:"Revoke admin", deactivate:"Disable", activate:"Enable", deleteUser:"Delete",
+    you:"You", admin:"Admin", user:"User", active:"Active", inactive:"Inactive",
+    cat_food:"Groceries", cat_housing:"Housing", cat_transport:"Transport", cat_entertainment:"Entertainment",
+    cat_health:"Health", cat_clothing:"Clothing", cat_education:"Education", cat_other:"Other",
+    cat_salary:"Salary", cat_business:"Business", cat_investment:"Investment", cat_gift:"Gift"
+  }
+};
+const EXPENSE_CATS = ["food","housing","transport","entertainment","health","clothing","education","other"];
+const INCOME_CATS = ["salary","business","investment","gift","other"];
+
+let STATE = { lang:"hu", theme:"light", accent:"orange", currentUser:null, txType:"income" };
+
+function t(key){ return (I18N[STATE.lang] && I18N[STATE.lang][key]) || key; }
+
+/* ================= STORAGE ================= */
+const DB = {
+  getUsers(){ return JSON.parse(localStorage.getItem('pft_users') || '[]'); },
+  saveUsers(u){ localStorage.setItem('pft_users', JSON.stringify(u)); },
+  getTx(){ return JSON.parse(localStorage.getItem('pft_tx') || '[]'); },
+  saveTx(x){ localStorage.setItem('pft_tx', JSON.stringify(x)); },
+  getSettings(){ return JSON.parse(localStorage.getItem('pft_settings') || 'null'); },
+  saveSettings(s){ localStorage.setItem('pft_settings', JSON.stringify(s)); },
+  getSession(){ return localStorage.getItem('pft_session') || null; },
+  setSession(id){ if(id) localStorage.setItem('pft_session', id); else localStorage.removeItem('pft_session'); }
+};
+
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function seedAdmin(){
+  const users = DB.getUsers();
+  if(users.length === 0){
+    const hash = await sha256('admin123');
+    users.push({ id:'u_admin', name:'Adminisztrátor', username:'admin', passHash:hash, role:'admin', active:true, createdAt:Date.now() });
+    DB.saveUsers(users);
+  }
+}
+
+/* ================= UTIL ================= */
+function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+function fmtFt(n){ return Math.round(n).toLocaleString('hu-HU') + ' Ft'; }
+function showToast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>el.classList.remove('show'), 2400);
+}
+function initials(name){
+  return name.split(' ').filter(Boolean).slice(0,2).map(p=>p[0].toUpperCase()).join('');
+}
+
+/* ================= APPLY SETTINGS ================= */
+function applySettings(){
+  document.body.setAttribute('data-theme', STATE.theme);
+  document.body.setAttribute('data-accent', STATE.accent);
+  document.documentElement.lang = STATE.lang;
+  document.getElementById('authLangSelect').value = STATE.lang;
+  document.getElementById('langSelect').value = STATE.lang;
+  const label = STATE.theme === 'dark' ? t('themeToggleLight') : t('themeToggle');
+  document.getElementById('authThemeToggle').textContent = label;
+  document.getElementById('themeToggle').textContent = label;
+  document.querySelectorAll('.swatch').forEach(s=>{
+    s.classList.toggle('active', s.dataset.accent === STATE.accent);
+  });
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  populateCategorySelects();
+  DB.saveSettings({ lang:STATE.lang, theme:STATE.theme, accent:STATE.accent });
+}
+
+function populateCategorySelects(){
+  const txCat = document.getElementById('txCategory');
+  const cats = STATE.txType === 'income' ? INCOME_CATS : EXPENSE_CATS;
+  txCat.innerHTML = cats.map(c=>`<option value="${c}">${t('cat_'+c)}</option>`).join('');
+
+  const filterCat = document.getElementById('filterCategory');
+  const prev = filterCat.value;
+  const allCats = [...new Set([...EXPENSE_CATS, ...INCOME_CATS])];
+  filterCat.innerHTML = `<option value="all">${t('filterAll')}</option>` +
+    allCats.map(c=>`<option value="${c}">${t('cat_'+c)}</option>`).join('');
+  if(prev) filterCat.value = prev;
+}
+
+/* ================= AUTH ================= */
+function showAuthError(msg){
+  const el = document.getElementById('authError');
+  el.textContent = msg; el.classList.remove('hidden');
+}
+function clearAuthError(){ document.getElementById('authError').classList.add('hidden'); }
+
+document.getElementById('showRegister').addEventListener('click', ()=>{
+  document.getElementById('loginForm').classList.add('hidden');
+  document.getElementById('registerForm').classList.remove('hidden');
+  document.getElementById('switchToRegisterWrap').classList.add('hidden');
+  document.getElementById('switchToLoginWrap').classList.remove('hidden');
+  clearAuthError();
+});
+document.getElementById('showLogin').addEventListener('click', ()=>{
+  document.getElementById('registerForm').classList.add('hidden');
+  document.getElementById('loginForm').classList.remove('hidden');
+  document.getElementById('switchToLoginWrap').classList.add('hidden');
+  document.getElementById('switchToRegisterWrap').classList.remove('hidden');
+  clearAuthError();
+});
+
+document.getElementById('registerForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  clearAuthError();
+  const name = document.getElementById('regName').value.trim();
+  const username = document.getElementById('regUser').value.trim().toLowerCase();
+  const pass = document.getElementById('regPass').value;
+  const pass2 = document.getElementById('regPass2').value;
+  if(!name || !username || !pass || !pass2){ showAuthError(t('errFillAll')); return; }
+  if(pass !== pass2){ showAuthError(t('errPassMismatch')); return; }
+  const users = DB.getUsers();
+  if(users.some(u=>u.username === username)){ showAuthError(t('errUserExists')); return; }
+  const hash = await sha256(pass);
+  users.push({ id:uid('u'), name, username, passHash:hash, role:'user', active:true, createdAt:Date.now() });
+  DB.saveUsers(users);
+  showToast(t('toastRegistered'));
+  document.getElementById('registerForm').reset();
+  document.getElementById('showLogin').click();
+});
+
+document.getElementById('loginForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  clearAuthError();
+  const username = document.getElementById('loginUser').value.trim().toLowerCase();
+  const pass = document.getElementById('loginPass').value;
+  const users = DB.getUsers();
+  const user = users.find(u=>u.username === username);
+  if(!user){ showAuthError(t('errLogin')); return; }
+  const hash = await sha256(pass);
+  if(hash !== user.passHash){ showAuthError(t('errLogin')); return; }
+  if(!user.active){ showAuthError(t('errInactive')); return; }
+  DB.setSession(user.id);
+  STATE.currentUser = user;
+  showToast(t('toastLoggedIn'));
+  enterApp();
+});
+
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  DB.setSession(null);
+  STATE.currentUser = null;
+  document.getElementById('appScreen').classList.add('hidden');
+  document.getElementById('authScreen').classList.remove('hidden');
+  document.getElementById('loginForm').reset();
+});
+
+/* ================= THEME / ACCENT / LANG ================= */
+function toggleTheme(){
+  STATE.theme = STATE.theme === 'dark' ? 'light' : 'dark';
+  applySettings();
+}
+document.getElementById('authThemeToggle').addEventListener('click', toggleTheme);
+document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+document.querySelectorAll('.swatch').forEach(sw=>{
+  sw.addEventListener('click', ()=>{ STATE.accent = sw.dataset.accent; applySettings(); });
+});
+
+function setLang(lang){
+  STATE.lang = lang;
+  applySettings();
+  if(STATE.currentUser) renderAll();
+}
+document.getElementById('authLangSelect').addEventListener('change', e=>setLang(e.target.value));
+document.getElementById('langSelect').addEventListener('change', e=>setLang(e.target.value));
+
+/* ================= NAVIGATION ================= */
+document.querySelectorAll('nav.mainnav button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.mainnav button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-' + btn.dataset.page).classList.add('active');
+    if(btn.dataset.page === 'admin') renderAdmin();
+    if(btn.dataset.page === 'transactions') renderFullLedger();
+    if(btn.dataset.page === 'stats') renderStats();
+    if(btn.dataset.page === 'dashboard') renderDashboard();
+  });
+});
+
+/* ================= TRANSACTION FORM ================= */
+document.getElementById('typeIncomeBtn').addEventListener('click', ()=>{
+  STATE.txType = 'income';
+  document.getElementById('typeIncomeBtn').classList.add('active');
+  document.getElementById('typeExpenseBtn').classList.remove('active');
+  populateCategorySelects();
+});
+document.getElementById('typeExpenseBtn').addEventListener('click', ()=>{
+  STATE.txType = 'expense';
+  document.getElementById('typeExpenseBtn').classList.add('active');
+  document.getElementById('typeIncomeBtn').classList.remove('active');
+  populateCategorySelects();
+});
+
+document.getElementById('addTxBtn').addEventListener('click', ()=>{
+  const amount = parseFloat(document.getElementById('txAmount').value);
+  const date = document.getElementById('txDate').value || new Date().toISOString().slice(0,10);
+  const category = document.getElementById('txCategory').value;
+  const note = document.getElementById('txNote').value.trim();
+  if(!amount || amount <= 0 || !category){ showToast(t('errFillAll')); return; }
+  const txs = DB.getTx();
+  txs.push({
+    id:uid('t'), userId:STATE.currentUser.id, type:STATE.txType, amount, category, date, note,
+    createdAt:Date.now()
+  });
+  DB.saveTx(txs);
+  document.getElementById('txAmount').value = '';
+  document.getElementById('txNote').value = '';
+  showToast(t('toastAdded'));
+  renderAll();
+});
+
+function deleteTx(id){
+  let txs = DB.getTx();
+  txs = txs.filter(x=>x.id !== id);
+  DB.saveTx(txs);
+  showToast(t('toastDeleted'));
+  renderAll();
+}
+
+/* ================= RENDER: LEDGER ROWS ================= */
+function ledgerRowHTML(tx){
+  const sign = tx.type === 'income' ? '+' : '-';
+  return `
+  <div class="ledger-row">
+    <div class="dot ${tx.type}"></div>
+    <div class="ledger-desc">
+      <div class="cat">${t('cat_' + tx.category)}</div>
+      ${tx.note ? `<div class="note">${escapeHtml(tx.note)}</div>` : ''}
+    </div>
+    <div class="ledger-date">${tx.date}</div>
+    <div class="ledger-amt ${tx.type}">${sign}${fmtFt(tx.amount)}</div>
+    <button class="del-btn" onclick="deleteTx('${tx.id}')" aria-label="Törlés">&times;</button>
+  </div>`;
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+function myTx(){
+  return DB.getTx().filter(x=>x.userId === STATE.currentUser.id);
+}
+
+function renderDashboard(){
+  const txs = myTx();
+  const income = txs.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0);
+  const expense = txs.filter(x=>x.type==='expense').reduce((s,x)=>s+x.amount,0);
+  document.getElementById('cardIncome').textContent = fmtFt(income);
+  document.getElementById('cardExpense').textContent = fmtFt(expense);
+  document.getElementById('cardBalance').textContent = fmtFt(income - expense);
+  document.getElementById('dashSub').textContent = STATE.currentUser.name;
+
+  const recent = [...txs].sort((a,b)=>b.createdAt - a.createdAt).slice(0,6);
+  const wrap = document.getElementById('recentLedger');
+  wrap.innerHTML = recent.length ? recent.map(ledgerRowHTML).join('') : `<div class="empty-state">${t('noTx')}</div>`;
+}
+
+function renderFullLedger(){
+  const typeF = document.getElementById('filterType').value;
+  const catF = document.getElementById('filterCategory').value;
+  const monthF = document.getElementById('filterMonth').value;
+  let txs = myTx();
+  if(typeF !== 'all') txs = txs.filter(x=>x.type === typeF);
+  if(catF !== 'all') txs = txs.filter(x=>x.category === catF);
+  if(monthF) txs = txs.filter(x=>x.date && x.date.slice(0,7) === monthF);
+  txs.sort((a,b)=>b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
+  const wrap = document.getElementById('fullLedger');
+  wrap.innerHTML = txs.length ? txs.map(ledgerRowHTML).join('') : `<div class="empty-state">${t('noTx')}</div>`;
+}
+['filterType','filterCategory','filterMonth'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', renderFullLedger);
+});
+
+function renderStatBlock(containerId, type, cats){
+  const txs = myTx().filter(x=>x.type === type);
+  const totals = {};
+  cats.forEach(c=>totals[c]=0);
+  txs.forEach(x=>{ totals[x.category] = (totals[x.category]||0) + x.amount; });
+  const max = Math.max(1, ...Object.values(totals));
+  const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0);
+  const wrap = document.getElementById(containerId);
+  if(!sorted.length){ wrap.innerHTML = `<div class="empty-state">${t('noData')}</div>`; return; }
+  wrap.innerHTML = sorted.map(([cat,val])=>`
+    <div class="bar-row">
+      <div class="catname">${t('cat_'+cat)}</div>
+      <div class="bar-track"><div class="bar-fill ${type}" style="width:${Math.round(val/max*100)}%"></div></div>
+      <div class="bar-val">${fmtFt(val)}</div>
+    </div>`).join('');
+}
+function renderStats(){
+  renderStatBlock('expenseStats', 'expense', EXPENSE_CATS);
+  renderStatBlock('incomeStats', 'income', INCOME_CATS);
+}
+
+/* ================= ADMIN ================= */
+function renderAdmin(){
+  if(!STATE.currentUser || STATE.currentUser.role !== 'admin') return;
+  const users = DB.getUsers();
+  const wrap = document.getElementById('adminUserTable');
+  wrap.innerHTML = users.map(u=>{
+    const isSelf = u.id === STATE.currentUser.id;
+    return `
+    <tr>
+      <td>${escapeHtml(u.name)}${isSelf ? ' <span style="color:var(--text-faint);font-size:11px;">(' + t('you') + ')</span>' : ''}</td>
+      <td class="mono">${escapeHtml(u.username)}</td>
+      <td><span class="badge ${u.role}">${u.role === 'admin' ? t('admin') : t('user')}</span></td>
+      <td><span class="badge ${u.active ? 'active' : 'inactive'}">${u.active ? t('active') : t('inactive')}</span></td>
+      <td>
+        <div class="row-actions">
+          ${!isSelf ? `<button class="btn" onclick="toggleRole('${u.id}')">${u.role === 'admin' ? t('makeUser') : t('makeAdmin')}</button>` : ''}
+          ${!isSelf ? `<button class="btn" onclick="toggleActive('${u.id}')">${u.active ? t('deactivate') : t('activate')}</button>` : ''}
+          ${!isSelf ? `<button class="btn" onclick="deleteUser('${u.id}')">${t('deleteUser')}</button>` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function toggleRole(id){
+  const users = DB.getUsers();
+  const u = users.find(x=>x.id===id);
+  if(!u) return;
+  u.role = u.role === 'admin' ? 'user' : 'admin';
+  DB.saveUsers(users);
+  showToast(t('toastRoleChanged'));
+  renderAdmin();
+}
+function toggleActive(id){
+  const users = DB.getUsers();
+  const u = users.find(x=>x.id===id);
+  if(!u) return;
+  u.active = !u.active;
+  DB.saveUsers(users);
+  showToast(t('toastStatusChanged'));
+  renderAdmin();
+}
+function deleteUser(id){
+  let users = DB.getUsers();
+  users = users.filter(x=>x.id!==id);
+  DB.saveUsers(users);
+  let txs = DB.getTx();
+  txs = txs.filter(x=>x.userId!==id);
+  DB.saveTx(txs);
+  showToast(t('toastUserDeleted'));
+  renderAdmin();
+}
+
+/* ================= ENTER APP ================= */
+function renderAll(){
+  renderDashboard();
+  renderFullLedger();
+  renderStats();
+  if(STATE.currentUser.role === 'admin') renderAdmin();
+}
+
+function enterApp(){
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('appScreen').classList.remove('hidden');
+  document.getElementById('sbAvatar').textContent = initials(STATE.currentUser.name || STATE.currentUser.username);
+  document.getElementById('sbName').textContent = STATE.currentUser.name;
+  document.getElementById('sbRole').textContent = STATE.currentUser.role === 'admin' ? t('admin') : t('user');
+  document.getElementById('navAdmin').classList.toggle('hidden', STATE.currentUser.role !== 'admin');
+  document.getElementById('txDate').value = new Date().toISOString().slice(0,10);
+  applySettings();
+  renderAll();
+}
+
+/* ================= INIT ================= */
+(async function init(){
+  await seedAdmin();
+  const saved = DB.getSettings();
+  if(saved){ STATE.lang = saved.lang || 'hu'; STATE.theme = saved.theme || 'light'; STATE.accent = saved.accent || 'orange'; }
+  applySettings();
+
+  const sessionId = DB.getSession();
+  if(sessionId){
+    const users = DB.getUsers();
+    const u = users.find(x=>x.id === sessionId);
+    if(u && u.active){
+      STATE.currentUser = u;
+      enterApp();
+      return;
+    }
+  }
+  document.getElementById('authScreen').classList.remove('hidden');
+})();
+</script>
+</body>
+</html>

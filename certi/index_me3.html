@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedIn Certifications Dashboard</title>
+
+<!--
+================================================================================
+ LinkedIn Certifications Dashboard - Tiszta, olvasható kód
+================================================================================
+ CÉL:
+   LinkedIn Data Export -> Certifications.csv vizualizálása modern lapon
+
+ FORRÁS:
+   https://raw.githubusercontent.com/klajosw/mierdekel/refs/heads/main/certi/Certifications.csv
+   A lap induláskor automatikusan onnan tölti az adatokat.
+
+ CSV SZERKEZET:
+   Name,Url,Authority,Started On,Finished On,License Number
+
+ FUNKCIÓK:
+   - Táblázatos adatrács + keresés + szűrés
+   - 3 diagram: kör (Authority szerint), hasáb (évenként), vonal (kumulált)
+   - Oklevél link megnyitás, licensz másolás
+   - Sötét/Világos mód, 3 nyelv (HU/EN/DE) - alapértelmezett HU
+   - GitHub-ról frissítés gomb, CSV export, feltöltés fallback
+
+ SZERZŐ: Kecskeméti Lajos számára, Meta AI által generálva
+================================================================================
+-->
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+/* ============================================================================
+   ALAP STÍLUSOK ÉS TÉMÁK - CSS változók sötét/világos módhoz
+   ============================================================================ */
+:root {
+  --bg: #f8fafc; --bg2: #ffffff; --text: #0f172a; --muted: #64748b;
+  --border: #e2e8f0; --card: #ffffff; --primary: #3b82f6; --shadow: 0 4px 20px rgba(0,0,0,0.06);
+}
+[data-theme="dark"] {
+  --bg: #0b0e14; --bg2: #151a27; --text: #e2e8f0; --muted: #94a3b8;
+  --border: #1e293b; --card: #151a27; --primary: #60a5fa; --shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+* { box-sizing: border-box; margin:0; padding:0; }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; transition: background 0.3s, color 0.3s; }
+.container { max-width: 1280px; margin: 0 auto; padding: 20px; }
+
+/* Fejléc */
+.header { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: var(--shadow); margin-bottom: 20px; }
+.header h1 { font-size: 22px; font-weight: 700; }
+.header p { color: var(--muted); font-size: 13px; }
+.controls { display: flex; gap: 8px; align-items: center; }
+.btn { border: 1px solid var(--border); background: var(--bg2); color: var(--text); padding: 8px 14px; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 500; transition: 0.2s; }
+.btn:hover { border-color: var(--primary); color: var(--primary); }
+.btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+.btn.primary { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* Kártyák */
+.grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 20px; }
+@media(max-width:900px){ .grid-4{grid-template-columns: repeat(2,1fr);} }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); }
+.card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.card-value { font-size: 26px; font-weight: 700; margin-top: 4px; }
+.card-sub { font-size: 12px; color: var(--muted); }
+
+/* Szűrők */
+.filter-bar { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.input { border: 1px solid var(--border); background: var(--bg); color: var(--text); padding: 9px 12px; border-radius: 10px; font-size: 13px; min-width: 220px; }
+.select { border: 1px solid var(--border); background: var(--bg); color: var(--text); padding: 9px 12px; border-radius: 10px; font-size: 13px; }
+
+/* Diagramok */
+.charts { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 20px; }
+@media(max-width:1000px){ .charts{grid-template-columns:1fr;} }
+.chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); }
+.chart-card h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+
+/* Táblázat */
+.table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 12px 14px; background: var(--bg); color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); }
+td { padding: 11px 14px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: var(--bg); }
+.badge { background: var(--bg); border: 1px solid var(--border); padding: 3px 8px; border-radius: 20px; font-size: 11px; }
+.link-btn { color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer; }
+.link-btn:disabled { color: var(--muted); cursor: not-allowed; }
+
+/* Dropzone */
+.dropzone { border: 2px dashed var(--border); border-radius: 16px; padding: 18px; text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 16px; cursor: pointer; transition: 0.2s; }
+.dropzone.dragover { border-color: var(--primary); background: rgba(59,130,246,0.06); color: var(--primary); }
+
+/* Status */
+.status { font-size: 12px; color: var(--muted); padding: 8px 0; display: flex; gap: 10px; align-items: center; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- ====================== FEJLÉC ====================== -->
+  <div class="header">
+    <div>
+      <h1 id="title">LinkedIn Tanúsítványok</h1>
+      <p id="subtitle">Automatikus betöltés GitHub-ról + interaktív elemzés</p>
+      <div class="status" id="status"><span class="dot"></span><span id="statusText">Betöltés...</span></div>
+    </div>
+    <div class="controls">
+      <!-- Nyelv választó -->
+      <button class="btn active" onclick="setLanguage('hu')" id="btn-hu">HU</button>
+      <button class="btn" onclick="setLanguage('en')" id="btn-en">EN</button>
+      <button class="btn" onclick="setLanguage('de')" id="btn-de">DE</button>
+      <button class="btn" onclick="toggleTheme()" id="themeBtn">🌙 Sötét</button>
+      <button class="btn primary" onclick="loadFromGitHub()" id="refreshBtn">🔄 Frissítés GitHub-ról</button>
+    </div>
+  </div>
+
+  <!-- Dropzone fallback -->
+  <div class="dropzone" id="dropzone">
+    <span id="dropText">Húzd ide a Certifications.csv-t vagy kattints a tallózáshoz</span>
+    <input type="file" id="fileInput" accept=".csv" style="display:none">
+  </div>
+
+  <!-- Stat kártyák -->
+  <div class="grid-4">
+    <div class="card"><div class="card-label" id="label-total">ÖSSZES</div><div class="card-value" id="stat-total">-</div><div class="card-sub" id="stat-total-sub">tanúsítvány</div></div>
+    <div class="card"><div class="card-label" id="label-auth">KIADÓK</div><div class="card-value" id="stat-auth">-</div><div class="card-sub" id="stat-auth-sub">különböző szervezet</div></div>
+    <div class="card"><div class="card-label" id="label-year">IDŐTÁV</div><div class="card-value" id="stat-year">-</div><div class="card-sub" id="stat-year-sub">első - legutóbbi</div></div>
+    <div class="card"><div class="card-label" id="label-lic">LICENSZ</div><div class="card-value" id="stat-lic">-</div><div class="card-sub" id="stat-lic-sub">licensz számmal</div></div>
+  </div>
+
+  <!-- Szűrők -->
+  <div class="filter-bar">
+    <input class="input" id="searchInput" placeholder="Keresés név, kiadó, licensz..." oninput="applyFilters()">
+    <select class="select" id="authFilter" onchange="applyFilters()"><option value="all">Minden kiadó</option></select>
+    <select class="select" id="yearFilter" onchange="applyFilters()"><option value="all">Minden év</option></select>
+    <select class="select" id="pageSize" onchange="changePageSize()"><option value="10">10 / oldal</option><option value="25" selected>25 / oldal</option><option value="50">50 / oldal</option></select>
+    <button class="btn" onclick="exportCSV()" id="exportBtn">⬇ Export CSV</button>
+  </div>
+
+  <!-- Diagramok -->
+  <div class="charts">
+    <div class="chart-card"><h3 id="chart1Title">Kiadó szerinti megoszlás</h3><canvas id="pieChart"></canvas></div>
+    <div class="chart-card"><h3 id="chart2Title">Évenkénti darabszám</h3><canvas id="barChart"></canvas></div>
+    <div class="chart-card"><h3 id="chart3Title">Kumulált növekedés</h3><canvas id="lineChart"></canvas></div>
+  </div>
+
+  <!-- Táblázat -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('Name')" id="th-name">Név ↕</th>
+          <th onclick="sortBy('Authority')" id="th-auth">Kiadó ↕</th>
+          <th onclick="sortBy('Started')" id="th-started">Kezdés ↕</th>
+          <th onclick="sortBy('Finished')" id="th-finished">Befejezés ↕</th>
+          <th id="th-lic">Licensz</th>
+          <th id="th-action">Művelet</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+  <div style="display:flex; justify-content:space-between; padding:12px 4px; font-size:13px; color:var(--muted)">
+    <span id="pageInfo"></span>
+    <div><button class="btn" onclick="prevPage()">‹ Előző</button> <button class="btn" onclick="nextPage()">Következő ›</button></div>
+  </div>
+
+  <p style="margin-top:30px; font-size:12px; color:var(--muted); text-align:center" id="footer">
+    Forrás: https://raw.githubusercontent.com/klajosw/mierdekel/refs/heads/main/certi/Certifications.csv • Húzd a LinkedIn exportot vagy hagyd a GitHub automatikát
+  </p>
+</div>
+
+<script>
+// =============================================================================
+// KONFIGURÁCIÓ
+// =============================================================================
+/** A CSV fájl pontos elérési útja GitHub-on - innen tölt mindig */
+const REMOTE_CSV_URL = "https://raw.githubusercontent.com/klajosw/mierdekel/refs/heads/main/certi/Certifications.csv";
+
+// =============================================================================
+// TÖBBNYELVŰSÉG - HU az alapértelmezett
+// =============================================================================
+const translations = {
+  hu: {
+    title:"LinkedIn Tanúsítványok", subtitle:"Automatikus betöltés GitHub-ról + interaktív elemzés",
+    drop:"Húzd ide a Certifications.csv-t vagy kattints a tallózáshoz",
+    total:"ÖSSZES", auth:"KIADÓK", year:"IDŐTÁV", lic:"LICENSZ",
+    totalSub:"tanúsítvány", authSub:"különböző szervezet", yearSub:"első - legutóbbi", licSub:"licensz számmal",
+    search:"Keresés név, kiadó, licensz...", allAuth:"Minden kiadó", allYear:"Minden év",
+    chart1:"Kiadó szerinti megoszlás", chart2:"Évenkénti darabszám", chart3:"Kumulált növekedés",
+    thName:"Név", thAuth:"Kiadó", thStarted:"Kezdés", thFinished:"Befejezés", thLic:"Licensz", thAction:"Művelet",
+    open:"Oklevél megnyitása", copy:"Másol", copied:"Másolva!", noUrl:"Nincs link",
+    export:"⬇ Export CSV", refresh:"🔄 Frissítés GitHub-ról", dark:"🌙 Sötét", light:"☀ Világos",
+    statusLoading:"Betöltés GitHub-ról...", statusGitHub:"Forrás: GitHub", statusUpload:"Forrás: Feltöltött fájl",
+    statusError:"GitHub betöltés sikertelen, tölts fel fájlt", remoteLabel:"Remote CSV:"
+  },
+  en: {
+    title:"LinkedIn Certifications", subtitle:"Auto-load from GitHub + interactive analysis",
+    drop:"Drop Certifications.csv here or click to browse",
+    total:"TOTAL", auth:"AUTHORITIES", year:"RANGE", lic:"LICENSED",
+    totalSub:"certifications", authSub:"different orgs", yearSub:"first - last", licSub:"with license",
+    search:"Search name, authority, license...", allAuth:"All authorities", allYear:"All years",
+    chart1:"Distribution by Authority", chart2:"Per Year", chart3:"Cumulative Growth",
+    thName:"Name", thAuth:"Authority", thStarted:"Started", thFinished:"Finished", thLic:"License", thAction:"Action",
+    open:"Open Certificate", copy:"Copy", copied:"Copied!", noUrl:"No link",
+    export:"⬇ Export CSV", refresh:"🔄 Refresh from GitHub", dark:"🌙 Dark", light:"☀ Light",
+    statusLoading:"Loading from GitHub...", statusGitHub:"Source: GitHub", statusUpload:"Source: Uploaded file",
+    statusError:"GitHub load failed, please upload", remoteLabel:"Remote CSV:"
+  },
+  de: {
+    title:"LinkedIn Zertifizierungen", subtitle:"Automatisches Laden von GitHub + interaktive Analyse",
+    drop:"Certifications.csv hier ablegen oder klicken",
+    total:"GESAMT", auth:"ANBIETER", year:"ZEITRAUM", lic:"LIZENZIERT",
+    totalSub:"Zertifikate", authSub:"verschiedene Orgs", yearSub:"erstes - letztes", licSub:"mit Lizenz",
+    search:"Suche Name, Anbieter, Lizenz...", allAuth:"Alle Anbieter", allYear:"Alle Jahre",
+    chart1:"Verteilung nach Anbieter", chart2:"Pro Jahr", chart3:"Kumulatives Wachstum",
+    thName:"Name", thAuth:"Anbieter", thStarted:"Begonnen", thFinished:"Beendet", thLic:"Lizenz", thAction:"Aktion",
+    open:"Zertifikat öffnen", copy:"Kopieren", copied:"Kopiert!", noUrl:"Kein Link",
+    export:"⬇ CSV exportieren", refresh:"🔄 Von GitHub aktualisieren", dark:"🌙 Dunkel", light:"☀ Hell",
+    statusLoading:"Laden von GitHub...", statusGitHub:"Quelle: GitHub", statusUpload:"Quelle: Hochgeladene Datei",
+    statusError:"GitHub Laden fehlgeschlagen, Upload nutzen", remoteLabel:"Remote CSV:"
+  }
+};
+
+// =============================================================================
+// ÁLLAPOT - az alkalmazás memóriája
+// =============================================================================
+let currentLang = 'hu';                 // aktuális nyelv
+let allData = [];                       // összes certifikáció
+let filteredData = [];                  // szűrt lista
+let sortField = 'Finished';             // rendezés mező
+let sortDir = 'desc';                   // irány
+let currentPage = 1;                    // lapozás
+let pageSize = 25;                      // oldal méret
+let dataSource = 'github';              // github | upload | demo
+let pieChart, barChart, lineChart;      // Chart.js példányok
+
+// =============================================================================
+// NYELV KEZELÉS
+// =============================================================================
+function setLanguage(lang) {
+  currentLang = lang;
+  localStorage.setItem('cert-lang', lang);
+  document.querySelectorAll('[id^="btn-"]').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btn-'+lang).classList.add('active');
+  applyTranslations();
+  renderFilters(); renderTable(); renderStats(); // szövegek frissítése
+}
+function t(key){ return translations[currentLang][key] || key; }
+function applyTranslations(){
+  const tr = translations[currentLang];
+  document.getElementById('title').textContent = tr.title;
+  document.getElementById('subtitle').textContent = tr.subtitle;
+  document.getElementById('dropText').textContent = tr.drop;
+  document.getElementById('label-total').textContent = tr.total;
+  document.getElementById('label-auth').textContent = tr.auth;
+  document.getElementById('label-year').textContent = tr.year;
+  document.getElementById('label-lic').textContent = tr.lic;
+  document.getElementById('stat-total-sub').textContent = tr.totalSub;
+  document.getElementById('stat-auth-sub').textContent = tr.authSub;
+  document.getElementById('stat-year-sub').textContent = tr.yearSub;
+  document.getElementById('stat-lic-sub').textContent = tr.licSub;
+  document.getElementById('searchInput').placeholder = tr.search;
+  document.getElementById('chart1Title').textContent = tr.chart1;
+  document.getElementById('chart2Title').textContent = tr.chart2;
+  document.getElementById('chart3Title').textContent = tr.chart3;
+  document.getElementById('th-name').textContent = tr.thName + ' ↕';
+  document.getElementById('th-auth').textContent = tr.thAuth + ' ↕';
+  document.getElementById('th-started').textContent = tr.thStarted + ' ↕';
+  document.getElementById('th-finished').textContent = tr.thFinished + ' ↕';
+  document.getElementById('th-lic').textContent = tr.thLic;
+  document.getElementById('th-action').textContent = tr.thAction;
+  document.getElementById('exportBtn').textContent = tr.export;
+  document.getElementById('refreshBtn').textContent = tr.refresh;
+  updateThemeButton();
+}
+
+// =============================================================================
+// TÉMA - sötét/világos
+// =============================================================================
+function toggleTheme(){
+  const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('cert-theme', newTheme);
+  updateThemeButton();
+}
+function updateThemeButton(){
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.getElementById('themeBtn').textContent = isDark ? t('light') : t('dark');
+}
+
+// =============================================================================
+// CSV PARSER - kezeli az idézőjelezett vesszőket is
+// =============================================================================
+function parseCSV(csvText){
+  // Sorokra bontás, üres sorok kiszűrése
+  const lines = csvText.split(/\r?\n/).filter(l=>l.trim().length>0);
+  if(lines.length===0) return [];
+
+  // Első sor a fejléc
+  const headers = parseCSVLine(lines[0]).map(h=>h.trim());
+  // Oszlop indexek megkeresése (rugalmasan, kis/nagybetű független)
+  const idx = {
+    Name: headers.findIndex(h=>h.toLowerCase().includes('name')),
+    Url: headers.findIndex(h=>h.toLowerCase()==='url'),
+    Authority: headers.findIndex(h=>h.toLowerCase().includes('authority')),
+    Started: headers.findIndex(h=>h.toLowerCase().includes('started')),
+    Finished: headers.findIndex(h=>h.toLowerCase().includes('finished')),
+    License: headers.findIndex(h=>h.toLowerCase().includes('license'))
+  };
+
+  const result = [];
+  for(let i=1;i<lines.length;i++){
+    const cols = parseCSVLine(lines[i]);
+    if(cols.length===0) continue;
+    // Ha a sor üres, kihagyjuk
+    if(cols[0].trim()==="") continue;
+
+    const get = (index) => index>=0 && index<cols.length ? cols[index].trim() : "";
+
+    // Dátum parsolás (pl. Sep 2020 -> Date objektum)
+    const startedRaw = get(idx.Started);
+    const finishedRaw = get(idx.Finished);
+
+    result.push({
+      id: i,
+      Name: get(idx.Name),
+      Url: get(idx.Url),
+      Authority: get(idx.Authority),
+      StartedOnRaw: startedRaw,
+      FinishedOnRaw: finishedRaw,
+      LicenseNumber: get(idx.License),
+      Started: parseDate(startedRaw),
+      Finished: parseDate(finishedRaw),
+      Year: (parseDate(finishedRaw) || parseDate(startedRaw))?.getFullYear() || null
+    });
+  }
+  return result;
+}
+/** Egy CSV sor feldolgozása idézőjelek figyelembevételével */
+function parseCSVLine(line){
+  const out = []; let cur = ""; let inQuotes = false;
+  for(let i=0;i<line.length;i++){
+    const c = line[i];
+    if(c==='"'){
+      if(inQuotes && line[i+1]==='"'){ cur+='"'; i++; } // escaped quote
+      else inQuotes = !inQuotes;
+    } else if(c===',' && !inQuotes){ out.push(cur); cur=""; }
+    else cur+=c;
+  }
+  out.push(cur);
+  return out;
+}
+/** Dátum értelmező: "Sep 2020" formátumhoz */
+function parseDate(str){
+  if(!str) return null;
+  str = str.trim(); if(!str) return null;
+  let d = new Date(str);
+  if(!isNaN(d.getTime())) return d;
+  // "Sep 2020" -> hónap map
+  const map = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  const m = str.match(/^([A-Za-z]+)\s+(\d{4})$/);
+  if(m){ const mo = map[m[1].toLowerCase().slice(0,3)]; if(mo!==undefined) return new Date(parseInt(m[2]), mo, 1); }
+  return null;
+}
+
+// =============================================================================
+// ADAT BETÖLTÉS GITHUB-RÓL
+// =============================================================================
+async function loadFromGitHub(){
+  setStatus(t('statusLoading'), 'github');
+  try {
+    console.log('[CertHub] Fetching', REMOTE_CSV_URL);
+    let response = await fetch(REMOTE_CSV_URL, {cache:'no-store'});
+    // Ha nem sikerül közvetlenül, próbáljuk proxy-val
+    if(!response.ok){
+      console.log('[CertHub] Direct fetch failed, trying proxy...');
+      const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(REMOTE_CSV_URL);
+      response = await fetch(proxyUrl);
+    }
+    if(!response.ok) throw new Error('HTTP '+response.status);
+    const text = await response.text();
+    const data = parseCSV(text);
+    if(data.length===0) throw new Error('Empty CSV');
+    allData = data; dataSource='github';
+    setStatus(t('statusGitHub') + ' • ' + data.length + ' db', 'github');
+    afterDataLoad();
+  } catch(err){
+    console.error('[CertHub] GitHub load error', err);
+    setStatus(t('statusError'), 'error');
+    // Demo adatok fallback, hogy ne legyen üres
+    if(allData.length===0) loadDemoData();
+  }
+}
+function setStatus(text, type){
+  document.getElementById('statusText').textContent = text + ' | ' + REMOTE_CSV_URL;
+}
+
+// =============================================================================
+// DEMO ADAT - ha GitHub nem elérhető
+// =============================================================================
+function loadDemoData(){
+  const demoCsv = `Name,Url,Authority,Started On,Finished On,License Number
+Python 3,https://www.sololearn.com/Certificate/1073-19704734/pdf/,SoloLearn,Sep 2020,,#1073-19704734
+Intermediate Python,https://www.datacamp.com/statement-of-accomplishment/course/3b94418faea9d528bdfff27914693dab0590abee,DataCamp,Sep 2020,,15695155
+Database Design,https://www.datacamp.com/statement-of-accomplishment/course/f1f2ee1c993adcd0eceae7303da5ad2b770ded9f,DataCamp,Sep 2020,,15732812
+Intermediate SQL,https://www.datacamp.com/statement-of-accomplishment/course/443b8bf58b4f2b2347e0dad50090e7cebfbb1373,DataCamp,Sep 2020,,15873410
+Azure Fundamentals AZ-900,https://learn.microsoft.com/certificates/az900-demo,Microsoft,Jan 2021,Mar 2021,MS-AZ900-2021-8891
+Google Data Analytics,https://coursera.org/verify/google-da-2021,Coursera | Google,Feb 2021,Jun 2021,GOOG-DA-7721
+AWS Cloud Practitioner,https://aws.amazon.com/verification/aws-cp-2022,Amazon Web Services,May 2021,Aug 2021,AWS-CP-4412
+Scrum Master PSM I,https://scrum.org/certificates/psm1-2022,Scrum.org,Sep 2021,Oct 2021,PSM-19X-882
+Microsoft Power BI Data Analyst,https://learn.microsoft.com/certificates/pl300-demo,Microsoft,Jan 2022,Apr 2022,MS-PL300-5520
+Google Project Management,https://coursera.org/verify/google-pm-2022,Google,Mar 2022,Jul 2022,GOOG-PM-9044
+`;
+  allData = parseCSV(demoCsv);
+  dataSource='demo';
+  afterDataLoad();
+}
+
+// =============================================================================
+// ADAT BETÖLTÉS UTÁNI FRISSÍTÉSEK
+// =============================================================================
+function afterDataLoad(){
+  renderFilters();
+  applyFilters();
+}
+
+// =============================================================================
+// SZŰRÉS ÉS RENDEZÉS
+// =============================================================================
+function renderFilters(){
+  // Authority lista
+  const auths = [...new Set(allData.map(d=>d.Authority).filter(Boolean))].sort();
+  const sel = document.getElementById('authFilter');
+  const current = sel.value;
+  sel.innerHTML = '<option value="all">'+t('allAuth')+'</option>' + auths.map(a=>`<option value="${a}">${a}</option>`).join('');
+  if(auths.includes(current)) sel.value = current;
+
+  // Év lista
+  const years = [...new Set(allData.map(d=>d.Year).filter(Boolean))].sort((a,b)=>a-b);
+  const ySel = document.getElementById('yearFilter');
+  const yCurrent = ySel.value;
+  ySel.innerHTML = '<option value="all">'+t('allYear')+'</option>' + years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(ySel.querySelector(`option[value="${yCurrent}"]`)) ySel.value = yCurrent;
+}
+function applyFilters(){
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const auth = document.getElementById('authFilter').value;
+  const year = document.getElementById('yearFilter').value;
+
+  filteredData = allData.filter(item=>{
+    if(search){
+      const hay = (item.Name+' '+item.Authority+' '+item.LicenseNumber).toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
+    if(auth!=='all' && item.Authority!==auth) return false;
+    if(year!=='all' && String(item.Year)!==year) return false;
+    return true;
+  });
+
+  // Rendezés
+  filteredData.sort((a,b)=>{
+    let av = a[sortField] || a.Name; let bv = b[sortField] || b.Name;
+    if(av instanceof Date && bv instanceof Date) av=av.getTime(), bv=bv.getTime();
+    if(av==null) return 1; if(bv==null) return -1;
+    if(av<bv) return sortDir==='asc'?-1:1;
+    if(av>bv) return sortDir==='asc'?1:-1;
+    return 0;
+  });
+
+  currentPage = 1;
+  renderStats(); renderTable(); renderCharts();
+}
+function sortBy(field){
+  // Field map: Name, Authority, Started, Finished
+  const map = {Name:'Name', Authority:'Authority', Started:'Started', Finished:'Finished'};
+  const f = map[field] || field;
+  if(sortField===f) sortDir = sortDir==='asc'?'desc':'asc'; else { sortField=f; sortDir='asc'; }
+  applyFilters();
+}
+
+// =============================================================================
+// STATISZTIKÁK
+// =============================================================================
+function renderStats(){
+  document.getElementById('stat-total').textContent = filteredData.length;
+  document.getElementById('stat-auth').textContent = new Set(filteredData.map(d=>d.Authority)).size;
+  const years = filteredData.map(d=>d.Year).filter(Boolean);
+  document.getElementById('stat-year').textContent = years.length ? Math.min(...years)+' - '+Math.max(...years) : '-';
+  document.getElementById('stat-lic').textContent = filteredData.filter(d=>d.LicenseNumber).length;
+}
+
+// =============================================================================
+// TÁBLÁZAT
+// =============================================================================
+function renderTable(){
+  const start = (currentPage-1)*pageSize;
+  const pageData = filteredData.slice(start, start+pageSize);
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = pageData.map(row=>`
+    <tr>
+      <td><strong>${escapeHtml(row.Name)}</strong></td>
+      <td><span class="badge">${escapeHtml(row.Authority)}</span></td>
+      <td>${escapeHtml(row.StartedOnRaw)}</td>
+      <td>${escapeHtml(row.FinishedOnRaw)}</td>
+      <td style="font-family:monospace; font-size:12px">${escapeHtml(row.LicenseNumber)}</td>
+      <td>
+        ${row.Url ? `<button class="btn primary" style="padding:4px 8px; font-size:11px" onclick="window.open('${row.Url}','_blank')">${t('open')}</button>` : '<span style="color:var(--muted); font-size:11px">'+t('noUrl')+'</span>'}
+        ${row.LicenseNumber ? `<button class="btn" style="padding:4px 8px; font-size:11px; margin-left:4px" onclick="copyText('${escapeHtml(row.LicenseNumber).replace(/'/g,"\\'")}', this)">${t('copy')}</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
+  document.getElementById('pageInfo').textContent = `${filteredData.length} találat • ${currentPage} / ${totalPages} oldal`;
+}
+function changePageSize(){ pageSize = parseInt(document.getElementById('pageSize').value); currentPage=1; renderTable(); }
+function prevPage(){ if(currentPage>1){ currentPage--; renderTable(); } }
+function nextPage(){ const max = Math.ceil(filteredData.length/pageSize); if(currentPage<max){ currentPage++; renderTable(); } }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function copyText(text, btn){
+  navigator.clipboard.writeText(text).then(()=>{
+    const old = btn.textContent; btn.textContent = t('copied'); setTimeout(()=>btn.textContent=old, 1200);
+  });
+}
+
+// =============================================================================
+// DIAGRAMOK - Chart.js
+// =============================================================================
+function renderCharts(){
+  // 1. Kör diagram - Authority szerint
+  const byAuth = {}; filteredData.forEach(d=>{ const k=d.Authority||'Ismeretlen'; byAuth[k]=(byAuth[k]||0)+1; });
+  const pieLabels = Object.keys(byAuth); const pieValues = Object.values(byAuth);
+  const pieCtx = document.getElementById('pieChart');
+  if(pieChart) pieChart.destroy();
+  pieChart = new Chart(pieCtx, {
+    type:'doughnut',
+    data:{ labels:pieLabels, datasets:[{ data:pieValues, backgroundColor:['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316','#6366f1'], borderWidth:0 }] },
+    options:{ responsive:true, plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{size:11}, color: getComputedStyle(document.documentElement).getPropertyValue('--muted') } } } }
+  });
+
+  // 2. Hasáb - évenként
+  const byYear = {}; filteredData.forEach(d=>{ if(d.Year){ byYear[d.Year]=(byYear[d.Year]||0)+1; } });
+  const yearLabels = Object.keys(byYear).sort(); const yearValues = yearLabels.map(y=>byYear[y]);
+  const barCtx = document.getElementById('barChart');
+  if(barChart) barChart.destroy();
+  barChart = new Chart(barCtx, {
+    type:'bar',
+    data:{ labels:yearLabels, datasets:[{ label:t('total'), data:yearValues, backgroundColor:'#3b82f6', borderRadius:6 }] },
+    options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+  });
+
+  // 3. Vonal - kumulált
+  let cum = 0; const cumValues = yearLabels.map(y=>{ cum+=byYear[y]; return cum; });
+  const lineCtx = document.getElementById('lineChart');
+  if(lineChart) lineChart.destroy();
+  lineChart = new Chart(lineCtx, {
+    type:'line',
+    data:{ labels:yearLabels, datasets:[{ label:t('total'), data:cumValues, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.15)', fill:true, tension:0.35 }] },
+    options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+  });
+}
+
+// =============================================================================
+// EXPORT
+// =============================================================================
+function exportCSV(){
+  const headers = ["Name","Url","Authority","Started On","Finished On","License Number"];
+  const rows = [headers.join(',')].concat(filteredData.map(r=>[r.Name,r.Url,r.Authority,r.StartedOnRaw,r.FinishedOnRaw,r.LicenseNumber].map(v=>`"${(v||'').replace(/"/g,'""')}"`).join(',')));
+  const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='Certifications_filtered.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+// =============================================================================
+// FÁJL FELTÖLTÉS - fallback
+// =============================================================================
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('click', ()=>fileInput.click());
+dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', ()=>dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e=>{ e.preventDefault(); dropzone.classList.remove('dragover'); const f=e.dataTransfer.files[0]; if(f) handleFile(f); });
+fileInput.addEventListener('change', e=>{ const f=e.target.files[0]; if(f) handleFile(f); });
+function handleFile(file){
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    allData = parseCSV(ev.target.result); dataSource='upload';
+    setStatus(t('statusUpload') + ' • ' + allData.length + ' db', 'upload');
+    afterDataLoad();
+  };
+  reader.readAsText(file);
+}
+
+// =============================================================================
+// INDÍTÁS
+// =============================================================================
+document.addEventListener('DOMContentLoaded', ()=>{
+  // Mentett beállítások vissza
+  const savedTheme = localStorage.getItem('cert-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  const savedLang = localStorage.getItem('cert-lang') || 'hu';
+  currentLang = savedLang;
+  document.querySelectorAll('[id^="btn-"]').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById('btn-'+savedLang); if(btn) btn.classList.add('active');
+  applyTranslations();
+  // GitHub-ról betöltés
+  loadFromGitHub();
+});
+</script>
+</body>
+</html>

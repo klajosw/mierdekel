@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Térkép és kör</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Térkép és 30 km-es kör</h1>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Térkép inicializálása
+        var map = L.map('map').setView([47, 18], 10); // Kezdeti koordináták és zoom szint
+
+        // OSM (OpenStreetMap) térkép réteg hozzáadása
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // A középpont koordinátái (47, 18)
+        var lat = 47;
+        var lon = 18;
+
+        // Marker hozzáadása a térképre
+        L.marker([lat, lon]).addTo(map)
+            .bindPopup("Itt van a pont!")
+            .openPopup();
+
+        // 30 km-es kör rajzolása
+        var circle = L.circle([lat, lon], {
+            color: 'blue',
+            fillColor: '#30aaff',
+            fillOpacity: 0.5,
+            radius: 30000 // 30 km
+        }).addTo(map)
+		.bindPopup("Itt van a kör!");
+		
+    </script>
+</body>
+</html>

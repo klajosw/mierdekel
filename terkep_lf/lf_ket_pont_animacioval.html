@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Térkép Animáció</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+<body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Inicializáljuk a térképet a megadott koordinátákkal
+        var map = L.map('map').setView([47, 18], 10);
+
+        // Alaptérkép beállítása
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Két pont hozzáadása a megadott koordináták közelében
+        var point1 = L.marker([47.1, 18.1]).addTo(map).bindPopup("Pont 1");
+        var point2 = L.marker([46.9, 17.9]).addTo(map).bindPopup("Pont 2");
+
+        // Animáció létrehozása, amely váltogat a két pozíció megjelenítése között
+        var currentPoint = point1;
+
+        function togglePoints() {
+            if (currentPoint === point1) {
+                map.setView([46.9, 17.9], 10);
+                point2.openPopup();
+                currentPoint = point2;
+            } else {
+                map.setView([47.1, 18.1], 10);
+                point1.openPopup();
+                currentPoint = point1;
+            }
+        }
+
+        setInterval(togglePoints, 5000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Térkép animációval</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Két pont váltakozó megjelenítése animációval</h1>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Térkép inicializálása
+        var map = L.map('map').setView([47, 18], 14); // Kezdeti koordináták és zoom szint
+
+        // OSM (OpenStreetMap) térkép réteg hozzáadása
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Két pont koordinátái (47, 18 közelében)
+        var point1 = [47.001, 18.001]; // Első pont
+        var point2 = [47.002, 18.002]; // Második pont
+
+        // Marker inicializálása
+        var marker1 = L.marker(point1).addTo(map).bindPopup("Első pont");
+        var marker2 = L.marker(point2).addTo(map).bindPopup("Második pont");
+
+        // Kezdetben az első pontot mutatjuk
+        marker2.setOpacity(0); // Második pont láthatatlan
+        marker1.setOpacity(1); // Első pont látható
+
+        // Animációs funkció, amely váltogatja a pontokat és zoomol
+        var currentPoint = 1; // Kezdetben az első pont van aktívan
+
+        function switchMarkers() {
+            if (currentPoint === 1) {
+                marker1.setOpacity(0); // Első pont eltűnik
+                marker2.setOpacity(1); // Második pont megjelenik
+                map.setView(point2, 15); // Ráközelít a második pontra (zoom 13)
+                currentPoint = 2; // Következő animáció a második pontra
+            } else {
+                marker2.setOpacity(0); // Második pont eltűnik
+                marker1.setOpacity(1); // Első pont megjelenik
+                map.setView(point1, 15); // Ráközelít az első pontra (zoom 13)
+                currentPoint = 1; // Következő animáció az első pontra
+            }
+        }
+
+        // Animáció minden 5 másodpercben
+        setInterval(switchMarkers, 5000);
+    </script>
+</body>
+</html>

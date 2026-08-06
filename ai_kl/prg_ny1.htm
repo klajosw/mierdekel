@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<title>Programozási nyelvek népszerűsége · 1990–2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #1e1e2e; --bg2:#141420; --panel:#11111b0; --panelSolid:#12121c;
+    --text:#cdd6f4; --subtext:#8992b0; --overlay:#2a2a3d; --overlay2:#34344a;
+    --accent:#f9e2af; --border:#2a2a3d;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; min-height:100%; background:var(--bg); color:var(--text);
+    font-family:'JetBrains Mono', ui-monospace, monospace; overflow-x:hidden; }
+
+  body{ position:relative; }
+  .blob{ position:fixed; border-radius:50%; filter:blur(90px); opacity:0.35; z-index:0; pointer-events:none; }
+  .blob1{ width:520px; height:520px; background:#89b4fa; top:-180px; left:-160px; animation: float1 22s ease-in-out infinite; }
+  .blob2{ width:480px; height:480px; background:#f38ba8; bottom:-200px; right:-140px; animation: float2 26s ease-in-out infinite; }
+  .blob3{ width:380px; height:380px; background:#a6e3a1; top:40%; left:60%; animation: float3 30s ease-in-out infinite; opacity:0.18;}
+  @keyframes float1{ 0%,100%{ transform:translate(0,0);} 50%{ transform:translate(60px,40px);} }
+  @keyframes float2{ 0%,100%{ transform:translate(0,0);} 50%{ transform:translate(-50px,-30px);} }
+  @keyframes float3{ 0%,100%{ transform:translate(0,0) scale(1);} 50%{ transform:translate(-40px,30px) scale(1.1);} }
+
+  .wrap{ position:relative; z-index:1; max-width:980px; margin:28px auto; padding:0 16px 40px; }
+  .window{ background:rgba(17,17,27,0.86); backdrop-filter: blur(18px); border-radius:14px;
+    border:1px solid var(--border); box-shadow:0 40px 100px -30px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.03) inset;
+    overflow:hidden; }
+  .titlebar{ display:flex; align-items:center; gap:10px; padding:12px 16px;
+    background:linear-gradient(180deg,#1c1c2b,#15151f); border-bottom:1px solid var(--border); }
+  .dot{ width:11px; height:11px; border-radius:50%; }
+  .dot.r{ background:#f38ba8; } .dot.y{ background:#f9e2af; } .dot.g{ background:#a6e3a1; }
+  .titlebar .path{ margin-left:8px; font-size:12.5px; color:var(--subtext); }
+  .titlebar .path b{ color:var(--text); font-weight:600; }
+  .leaderBadge{ margin-left:auto; display:flex; align-items:center; gap:8px;
+    font-size:11.5px; color:var(--subtext); background:rgba(255,255,255,0.03);
+    border:1px solid var(--border); padding:5px 10px; border-radius:20px; }
+  .leaderBadge .sw{ width:9px; height:9px; border-radius:50%; box-shadow:0 0 8px 1px currentColor; }
+  .leaderBadge b{ color:var(--text); }
+
+  .content{ padding:24px 26px 20px; }
+  .head{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; flex-wrap:wrap; gap:14px; }
+  .head h1{ margin:0; font-size:17px; font-weight:700; }
+  .head .sub{ font-size:12px; color:var(--subtext); margin-top:6px; }
+  .yearBox{ text-align:right; }
+  .yearBox .yr{ font-size:44px; font-weight:800; line-height:1; color:var(--accent);
+    font-variant-numeric:tabular-nums; text-shadow:0 0 30px rgba(249,226,175,0.3); }
+  .tabs{ display:flex; gap:6px; background:rgba(255,255,255,0.03); border:1px solid var(--border);
+    padding:5px; border-radius:12px; margin-bottom:18px; width:fit-content; }
+  .tab{ display:flex; align-items:center; gap:7px; padding:8px 14px; border-radius:8px;
+    font-size:12px; font-weight:600; color:var(--subtext); cursor:pointer; user-select:none;
+    transition:all .2s; border:1px solid transparent; }
+  .tab svg{ width:15px; height:15px; color:currentColor; }
+  .tab:hover{ color:var(--text); }
+  .tab.active{ color:#1e1e2e; background:var(--accent); box-shadow:0 4px 16px -4px rgba(249,226,175,0.6); }
+
+  .chartStage{ position:relative; height:430px; }
+  .chartPane{ position:absolute; inset:0; opacity:0; pointer-events:none; transition:opacity .35s ease; }
+  .chartPane.active{ opacity:1; pointer-events:auto; }
+
+  /* --- Race chart --- */
+  #raceChart .row{ position:absolute; left:0; right:0; height:34px; display:flex; align-items:center;
+    transition: top .55s cubic-bezier(.4,0,.2,1), opacity .4s ease; }
+  #raceChart .row .label{ width:104px; flex:0 0 104px; font-size:12px; font-weight:700; text-align:right;
+    padding-right:10px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #raceChart .row .barTrack{ flex:1; position:relative; height:23px; }
+  #raceChart .row .bar{ position:absolute; left:0; top:0; height:100%; border-radius:5px;
+    transition:width .4s cubic-bezier(.4,0,.2,1);
+    box-shadow:0 1px 0 rgba(255,255,255,0.25) inset, 0 6px 16px -6px rgba(0,0,0,0.7); }
+  #raceChart .row .val{ position:absolute; top:50%; transform:translateY(-50%); font-size:11px;
+    font-weight:700; color:#11111b; padding-left:8px; }
+  #raceChart .row .val.outside{ color:var(--subtext); }
+
+  /* --- SVG charts shared --- */
+  .svgWrap{ width:100%; height:100%; }
+  .gridline{ stroke:#2f2f45; stroke-width:1; stroke-dasharray:3 4; }
+  .axisLabel{ fill:var(--subtext); font-size:9.5px; font-family:'JetBrains Mono',monospace; }
+  .scrubLine{ stroke:var(--accent); stroke-width:1.3; stroke-dasharray:4 4; opacity:0.8; }
+  .seriesLabel{ font-size:10.5px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .pieLegend{ font-size:11px; }
+  .pieLegend .item{ display:flex; align-items:center; gap:7px; padding:3px 0; color:var(--subtext); }
+  .pieLegend .sw{ width:9px; height:9px; border-radius:3px; flex:0 0 auto; }
+  .pieLegend b{ color:var(--text); }
+  .pieCenter tspan{ font-family:'JetBrains Mono',monospace; }
+  #pieChart .layout{ display:flex; gap:24px; align-items:center; height:100%; }
+  #pieChart .donutBox{ flex:0 0 auto; }
+  #pieChart .legendBox{ flex:1; min-width:0; max-height:380px; overflow:auto; }
+
+  .controls{ display:flex; align-items:center; gap:14px; margin-top:16px; padding-top:16px;
+    border-top:1px solid var(--border); }
+  #playBtn{ flex:0 0 auto; width:40px; height:40px; border-radius:10px; border:1px solid var(--overlay2);
+    background:linear-gradient(180deg, var(--overlay2), var(--overlay)); color:var(--text); cursor:pointer;
+    font-size:14px; display:flex; align-items:center; justify-content:center; transition:.15s; }
+  #playBtn:hover{ filter:brightness(1.25); }
+  .sliderCol{ flex:1; }
+  input[type=range]{ width:100%; -webkit-appearance:none; appearance:none; height:5px; border-radius:3px;
+    background:linear-gradient(90deg, var(--accent) 0%, var(--accent) var(--pct,0%), #34344a var(--pct,0%), #34344a 100%);
+    outline:none; cursor:pointer; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+    background:var(--accent); border:3px solid #11111b; box-shadow:0 0 0 1px var(--accent), 0 0 10px 1px rgba(249,226,175,.6); cursor:pointer; margin-top:-1px; }
+  input[type=range]::-moz-range-thumb{ width:14px; height:14px; border-radius:50%; border:3px solid #11111b;
+    background:var(--accent); cursor:pointer; }
+  .ticks{ display:flex; justify-content:space-between; font-size:10px; color:var(--subtext); margin-top:6px; padding:0 1px; }
+
+  .legendNote{ margin-top:16px; font-size:10.5px; color:var(--subtext); line-height:1.5;
+    border-top:1px dashed var(--border); padding-top:12px; }
+  .legendNote b{ color:#a6adc8; }
+
+  @media (max-width:640px){
+    #pieChart .layout{ flex-direction:column; }
+    .yearBox .yr{ font-size:34px; }
+    .tabs{ width:100%; overflow-x:auto; }
+  }
+</style>
+</head>
+<body>
+<div class="blob blob1"></div><div class="blob blob2"></div><div class="blob blob3"></div>
+
+<div class="wrap">
+  <div class="window">
+    <div class="titlebar">
+      <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+      <div class="leaderBadge" id="leaderBadge"><span class="sw" id="leaderDot"></span>Vezet: <b id="leaderName">—</b></div>
+    </div>
+    <div class="content">
+      <div class="head">
+        <div>
+          <h1>Programozási nyelvek relatív népszerűsége</h1>
+          <div class="sub">animált idővonal · 1990 – 2026 · 4 diagramtípus</div>
+        </div>
+        <div class="yearBox">
+          <div><span class="yr" id="yearLabel">1990</span></div>
+        </div>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <div class="tab active" data-tab="race">
+          <svg viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="3" width="14" height="3" rx="1"/><rect x="2" y="8.5" width="10" height="3" rx="1"/><rect x="2" y="14" width="16" height="3" rx="1"/></svg>
+          Verseny
+        </div>
+        <div class="tab" data-tab="line">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,15 7,8 11,12 18,4"/></svg>
+          Vonal
+        </div>
+        <div class="tab" data-tab="area">
+          <svg viewBox="0 0 20 20" fill="currentColor" opacity="0.9"><path d="M2,16 L6,7 L11,12 L18,3 L18,16 Z"/></svg>
+          Terület
+        </div>
+        <div class="tab" data-tab="pie">
+          <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M10,10 L10,2.5 A7.5,7.5 0 0,1 16.5,13 Z" fill="currentColor"/></svg>
+          Kör
+        </div>
+      </div>
+
+      <div class="chartStage">
+        <div class="chartPane active" id="raceChart"></div>
+        <div class="chartPane" id="lineChart"></div>
+        <div class="chartPane" id="areaChart"></div>
+        <div class="chartPane" id="pieChart"></div>
+      </div>
+
+      <div class="controls">
+        <button id="playBtn">▶</button>
+        <div class="sliderCol">
+          <input type="range" id="slider" min="1990" max="2026" step="0.1" value="1990">
+          <div class="ticks">
+            <span>1990</span><span>1995</span><span>2000</span><span>2005</span>
+            <span>2010</span><span>2015</span><span>2020</span><span>2026</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="legendNote">
+        <b>Megjegyzés:</b> az ábrázolt értékek szemléltető, hozzávetőleges becslések a nyelvek relatív elterjedtségének
+        nagyjábóli alakulásáról — nem egy konkrét mérőszám (pl. TIOBE, GitHub) pontos, hitelesített idősora.
+        A cél az általános trendek illusztrálása.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- Adatmodell ----------
+const languages = [
+  { name:'C',            color:'#89b4fa', points:{1990:35,1995:30,2000:20,2005:16,2010:15,2015:13,2020:12,2026:10} },
+  { name:'C++',          color:'#74c7ec', points:{1990:15,1995:25,2000:19,2005:13,2010:10,2015:8,2020:7,2026:6.5} },
+  { name:'Java',         color:'#eba0ac', points:{1994:0,1995:1,1998:12,2000:20,2005:22,2010:18,2015:16,2020:14,2026:11} },
+  { name:'Python',       color:'#a6e3a1', points:{1990:0,1991:0.5,1995:1.5,2000:3,2005:4,2010:6,2013:8,2015:11,2018:17,2020:22,2023:27,2026:29} },
+  { name:'JavaScript',   color:'#f9e2af', points:{1994:0,1995:2,2000:6,2005:8,2009:9,2010:10,2015:14,2018:17,2020:18,2026:19} },
+  { name:'PHP',          color:'#cba6f7', points:{1994:0,1995:1,2000:6,2005:10,2008:10.5,2010:9,2015:6.5,2020:4.5,2026:3.5} },
+  { name:'C#',           color:'#b4befe', points:{1999:0,2000:0.5,2003:4,2005:6,2010:7,2015:7,2020:6,2026:5.5} },
+  { name:'Ruby',         color:'#f38ba8', points:{1994:0,1995:0.4,2000:0.8,2005:1.8,2008:3,2010:3.2,2015:2,2020:1.4,2026:1.1} },
+  { name:'Perl',         color:'#f5e0dc', points:{1990:8,1995:9,1998:9,2000:6,2005:3,2010:1.5,2015:1,2020:0.6,2026:0.4} },
+  { name:'Objective-C',  color:'#f2cdcd', points:{1990:1,1995:1,2000:0.7,2007:0.8,2008:1.2,2011:4,2013:5,2014:4.5,2016:2,2020:1,2026:0.6} },
+  { name:'Swift',        color:'#fab387', points:{2013:0,2014:0.2,2015:1.2,2017:2,2020:2.6,2026:2.8} },
+  { name:'Go',           color:'#94e2d5', points:{2008:0,2009:0.1,2012:0.4,2015:1,2018:1.6,2020:2,2026:2.6} },
+  { name:'TypeScript',   color:'#f5c2e7', points:{2011:0,2012:0.2,2015:1,2018:2.5,2020:4.5,2023:7,2026:8.5} },
+  { name:'Kotlin',       color:'#89dceb', points:{2010:0,2011:0.05,2016:0.3,2017:1,2019:1.8,2020:2,2026:2.2} },
+];
+
+function valueAt(points, year){
+  const years = Object.keys(points).map(Number).sort((a,b)=>a-b);
+  if(year <= years[0]) return year < years[0] ? 0 : points[years[0]];
+  if(year >= years[years.length-1]) return points[years[years.length-1]];
+  for(let i=0;i<years.length-1;i++){
+    const y0=years[i], y1=years[i+1];
+    if(year>=y0 && year<=y1){
+      const v0=points[y0], v1=points[y1];
+      const t=(year-y0)/(y1-y0);
+      return v0 + (v1-v0)*t;
+    }
+  }
+  return 0;
+}
+
+const YEAR_MIN=1990, YEAR_MAX=2026;
+const yearsArr=[]; for(let y=YEAR_MIN;y<=YEAR_MAX;y++) yearsArr.push(y);
+languages.forEach(l=>{ l.series = yearsArr.map(y=>valueAt(l.points,y)); l.peak = Math.max(...l.series); });
+
+const MAX_VAL = 35; // race + line chart fix skála
+const TOP_N = 10;
+const ROW_H = 40;
+
+// stacked adat a terület diagramhoz (nagyobb csúcsértékű nyelv van alul)
+const stackOrder = [...languages].sort((a,b)=>b.peak-a.peak);
+const cumTotals = new Array(yearsArr.length).fill(0);
+stackOrder.forEach(lang=>{
+  lang.stack = yearsArr.map((y,i)=>{
+    const y0=cumTotals[i], y1=y0+lang.series[i];
+    cumTotals[i]=y1;
+    return {y0,y1};
+  });
+});
+const AREA_MAX = Math.max(...cumTotals);
+
+function lighten(hex, amt){
+  const c = hex.replace('#','');
+  const r = Math.min(255, parseInt(c.substring(0,2),16)+amt);
+  const g = Math.min(255, parseInt(c.substring(2,4),16)+amt);
+  const b = Math.min(255, parseInt(c.substring(4,6),16)+amt);
+  return `rgb(${r},${g},${b})`;
+}
+
+// ---------- Leader badge ----------
+const leaderDot = document.getElementById('leaderDot');
+const leaderName = document.getElementById('leaderName');
+function updateLeader(year){
+  let best=null, bestVal=-1;
+  languages.forEach(l=>{ const v=valueAt(l.points,year); if(v>bestVal){bestVal=v; best=l;} });
+  if(best){ leaderDot.style.background=best.color; leaderDot.style.color=best.color; leaderName.textContent=best.name; }
+}
+
+// ---------- RACE CHART ----------
+const raceEl = document.getElementById('raceChart');
+raceEl.style.height = (TOP_N*ROW_H)+'px';
+raceEl.style.position='relative';
+const raceRows={};
+languages.forEach(lang=>{
+  const row=document.createElement('div');
+  row.className='row';
+  row.innerHTML=`<div class="label">${lang.name}</div>
+    <div class="barTrack"><div class="bar" style="background:linear-gradient(180deg, ${lighten(lang.color,40)}, ${lang.color})"></div><div class="val"></div></div>`;
+  raceEl.appendChild(row);
+  raceRows[lang.name]=row;
+});
+function renderRace(year){
+  const withVals = languages.map(l=>({lang:l, val:valueAt(l.points,year)}));
+  withVals.sort((a,b)=>b.val-a.val);
+  const track = raceEl.querySelector('.barTrack');
+  const trackW = track ? track.getBoundingClientRect().width : 500;
+  withVals.forEach((item,rank)=>{
+    const row = raceRows[item.lang.name];
+    if(rank<TOP_N){ row.style.top=(rank*ROW_H)+'px'; row.style.opacity=1; }
+    else { row.style.top=(TOP_N*ROW_H+20)+'px'; row.style.opacity=0; }
+    const bar=row.querySelector('.bar'), valEl=row.querySelector('.val');
+    const widthPx = Math.max(2,(item.val/MAX_VAL)*trackW);
+    bar.style.width=widthPx+'px';
+    bar.style.boxShadow=`0 1px 0 rgba(255,255,255,.25) inset, 0 6px 16px -6px rgba(0,0,0,.7), 0 0 14px -3px ${item.lang.color}`;
+    valEl.textContent = item.val<0.1 ? '' : item.val.toFixed(1);
+    if(widthPx<46){ valEl.style.left=widthPx+6+'px'; valEl.style.transform='translateY(-50%)'; valEl.classList.add('outside'); }
+    else { valEl.style.left=(widthPx-6)+'px'; valEl.style.transform='translate(-100%,-50%)'; valEl.classList.remove('outside'); }
+  });
+}
+
+// ---------- SVG helpers ----------
+const SVGNS='http://www.w3.org/2000/svg';
+function svg(tag, attrs){
+  const el=document.createElementNS(SVGNS,tag);
+  for(const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+function smoothPath(points){
+  if(points.length===0) return '';
+  let d=`M ${points[0].x} ${points[0].y}`;
+  for(let i=0;i<points.length-1;i++){
+    const midX=(points[i].x+points[i+1].x)/2, midY=(points[i].y+points[i+1].y)/2;
+    d+=` Q ${points[i].x} ${points[i].y} ${midX} ${midY}`;
+  }
+  const last=points[points.length-1];
+  d+=` L ${last.x} ${last.y}`;
+  return d;
+}
+
+const PLOT = { left:44, right:16, top:16, bottom:26, w:900, h:400 };
+const plotW = PLOT.w-PLOT.left-PLOT.right, plotH = PLOT.h-PLOT.top-PLOT.bottom;
+function xScale(year){ return PLOT.left + (year-YEAR_MIN)/(YEAR_MAX-YEAR_MIN)*plotW; }
+function yScale(val, maxVal){ return PLOT.top + (1-Math.min(val,maxVal)/maxVal)*plotH; }
+
+function buildAxes(root, maxVal, step){
+  for(let v=0; v<=maxVal; v+=step){
+    const y=yScale(v,maxVal);
+    root.appendChild(svg('line',{x1:PLOT.left,x2:PLOT.w-PLOT.right,y1:y,y2:y,class:'gridline'}));
+    const t=svg('text',{x:PLOT.left-8,y:y+3,'text-anchor':'end',class:'axisLabel'}); t.textContent=v; root.appendChild(t);
+  }
+  [1990,1995,2000,2005,2010,2015,2020,2026].forEach(yr=>{
+    const x=xScale(yr);
+    const t=svg('text',{x:x,y:PLOT.h-6,'text-anchor':'middle',class:'axisLabel'}); t.textContent=yr; root.appendChild(t);
+  });
+}
+
+// ---------- LINE CHART ----------
+const lineHost = document.getElementById('lineChart');
+lineHost.style.display='flex'; lineHost.style.height='100%';
+const lineSvg = svg('svg',{viewBox:`0 0 ${PLOT.w} ${PLOT.h}`,class:'svgWrap',preserveAspectRatio:'xMidYMid meet'});
+lineHost.appendChild(lineSvg);
+const lineGrid = svg('g',{}); lineSvg.appendChild(lineGrid);
+buildAxes(lineGrid, MAX_VAL, 5);
+const lineClipId='lineClip';
+const defs1 = svg('defs',{}); lineSvg.appendChild(defs1);
+const clipRect = svg('rect',{x:PLOT.left,y:0,width:0,height:PLOT.h});
+const clipPath = svg('clipPath',{id:lineClipId}); clipPath.appendChild(clipRect); defs1.appendChild(clipPath);
+const lineGroup = svg('g',{'clip-path':`url(#${lineClipId})`}); lineSvg.appendChild(lineGroup);
+const linePaths={}, lineDots={}, lineLabels={};
+languages.forEach(l=>{
+  const pts = yearsArr.map((y,i)=>({x:xScale(y), y:yScale(l.series[i],MAX_VAL)}));
+  const path = svg('path',{d:smoothPath(pts), fill:'none', stroke:l.color, 'stroke-width':2, opacity:0.35});
+  lineGroup.appendChild(path); linePaths[l.name]=path;
+  const dot = svg('circle',{r:3.6, fill:l.color, opacity:0}); lineSvg.appendChild(dot); lineDots[l.name]=dot;
+  const label = svg('text',{class:'seriesLabel', fill:l.color, opacity:0}); label.textContent=l.name; lineSvg.appendChild(label); lineLabels[l.name]=label;
+});
+const scrubLineEl = svg('line',{class:'scrubLine',y1:PLOT.top,y2:PLOT.h-PLOT.bottom});
+lineSvg.appendChild(scrubLineEl);
+
+function renderLine(year){
+  const clipW = Math.max(0, xScale(year)-PLOT.left);
+  clipRect.setAttribute('width', clipW);
+  scrubLineEl.setAttribute('x1', xScale(year)); scrubLineEl.setAttribute('x2', xScale(year));
+  const vals = languages.map(l=>({l, v:valueAt(l.points,year)}));
+  vals.sort((a,b)=>b.v-a.v);
+  const top5 = new Set(vals.slice(0,5).map(o=>o.l.name));
+  const usedY=[];
+  vals.forEach(({l,v})=>{
+    const path=linePaths[l.name], dot=lineDots[l.name], label=lineLabels[l.name];
+    const isTop = top5.has(l.name);
+    path.setAttribute('opacity', isTop? 0.95 : 0.18);
+    path.setAttribute('stroke-width', isTop? 2.6 : 1.3);
+    const cx=xScale(year), cy=yScale(v,MAX_VAL);
+    dot.setAttribute('cx',cx); dot.setAttribute('cy',cy);
+    dot.setAttribute('opacity', v>0.05 ? 1 : 0);
+    dot.setAttribute('r', isTop?4.2:2.4);
+    if(isTop && v>0.05){
+      let ly=cy; 
+      while(usedY.some(u=>Math.abs(u-ly)<11)) ly+=11;
+      usedY.push(ly);
+      label.setAttribute('x', cx+8); label.setAttribute('y', ly+3.5); label.setAttribute('opacity',1);
+      label.textContent = `${l.name} ${v.toFixed(1)}`;
+    } else { label.setAttribute('opacity',0); }
+  });
+}
+
+// ---------- AREA CHART ----------
+const areaHost = document.getElementById('areaChart');
+areaHost.style.height='100%';
+const areaSvg = svg('svg',{viewBox:`0 0 ${PLOT.w} ${PLOT.h}`,class:'svgWrap',preserveAspectRatio:'xMidYMid meet'});
+areaHost.appendChild(areaSvg);
+const areaGrid = svg('g',{}); areaSvg.appendChild(areaGrid);
+buildAxes(areaGrid, AREA_MAX, 20);
+const defs2 = svg('defs',{}); areaSvg.appendChild(defs2);
+const areaClipRect = svg('rect',{x:PLOT.left,y:0,width:0,height:PLOT.h});
+const areaClipPath = svg('clipPath',{id:'areaClip'}); areaClipPath.appendChild(areaClipRect); defs2.appendChild(areaClipPath);
+const areaGroup = svg('g',{'clip-path':'url(#areaClip)'}); areaSvg.appendChild(areaGroup);
+const areaPaths={};
+stackOrder.forEach(l=>{
+  const gradId='grad_'+l.name.replace(/[^a-zA-Z0-9]/g,'');
+  const grad = svg('linearGradient',{id:gradId,x1:0,y1:0,x2:0,y2:1});
+  grad.appendChild(svg('stop',{offset:'0%','stop-color':l.color,'stop-opacity':0.85}));
+  grad.appendChild(svg('stop',{offset:'100%','stop-color':l.color,'stop-opacity':0.45}));
+  defs2.appendChild(grad);
+  const top = yearsArr.map((y,i)=>({x:xScale(y), y:yScale(l.stack[i].y1,AREA_MAX)}));
+  const bot = yearsArr.map((y,i)=>({x:xScale(y), y:yScale(l.stack[i].y0,AREA_MAX)})).reverse();
+  const d = smoothPath(top) + ' L ' + bot.map(p=>`${p.x} ${p.y}`).join(' L ') + ' Z';
+  const path = svg('path',{d, fill:`url(#${gradId})`, stroke:l.color, 'stroke-width':1.2, 'stroke-opacity':0.8});
+  areaGroup.appendChild(path); areaPaths[l.name]=path;
+});
+const areaScrub = svg('line',{class:'scrubLine',y1:PLOT.top,y2:PLOT.h-PLOT.bottom});
+areaSvg.appendChild(areaScrub);
+const areaTotalLabel = svg('text',{class:'seriesLabel', fill:'#f9e2af'});
+areaSvg.appendChild(areaTotalLabel);
+
+function renderArea(year){
+  const clipW = Math.max(0, xScale(year)-PLOT.left);
+  areaClipRect.setAttribute('width', clipW);
+  areaScrub.setAttribute('x1', xScale(year)); areaScrub.setAttribute('x2', xScale(year));
+  let total=0; languages.forEach(l=> total+=valueAt(l.points,year));
+  const x=xScale(year);
+  areaTotalLabel.setAttribute('x', Math.min(x+8, PLOT.w-PLOT.right-70));
+  areaTotalLabel.setAttribute('y', PLOT.top+14);
+  areaTotalLabel.textContent = `Σ ${total.toFixed(1)}`;
+}
+
+// ---------- PIE / DONUT CHART ----------
+const pieHost = document.getElementById('pieChart');
+pieHost.innerHTML = `<div class="layout"><div class="donutBox"><svg id="pieSvg" viewBox="0 0 300 300" width="300" height="300"></svg></div><div class="legendBox" id="pieLegend"></div></div>`;
+const pieSvg = document.getElementById('pieSvg');
+const pieLegendEl = document.getElementById('pieLegend');
+const R=95, CX=150, CY=150, STROKE=42, CIRC=2*Math.PI*R;
+const pieGroup = svg('g',{transform:`rotate(-90 ${CX} ${CY})`});
+pieSvg.appendChild(pieGroup);
+const centerYear = svg('text',{x:CX,y:CY-4,'text-anchor':'middle', class:'pieCenter', fill:'#cdd6f4','font-size':26,'font-weight':800});
+const centerSub = svg('text',{x:CX,y:CY+18,'text-anchor':'middle', class:'pieCenter', fill:'#8992b0','font-size':11});
+pieSvg.appendChild(centerYear); pieSvg.appendChild(centerSub);
+const pieArcs={};
+languages.forEach(l=>{
+  const bg = svg('circle',{cx:CX,cy:CY,r:R,fill:'none',stroke:'#232335','stroke-width':STROKE});
+});
+function renderPie(year){
+  const vals = languages.map(l=>({l, v:valueAt(l.points,year)})).sort((a,b)=>b.v-a.v);
+  const total = vals.reduce((s,o)=>s+o.v,0) || 1;
+  const shown = vals.slice(0,7);
+  const otherVal = vals.slice(7).reduce((s,o)=>s+o.v,0);
+  pieGroup.innerHTML='';
+  pieLegendEl.innerHTML='';
+  let cum=0;
+  const slices = shown.map(o=>({name:o.l.name, color:o.l.color, v:o.v})).concat(otherVal>0.05?[{name:'Egyéb', color:'#585b70', v:otherVal}]:[]);
+  slices.forEach(s=>{
+    const frac = s.v/total;
+    const len = Math.max(0, frac*CIRC - 1.5);
+    const gap = CIRC-len;
+    const circle = svg('circle',{cx:CX,cy:CY,r:R,fill:'none',stroke:s.color,'stroke-width':STROKE,
+      'stroke-dasharray':`${len} ${gap}`, 'stroke-dashoffset':-cum, 'stroke-linecap':'round'});
+    circle.style.filter = `drop-shadow(0 0 6px ${s.color}66)`;
+    pieGroup.appendChild(circle);
+    cum += frac*CIRC;
+    const item = document.createElement('div'); item.className='item';
+    item.innerHTML = `<span class="sw" style="background:${s.color}"></span><b>${s.name}</b>&nbsp;· ${(frac*100).toFixed(1)}%`;
+    pieLegendEl.appendChild(item);
+  });
+  centerYear.textContent = Math.floor(year);
+  centerSub.textContent = shown[0] ? `Vezet: ${shown[0].l.name}` : '';
+}
+
+// ---------- Master render / controls ----------
+const yearLabel = document.getElementById('yearLabel');
+const slider = document.getElementById('slider');
+const playBtn = document.getElementById('playBtn');
+let activeTab='race';
+
+function render(year){
+  yearLabel.textContent = Math.floor(year);
+  updateLeader(year);
+  if(activeTab==='race') renderRace(year);
+  else if(activeTab==='line') renderLine(year);
+  else if(activeTab==='area') renderArea(year);
+  else if(activeTab==='pie') renderPie(year);
+}
+
+document.querySelectorAll('.tab').forEach(tabEl=>{
+  tabEl.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tabEl.classList.add('active');
+    document.querySelectorAll('.chartPane').forEach(p=>p.classList.remove('active'));
+    activeTab = tabEl.dataset.tab;
+    const map={race:'raceChart', line:'lineChart', area:'areaChart', pie:'pieChart'};
+    document.getElementById(map[activeTab]).classList.add('active');
+    render(parseFloat(slider.value));
+  });
+});
+
+function updateSliderFill(){
+  const pct=((slider.value-slider.min)/(slider.max-slider.min))*100;
+  slider.style.setProperty('--pct', pct+'%');
+}
+slider.addEventListener('input', ()=>{ render(parseFloat(slider.value)); updateSliderFill(); if(playing) pause(); });
+
+let playing=false, rafId=null, lastTs=null;
+const YEARS_PER_SEC=3.0;
+function tick(ts){
+  if(lastTs===null) lastTs=ts;
+  const dt=(ts-lastTs)/1000; lastTs=ts;
+  let v=parseFloat(slider.value)+dt*YEARS_PER_SEC;
+  if(v>=2026){ v=2026; slider.value=v; render(v); updateSliderFill(); pause(); return; }
+  slider.value=v; render(v); updateSliderFill();
+  rafId=requestAnimationFrame(tick);
+}
+function play(){ if(parseFloat(slider.value)>=2026){ slider.value=1990; } playing=true; playBtn.textContent='⏸'; lastTs=null; rafId=requestAnimationFrame(tick); }
+function pause(){ playing=false; playBtn.textContent='▶'; if(rafId) cancelAnimationFrame(rafId); }
+playBtn.addEventListener('click', ()=> playing?pause():play());
+window.addEventListener('resize', ()=> render(parseFloat(slider.value)));
+
+render(1990); updateSliderFill();
+</script>
+</body>
+</html>

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="hu" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini AI Magyarul - AI Kezdőcsomag & Prompt Szimulátor</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Icons (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for simulator */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .typing-cursor::after {
+            content: '|';
+            animation: blink 1s step-start infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 font-sans">
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="bot" class="w-8 h-8 text-brand-600"></i>
+                    <span class="font-bold text-xl tracking-tight hidden sm:block">Gemini AI Magyarul <span class="text-brand-600">Kezdőcsomag</span></span>
+                    <span class="font-bold text-xl tracking-tight sm:hidden">AI Kezdőcsomag</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <a href="#szimulator" class="text-sm font-medium hover:text-brand-600 transition hidden md:block">Szimulátor</a>
+                    <a href="#tudasbazis" class="text-sm font-medium hover:text-brand-600 transition hidden md:block">Példák</a>
+                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                        <i data-lucide="moon" class="w-5 h-5 dark:hidden"></i>
+                        <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-yellow-400"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="py-16 text-center px-4">
+        <h1 class="text-4xl md:text-6xl font-extrabold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-purple-600">
+            Tanuld meg irányítani az AI-t!
+        </h1>
+        <p class="text-lg md:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto mb-8">
+            Interaktív útmutató és prompt gyűjtemény a Gemini AI Magyarul Facebook csoport közösségének. Értsd meg az alapokat, másolj kész mintákat, és teszteld a tudásod!
+        </p>
+        <div class="flex justify-center gap-4">
+            <a href="#alapok" class="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-semibold hover:shadow-lg transition">
+                Elméleti Alapok
+            </a>
+            <a href="#szimulator" class="px-6 py-3 bg-brand-600 text-white rounded-lg font-semibold hover:bg-brand-700 shadow-lg hover:shadow-brand-500/30 transition flex items-center gap-2">
+                <i data-lucide="play-circle" class="w-5 h-5"></i> Szimulátor Indítása
+            </a>
+        </div>
+    </header>
+
+    <!-- 1. Elméleti Alapozó -->
+    <section id="alapok" class="py-16 bg-white dark:bg-slate-800 transition-colors">
+        <div class="max-w-7xl mx-auto px-4">
+            <h2 class="text-3xl font-bold mb-12 text-center flex items-center justify-center gap-3">
+                <i data-lucide="book-open" class="text-brand-500"></i>
+                Hogy működik ez az egész?
+            </h2>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Card 1 -->
+                <div class="bg-slate-50 dark:bg-slate-900 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group hover:border-brand-500 transition">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                        <i data-lucide="brain-circuit" class="w-24 h-24"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4 text-brand-600">Mi az az LLM?</h3>
+                    <p class="text-slate-600 dark:text-slate-400 leading-relaxed">
+                        A Nagy Nyelvi Modell (LLM) olyan, mint egy <strong>hihetetlenül olvasott könyvtáros</strong>, aki elolvasta az internet jelentős részét. Nem "gondolkodik" úgy, mint az ember, hanem mintákat ismer fel a szövegekben. A Gemini és a ChatGPT is ilyen modellek.
+                    </p>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="bg-slate-50 dark:bg-slate-900 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group hover:border-brand-500 transition">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                        <i data-lucide="message-square-dashed" class="w-24 h-24"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4 text-brand-600">A "Következő Szó" Játék</h3>
+                    <p class="text-slate-600 dark:text-slate-400 leading-relaxed">
+                        Az AI valójában csak tippel. Ha azt látja: <em>"A magyar zászló színei: piros, fehér és..."</em>, akkor a statisztika alapján tudja, hogy a <strong>zöld</strong> következik. Nem érti a színeket, csak tudja, hogy ezek a szavak így jönnek egymás után. Ezért fontos a pontosság!
+                    </p>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="bg-slate-50 dark:bg-slate-900 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group hover:border-brand-500 transition">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                        <i data-lucide="terminal" class="w-24 h-24"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4 text-brand-600">Mi az a Prompt?</h3>
+                    <p class="text-slate-600 dark:text-slate-400 leading-relaxed">
+                        A prompt az az <strong>utasítás</strong>, amit te adsz. Olyan, mint egy recept. Ha csak annyit mondasz: "főzz valamit", bármit kaphatsz. De ha azt mondod: "Főzz olasz tésztát, paradicsommal, csípősen", akkor pontosan azt kapod, amit vártál. A <strong>kontextus</strong> (körülmény) a király!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. Prompt Tudásbázis -->
+    <section id="tudasbazis" class="py-16">
+        <div class="max-w-7xl mx-auto px-4">
+            <h2 class="text-3xl font-bold mb-6 text-center">Prompt Tudásbázis (50+ Példa)</h2>
+            <p class="text-center text-slate-500 mb-10">Válassz kategóriát, másold ki a promptot, és szabd testre!</p>
+
+            <!-- Kategória fülek -->
+            <div class="flex flex-wrap justify-center gap-2 mb-8" id="category-tabs">
+                <!-- JS generálja -->
+            </div>
+
+            <!-- Prompt Lista -->
+            <div class="grid md:grid-cols-2 gap-6" id="prompt-container">
+                <!-- JS generálja a kártyákat -->
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Képgenerálás Szekció -->
+    <section id="kepek" class="py-16 bg-slate-900 text-white relative overflow-hidden">
+        <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80')] opacity-10 bg-cover bg-center"></div>
+        <div class="max-w-7xl mx-auto px-4 relative z-10">
+            <h2 class="text-3xl font-bold mb-8 text-center flex items-center justify-center gap-2">
+                <i data-lucide="image" class="text-purple-400"></i>
+                Képgenerálás Mesterfokon
+            </h2>
+
+            <!-- A Képlet -->
+            <div class="bg-white/10 backdrop-blur-sm p-6 rounded-xl border border-white/20 mb-12 max-w-3xl mx-auto text-center">
+                <h3 class="text-xl font-bold mb-4 text-purple-300">A Tökéletes Képgeneráló Képlet:</h3>
+                <div class="flex flex-wrap justify-center gap-2 md:gap-4 text-sm md:text-lg font-mono">
+                    <span class="bg-blue-600/50 px-3 py-1 rounded text-blue-100 border border-blue-400">Főtárgy</span>
+                    <span class="text-slate-400">+</span>
+                    <span class="bg-pink-600/50 px-3 py-1 rounded text-pink-100 border border-pink-400">Stílus</span>
+                    <span class="text-slate-400">+</span>
+                    <span class="bg-yellow-600/50 px-3 py-1 rounded text-yellow-100 border border-yellow-400">Részletek</span>
+                    <span class="text-slate-400">+</span>
+                    <span class="bg-green-600/50 px-3 py-1 rounded text-green-100 border border-green-400">Fények/Környezet</span>
+                </div>
+                <p class="mt-4 text-sm text-slate-300">Pl: "Egy űrhajós macska (Tárgy) cyberpunk stílusban (Stílus), neon szemüveggel (Részlet), esős tokiói éjszakában (Környezet)."</p>
+            </div>
+
+            <!-- Példák -->
+            <div class="grid md:grid-cols-3 lg:grid-cols-5 gap-4" id="image-prompts">
+                <!-- JS generálja -->
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. Interaktív Homokozó -->
+    <section id="szimulator" class="py-20 bg-slate-100 dark:bg-black transition-colors">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col h-[600px]">
+                
+                <!-- Chat Header -->
+                <div class="bg-slate-100 dark:bg-slate-800 p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        <span class="ml-4 font-mono text-sm text-slate-500 dark:text-slate-400">Gemini_Simulator_v1.0.exe</span>
+                    </div>
+                    <span class="text-xs bg-brand-100 text-brand-700 px-2 py-1 rounded uppercase font-bold">Sandbox Mód</span>
+                </div>
+
+                <!-- Chat Area -->
+                <div id="chat-box" class="flex-1 overflow-y-auto p-6 space-y-4 font-mono text-sm">
+                    <!-- AI Welcome Message -->
+                    <div class="flex items-start gap-4">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex-shrink-0 flex items-center justify-center text-white font-bold">AI</div>
+                        <div class="bg-slate-100 dark:bg-slate-800 p-4 rounded-r-xl rounded-bl-xl max-w-[80%] text-slate-700 dark:text-slate-300">
+                            Szia! Ez egy szimulátor a gyakorláshoz. Írj be egy promptot, és megmutatom, hogyan reagálna rá egy valódi AI, vagy adok tippet a javításhoz!<br><br>
+                            Próbálj ki olyan kulcsszavakat, mint: <strong>"írj egy verset", "készíts képet", "lista", "programkód"</strong>.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
+                    <form id="simulator-form" class="relative">
+                        <textarea id="user-input" rows="3" class="w-full bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl p-4 pr-16 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" placeholder="Írd ide a promptot... (pl: Írj egy emailt a főnökömnek...)"></textarea>
+                        <button type="submit" class="absolute bottom-3 right-3 p-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i data-lucide="send" class="w-5 h-5"></i>
+                        </button>
+                    </form>
+                    <p class="text-xs text-center text-slate-400 mt-2">
+                        Ez egy offline szimuláció. Nem valós AI generálja a választ, hanem előre megírt minták alapján működik oktatási céllal.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-slate-900 py-8 border-t border-slate-200 dark:border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-slate-600 dark:text-slate-400">Készült a <strong>Gemini AI Magyarul</strong> Facebook csoport közösségének.</p>
+            <p class="text-sm text-slate-400 mt-2">Ez az oldal oktatási célokat szolgál.</p>
+        </div>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIKA -->
+    <script>
+        // --- 1. PROMPT ADATBÁZIS GENERÁLÁS ---
+        const prompts = [
+            // Üzleti / Marketing
+            { cat: 'business', text: "Írj egy meggyőző Facebook hirdetés szöveget egy új vegán kávézó nyitásához Budapesten. A célközönség az egyetemisták és a fiatal irodisták. Hangnem: laza, modern.", why: "Meghatározza a platformot (FB), a terméket, a helyszínt, a célközönséget és a hangnemet." },
+            { cat: 'business', text: "Készíts egy SEO-optimalizált blogbejegyzés vázlatot a 'home office hatékonyság' témában. Legyen benne 5 főcím és javasolt kulcsszavak.", why: "Strukturált kimenetet kér (vázlat) és specifikus technikai igényt (SEO)." },
+            { cat: 'business', text: "Írj egy udvarias, de határozott email választ egy ügyfélnek, aki panaszkodik a késedelmes szállítás miatt. Ajánlj fel 10% kedvezményt kárpótlásul.", why: "Szituációs gyakorlat: érzelemkezelés és konkrét megoldás (kedvezmény) beépítése." },
+            { cat: 'business', text: "Elemezd a SWOT módszerrel egy fiktív kézműves szappanbolt indítását egy kisvárosban.", why: "Ismert üzleti keretrendszer (SWOT) alkalmazása konkrét szituációra." },
+            { cat: 'business', text: "Generálj 10 kreatív nevet egy új, AI-alapú nyelvtanuló applikációnak. A nevek legyenek rövidek és nemzetközi piacon is használhatók.", why: "Ötletbörze (Brainstorming) korlátozásokkal (rövid, nemzetközi)." },
+            { cat: 'business', text: "Készíts egy LinkedIn profil 'About' szekciót egy Junior Python fejlesztőnek, aki most végzett az egyetemen. Kiemelt készségek: Django, SQL, csapatmunka.", why: "Személyes márkaépítés konkrét adatokkal." },
+            { cat: 'business', text: "Írj egy 30 másodperces 'elevator pitch'-et (rövid bemutatkozást) egy befektetőnek az okos kutyanyakörv ötletemhez, ami méri a kutya pulzusát.", why: "Tömörítési feladat, fókuszban az értékajánlat." },
+            { cat: 'business', text: "Fogalmazz meg egy Instagram posztot a Black Friday akciónkhoz. Termék: futócipők. Használj emojikat és 'Call to Action'-t.", why: "Platform-specifikus formázás kérése." },
+            { cat: 'business', text: "Írj egy projektzáró emailt a csapatnak. Köszönd meg a munkát, emeld ki a sikeres határidőt, és hívd meg őket egy közös ebédre.", why: "Belső kommunikáció, motivációs céllal." },
+            { cat: 'business', text: "Készíts kérdőív kérdéseket (5 db) egy ügyfélelégedettségi felméréshez egy fogászat számára.", why: "Adatgyűjtés előkészítése." },
+
+            // Oktatás / Tanulás
+            { cat: 'education', text: "Magyarázd el a kvantumfizika alapjait úgy, mintha egy 10 éves gyereknek mesélnéd. Használj egyszerű hasonlatokat.", why: "ELI5 (Explain Like I'm 5) technika: komplex téma egyszerűsítése." },
+            { cat: 'education', text: "Készíts egy tanulási tervet a következő 4 hétre, hogy megtanuljam a spanyol nyelv alapjait. Napi 30 percem van rá.", why: "Személyre szabott ütemterv kérése időkorláttal." },
+            { cat: 'education', text: "Hozz létre egy feleletválasztós kvízt (5 kérdés) a II. világháború európai csatáiról. Jelöld meg a helyes válaszokat.", why: "Interaktív tananyag generálás." },
+            { cat: 'education', text: "Fogkald össze a 'Rómeó és Júlia' cselekményét 3 mondatban, kiemelve a fő konfliktust.", why: "Szintetizáló képesség, lényegkiemelés." },
+            { cat: 'education', text: "Javítsd ki a következő angol szöveg nyelvtani hibáit, és magyarázd is el, miért volt hibás: [Ide illeszd a szöveget].", why: "Nyelvtanár funkció: nemcsak javít, hanem oktat is." },
+            { cat: 'education', text: "Hasonlítsd össze táblázatban a fotoszintézist és a sejtlégzést. Oszlopok: Bemenet, Kimenet, Helyszín, Energia.", why: "Strukturált adatmegjelenítés (táblázat)." },
+            { cat: 'education', text: "Mi a Socratic method (Szókratészi módszer)? Mutass rá egy párbeszédes példát tanár és diák között.", why: "Definíció és gyakorlati példa kérése." },
+            { cat: 'education', text: "Sorold fel a francia forradalom 5 legfontosabb okát, rangsorolva fontosság szerint.", why: "Elemzés és rangsorolás." },
+            { cat: 'education', text: "Készíts egy szólistát (Glossary) a 10 legfontosabb közgazdasági fogalomról kezdőknek.", why: "Szókincsfejlesztés." },
+            { cat: 'education', text: "Írj egy vitaindító esszét (kb. 200 szó) arról, hogy a nyomtatott könyveknek van-e jövője a digitális korban. Érvelj mellette és ellene is.", why: "Kritikai gondolkodás fejlesztése, mindkét oldal bemutatása." },
+
+            // Kreatív Írás
+            { cat: 'creative', text: "Írj egy sci-fi novella kezdést. Helyszín: egy elhagyatott űrállomás a Marson. Főszereplő: egy sérült android, aki virágot próbál termeszteni.", why: "Részletes 'setting' (környezet) és karakter megadása." },
+            { cat: 'creative', text: "Írj egy haiku-t a reggeli kávézásról.", why: "Szigorú formai kötöttség (5-7-5 szótag) tesztelése." },
+            { cat: 'creative', text: "Találj ki egy fantasy világot, ahol a pénz helyett emlékekkel fizetnek. Írj le egy piaci jelenetet.", why: "Világépítés (World building) és szituációs gyakorlat." },
+            { cat: 'creative', text: "Írd át a Piroska és a Farkas mesét film noir stílusban, ahol Piroska egy magánnyomozó.", why: "Stílusparódia és történet transzformáció." },
+            { cat: 'creative', text: "Adj 5 ötletet egy YouTube csatorna indításához, ami a 'kertészkedés panellakásban' témára épül.", why: "Kreatív ötletelés (Ideation)." },
+            { cat: 'creative', text: "Írj egy dalszöveget a 'nyári zápor' témájában, rap stílusban, AABB rímképlettel.", why: "Formai és stílusbeli instrukciók kombinálása." },
+            { cat: 'creative', text: "Írj egy párbeszédet két ember között, akik 20 év után véletlenül találkoznak a repülőtéren. Legyen a hangulat nosztalgikus, de kicsit feszült.", why: "Érzelmi töltet és dinamika ábrázolása." },
+            { cat: 'creative', text: "Képzeld el, hogy egy cipő vagy. Írj naplót egy napodról.", why: "Perspektívaváltás gyakorlása." },
+            { cat: 'creative', text: "Generálj cselekménycsavart (plot twist) egy detektívregényhez, ahol a gyilkos végig a nyomozó segédje volt, de nem úgy, ahogy gondolnánk.", why: "Klisék elkerülése, csavar kérése." },
+            { cat: 'creative', text: "Írj egy motivációs beszédet egy űrhajós legénységének indulás előtt, akik tudják, hogy talán sosem térnek vissza.", why: "Emelkedett, drámai hangnem gyakorlása." },
+
+            // Programozás / IT
+            { cat: 'coding', text: "Írj egy Python scriptet, ami bekér egy fájlnevet, és megszámolja benne a szavak gyakoriságát, majd kiírja a top 5-öt.", why: "Konkrét funkcionális specifikáció." },
+            { cat: 'coding', text: "Magyarázd el a különbséget a 'null' és az 'undefined' között JavaScriptben, kódpéldákkal.", why: "Technikai fogalomtisztázás." },
+            { cat: 'coding', text: "Készíts egy HTML/CSS sablont egy egyszerű 'Coming Soon' oldalhoz, középre igazított szöveggel és háttérképpel.", why: "Frontend kódgenerálás." },
+            { cat: 'coding', text: "Találj hibát a következő kódban és javítsd ki: [Kód beillesztése]. Magyarázd el a hiba okát.", why: "Hibakeresés (Debugging)." },
+            { cat: 'coding', text: "Írj egy SQL lekérdezést, ami visszaadja azokat a felhasználókat, akik az elmúlt 30 napban regisztráltak ÉS vásároltak is.", why: "Adatbázis logika megfogalmazása." },
+            { cat: 'coding', text: "Hogyan működik a Git 'merge conflict'? Magyarázd el lépésről lépésre, hogyan kell feloldani.", why: "Folyamatleírás (Workflow)." },
+            { cat: 'coding', text: "Konvertáld ezt a Python 'for' ciklust list comprehension formátumra: [Kód].", why: "Kód refaktorálás / optimalizálás." },
+            { cat: 'coding', text: "Írj egy Excel képletet, ami kiszámolja az A oszlop átlagát, de csak akkor, ha a B oszlopban 'Igen' szerepel.", why: "Nem csak programozás, hanem Office szkriptelés is." },
+            { cat: 'coding', text: "Mi az a REST API? Magyarázd el egy éttermi rendelés hasonlatával.", why: "Absztrakt tech fogalom analógiás magyarázata." },
+            { cat: 'coding', text: "Generálj regex-et (reguláris kifejezést), ami validálja a magyar telefonszámokat (+36 vagy 06 kezdettel).", why: "Komplex szintaxis generáltatása." },
+
+            // Hétköznapi / Produktivitás
+            { cat: 'productivity', text: "Készíts egy heti étrendet (reggeli, ebéd, vacsora) egy 4 fős családnak, olcsó és gyorsan elkészíthető ételekből. Hozzávalók listájával.", why: "Komplex tervezés, több kritérium (olcsó, gyors, 4 fő) alapján." },
+            { cat: 'productivity', text: "Állíts össze egy 3 napos útitervet Prágába. Szeretem a történelmet és a sörözőket, de utálom a tömeget.", why: "Személyre szabott utazásszervezés preferenciák alapján." },
+            { cat: 'productivity', text: "Írj egy udvarias üzenetet a szomszédnak, hogy legyen szíves halkabban hallgatni a zenét éjszaka.", why: "Konfliktuskezelés kommunikációval." },
+            { cat: 'productivity', text: "Segíts eldönteni: vegyek-e robotporszívót? Sorold fel az előnyöket és hátrányokat, ha kisállatom van és sok a szőnyeg.", why: "Döntéstámogatás specifikus körülményekkel." },
+            { cat: 'productivity', text: "Fogalmazd át ezt a mondatot professzionálisabbra: 'Bocsi, de elfelejtettem megcsinálni a doksit, holnap küldöm.'", why: "Stílusjavítás / Rewriting." },
+            { cat: 'productivity', text: "Adj 5 tippet, hogyan aludjak el gyorsabban, ha stresszes vagyok.", why: "Tanácsadás (Life hacks)." },
+            { cat: 'productivity', text: "Rendezd táblázatba a következő filmeket megjelenési év és rendező szerint: [Film lista].", why: "Adatrendszerezés." },
+            { cat: 'productivity', text: "Hogyan vegyem ki a vörösbor foltot a fehér szőnyegből? Lépésről lépésre.", why: "Háztartási segítség." },
+            { cat: 'productivity', text: "Generálj egy edzéstervet kezdőknek, eszközök nélkül, otthoni végzésre, heti 3 alkalommal.", why: "Személyi edző funkció." },
+            { cat: 'productivity', text: "Foglald össze a tegnapi meeting jegyzeteimet egy rövid emailbe a főnöknek: [Jegyzetek].", why: "Információ tömörítés és formázás." }
+        ];
+
+        const categories = [
+            { id: 'business', name: 'Üzleti & Marketing', icon: 'briefcase' },
+            { id: 'education', name: 'Tanulás & Oktatás', icon: 'graduation-cap' },
+            { id: 'creative', name: 'Kreatív Írás', icon: 'pen-tool' },
+            { id: 'coding', name: 'Programozás', icon: 'code' },
+            { id: 'productivity', name: 'Hétköznapok', icon: 'coffee' }
+        ];
+
+        let currentCategory = 'business';
+
+        function renderCategories() {
+            const container = document.getElementById('category-tabs');
+            container.innerHTML = categories.map(cat => `
+                <button onclick="setCategory('${cat.id}')" 
+                    class="px-4 py-2 rounded-full border transition flex items-center gap-2 ${currentCategory === cat.id ? 'bg-brand-600 text-white border-brand-600 shadow-md' : 'bg-white dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'}">
+                    <i data-lucide="${cat.icon}" class="w-4 h-4"></i> ${cat.name}
+                </button>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function renderPrompts() {
+            const container = document.getElementById('prompt-container');
+            const filtered = prompts.filter(p => p.cat === currentCategory);
+            
+            container.innerHTML = filtered.map(p => `
+                <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition group">
+                    <div class="mb-4">
+                        <span class="text-xs font-bold uppercase tracking-wider text-brand-500 bg-brand-50 dark:bg-brand-900/30 px-2 py-1 rounded">Prompt</span>
+                    </div>
+                    <div class="bg-slate-100 dark:bg-slate-900 p-4 rounded-lg font-mono text-sm text-slate-700 dark:text-slate-300 mb-4 relative">
+                        "${p.text}"
+                        <button onclick="copyToClipboard(this, '${p.text.replace(/'/g, "\\'")}')" class="absolute top-2 right-2 p-2 bg-white dark:bg-slate-800 rounded shadow-sm hover:text-brand-600 transition" title="Másolás">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 italic">
+                        <i data-lucide="info" class="w-3 h-3 inline mr-1"></i> ${p.why}
+                    </p>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function setCategory(id) {
+            currentCategory = id;
+            renderCategories();
+            renderPrompts();
+        }
+
+        function copyToClipboard(btn, text) {
+            navigator.clipboard.writeText(text);
+            const originalIcon = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="check" class="w-4 h-4 text-green-500"></i>';
+            lucide.createIcons();
+            setTimeout(() => {
+                btn.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i>';
+                lucide.createIcons();
+            }, 2000);
+        }
+
+        // --- 2. KÉP PROMPTOK GENERÁLÁS ---
+        const imagePrompts = [
+            { title: "Fotorealisztikus", text: "Portré egy idős halászról, ráncos arc, szakáll, esőkabát, viharos tenger a háttérben, drámai villámok, cinematic lighting, 8k, highly detailed.", style: "bg-blue-900" },
+            { title: "Low Poly / 3D", text: "Egy kis róka ül a havon, low poly stílus, origami hatás, pasztell színek, soft lighting, 3d render, blender.", style: "bg-orange-500" },
+            { title: "Cyberpunk", text: "Futurisztikus Budapest utcakép, repülő autók, neon reklámok, eső, éjszaka, cyberpunk stílus, vibrant colors.", style: "bg-purple-600" },
+            { title: "Logó Terv", text: "Minimalista vektoros logó egy kávézónak, gőzölgő kávéscsésze vonalrajz, flat design, fehér háttér, fekete vonalak.", style: "bg-white text-black border" },
+            { title: "Olajfestmény", text: "Egy vidéki házikó a hegyekben, virágos mező, impresszionista stílus, Claude Monet stílusa, vastag ecsetvonások.", style: "bg-yellow-700" }
+        ];
+
+        function renderImagePrompts() {
+            const container = document.getElementById('image-prompts');
+            container.innerHTML = imagePrompts.map(img => `
+                <div class="group cursor-pointer">
+                    <div class="h-32 ${img.style} rounded-t-xl flex items-center justify-center relative overflow-hidden">
+                         <span class="font-bold uppercase tracking-widest text-xs ${img.title === 'Logó Terv' ? 'text-black' : 'text-white'} opacity-70">${img.title}</span>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-b-xl">
+                        <p class="text-xs text-slate-300 line-clamp-3 group-hover:line-clamp-none transition-all duration-300 font-mono">
+                            ${img.text}
+                        </p>
+                        <button onclick="copyToClipboard(this, '${img.text}')" class="mt-2 text-xs text-purple-300 hover:text-white flex items-center gap-1">
+                            <i data-lucide="copy" class="w-3 h-3"></i> Másolás
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- 3. SZIMULÁTOR LOGIKA ---
+        const simulatorForm = document.getElementById('simulator-form');
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+
+        simulatorForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // User üzenet megjelenítése
+            addMessage('user', text);
+            userInput.value = '';
+
+            // AI "gondolkodik"
+            const typingId = showTyping();
+
+            // Szimulált válasz generálás
+            setTimeout(() => {
+                removeTyping(typingId);
+                const response = generateAIResponse(text);
+                addMessage('ai', response);
+            }, 1500); // 1.5 mp késleltetés
+        });
+
+        function addMessage(sender, text) {
+            const div = document.createElement('div');
+            div.className = `flex items-start gap-4 ${sender === 'user' ? 'flex-row-reverse' : ''}`;
+            
+            const avatar = sender === 'user' 
+                ? `<div class="w-8 h-8 rounded-full bg-slate-400 flex-shrink-0 flex items-center justify-center text-white"><i data-lucide="user" class="w-4 h-4"></i></div>`
+                : `<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex-shrink-0 flex items-center justify-center text-white font-bold">AI</div>`;
+
+            const bubbleClass = sender === 'user'
+                ? 'bg-brand-600 text-white rounded-l-xl rounded-br-xl'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-r-xl rounded-bl-xl';
+
+            div.innerHTML = `
+                ${avatar}
+                <div class="${bubbleClass} p-4 max-w-[80%] whitespace-pre-wrap leading-relaxed shadow-sm text-sm">${text}</div>
+            `;
+            
+            chatBox.appendChild(div);
+            lucide.createIcons();
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function showTyping() {
+            const id = 'typing-' + Date.now();
+            const div = document.createElement('div');
+            div.id = id;
+            div.className = `flex items-start gap-4`;
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex-shrink-0 flex items-center justify-center text-white font-bold">AI</div>
+                <div class="bg-slate-100 dark:bg-slate-800 p-4 rounded-r-xl rounded-bl-xl text-slate-500">
+                    <span class="typing-cursor">Gondolkodom...</span>
+                </div>
+            `;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return id;
+        }
+
+        function removeTyping(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        function generateAIResponse(input) {
+            const lowerInput = input.toLowerCase();
+
+            // Kulcsszó alapú logika (Mock AI)
+            if (lowerInput.includes('kép') || lowerInput.includes('fotó') || lowerInput.includes('rajz')) {
+                return `🖌️ [Képgenerálás Szimuláció]\n\nÉrtem, képet szeretnél! Mivel ez egy szöveges szimulátor, leírom, mit látnál:\n\nGeneráltam neked egy képet a leírásod alapján. Ha valódi AI-t használnál (pl. Midjourney), érdemes hozzáadni a stílust is (pl. "photorealistic" vagy "cartoon style").\n\nTipp: Próbáld megadni a fényviszonyokat is a prompthoz!`;
+            }
+            
+            if (lowerInput.includes('lista') || lowerInput.includes('sorold') || lowerInput.includes('gyűjtsd')) {
+                return `📋 [Lista Generálás]\n\nItt van a lista, amit kértél:\n\n1. Első fontos pont a témában\n2. Második releváns elem\n3. Harmadik szempont\n4. Negyedik tényező\n5. Ötödik elem\n\nJó a promptod, mert konkrét formátumot kértél (lista)!`;
+            }
+
+            if (lowerInput.includes('kód') || lowerInput.includes('program') || lowerInput.includes('script') || lowerInput.includes('html') || lowerInput.includes('python')) {
+                return `💻 [Kód Generálás]\n\nTermészetesen! Itt egy példa a kért kódra:\n\n\`\`\`javascript\nfunction helloWorld() {\n  console.log("Szia Világ!");\n}\n\`\`\`\n\nEgy valódi AI el is magyarázná, mit csinál a kód. Ha hibát kapsz, másold vissza a hibaüzenetet az AI-nak, tud segíteni a javításban!`;
+            }
+
+            if (lowerInput.includes('levél') || lowerInput.includes('email') || lowerInput.includes('szöveg') || lowerInput.includes('vers')) {
+                return `📝 [Szövegírás]\n\n"Tisztelt Címzett!/Kedves Barátom!...\n\n[Itt következne a hosszú, megírt szöveg a stílusnak megfelelően]..."\n\nEz egy jó kérés! Ha nem tetszik a hangnem, nyugodtan írd meg az AI-nak: "Legyen kicsit hivatalosabb" vagy "Legyen viccesebb".`;
+            }
+
+            // Fallback (Általános válasz ha nincs kulcsszó)
+            return `🤔 Érdekes prompt!\n\nEgy valódi AI most valószínűleg visszakérdezne, vagy adna egy általános választ, mert a kérésed kicsit rövid vagy általános volt.\n\nPróbáld meg a **B.S.K.K.** módszert:\n- **B**eosztás (Kinek írjon?)\n- **S**tílus (Hogyan írjon?)\n- **K**ontextus (Mi a háttérsztori?)\n- **K**imenet (Lista, email, táblázat?)\n\nPróbáld újra kicsit részletesebben!`;
+        }
+
+        // --- 4. TÉMA VÁLTÓ ---
+        const themeToggle = document.getElementById('theme-toggle');
+        
+        // Check local storage or system preference
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            if (document.documentElement.classList.contains('dark')) {
+                localStorage.theme = 'dark';
+            } else {
+                localStorage.theme = 'light';
+            }
+        });
+
+        // INIT
+        renderCategories();
+        renderPrompts();
+        renderImagePrompts();
+        lucide.createIcons();
+
+    </script>
+</body>
+</html>

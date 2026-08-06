@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MancsTérkép - Javított térkép réteg</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui;background:#f8f6f2;color:#1f2937;height:100dvh;display:flex;flex-direction:column}
+header{height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:#fff;border-bottom:1px solid #e5e7eb;z-index:1000;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800}
+.badge{width:32px;height:32px;background:#111;color:#fff;border-radius:8px;display:grid;place-items:center}
+main{flex:1;display:flex;overflow:hidden;position:relative}
+#map{flex:1;z-index:1}
+.sidebar{width:380px;background:#fff;border-left:1px solid #e5e7eb;display:flex;flex-direction:column;z-index:500;overflow:hidden}
+@media(max-width:900px){.sidebar{position:absolute;bottom:0;left:0;right:0;height:46%;border-radius:20px 20px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.2);z-index:1000}}
+.tabs{display:flex;gap:8px;padding:10px}
+.tab{flex:1;padding:9px;border-radius:10px;border:1px solid #e5e7eb;background:#f9fafb;cursor:pointer;font-weight:600;font-size:13px}
+.tab.active{background:#111;color:#fff;border-color:#111}
+.panel{flex:1;overflow:auto;padding:0 14px 14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.chip{padding:5px 10px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:12px;cursor:pointer;display:flex;gap:5px;align-items:center}
+.chip.off{opacity:.4;text-decoration:line-through}
+.card{border:1px solid #eee;border-radius:14px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.card:hover{border-color:#111}
+.meta{display:flex;justify-content:space-between;font-size:11px;color:#6b7280;margin-bottom:4px}
+.progress{height:4px;background:#f3f4f6;border-radius:99px;overflow:hidden;margin:6px 0}
+.progress i{display:block;height:100%}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+.btn-primary{background:#111;color:#fff}
+.btn-ghost{background:#f3f4f6}
+.fab{position:absolute;right:18px;bottom:18px;z-index:800;width:54px;height:54px;border-radius:16px;background:#111;color:#fff;font-size:26px;display:grid;place-items:center;box-shadow:0 10px 24px rgba(0,0,0,.3);cursor:pointer;border:0}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);z-index:2000;display:none;place-items:center;padding:14px}
+.modal.open{display:grid}
+.modal-card{width:min(520px,100%);background:#fff;border-radius:20px;padding:18px;max-height:90vh;overflow:auto}
+.field{margin:8px 0}
+.field label{font-size:12px;font-weight:700;display:block;margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #e5e7eb;background:#f9fafb;font-size:13px}
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.type-opt{padding:8px;border-radius:10px;border:2px solid #f3f4f6;cursor:pointer;display:flex;gap:6px;align-items:center;font-size:12px;font-weight:600}
+.type-opt.sel{border-color:#111;background:#111;color:#fff}
+.dot{width:8px;height:8px;border-radius:50%}
+.leaflet-popup-content-wrapper{border-radius:14px}
+.custom-pin{width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:grid;place-items:center;border:2px solid white;box-shadow:0 6px 16px rgba(0,0,0,.3)}
+.custom-pin span{transform:rotate(45deg);font-size:16px}
+</style>
+</head>
+<body>
+<header>
+<div class="logo"><div class="badge">🐾</div> MancsTérkép - Gyál</div>
+<div style="display:flex;gap:8px;align-items:center"><span id="cnt" style="font-size:11px;background:#fef3c7;padding:5px 9px;border-radius:999px;border:1px solid #fde68a">betöltés...</span><button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="locateMe()">📍 Helyem</button></div>
+</header>
+<main>
+<div id="map"></div>
+<button class="fab" onclick="openModal()">＋</button>
+<div class="sidebar">
+<div class="tabs"><button class="tab active" id="t1" onclick="switchTab('feed')">Feed</button><button class="tab" id="t2" onclick="switchTab('info')">Infó</button></div>
+<div class="panel" id="feedPanel"><div class="chips" id="chips"></div><div id="feed"></div></div>
+<div class="panel" id="infoPanel" style="display:none"><p style="font-size:13px;line-height:1.5">Kattints a térképre a jelzés helyének kiválasztásához. A térkép most már valódi OSM csempéket használ.</p><p style="font-size:12px;color:#6b7280">Ha üres a térkép: ellenőrizd az internetet, mert az OSM csempék online jönnek. Offline módban a szürke háttér látszik.</p></div>
+</div>
+</main>
+<div class="modal" id="modal">
+<div class="modal-card">
+<div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0;font-size:16px">Új jelzés</h3><button class="btn btn-ghost" onclick="closeModal()">✕</button></div>
+<div class="field"><label>Típus</label><div class="type-grid" id="typeGrid"></div></div>
+<div class="field"><label>Leírás</label><textarea id="fDesc" rows="3" placeholder="Pl. Üveg a futtató bejáratánál"></textarea></div>
+<div class="field" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>Érvényesség</label><select id="fTtl"><option value="3">3 óra</option><option value="12">12 óra</option><option value="24" selected>24 óra</option><option value="48">48 óra</option></select></div><div><label>Koord</label><input id="fCoord" readonly></div></div>
+<div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Mégse</button><button class="btn btn-primary" style="flex:2" onclick="submitReport()">Mentés</button></div>
+</div>
+</div>
+<script>
+const TYPES={poison:{label:'Mérgezés',emoji:'☠️',color:'#ef4444'},glass:{label:'Üveg / szög',emoji:'⚠️',color:'#f97316'},grass:{label:'Toklász',emoji:'🌾',color:'#eab308'},wild:{label:'Vad / Róka',emoji:'🦊',color:'#a855f7'},block:{label:'Lezárás',emoji:'🚧',color:'#3b82f6'},info:{label:'Víz / Infó',emoji:'💧',color:'#22c55e'}};
+let reports=JSON.parse(localStorage.getItem('mancs_reports')||'null')||[
+{id:'1',type:'glass',desc:'Üvegszilánk a Bartók liget bejáratánál',lat:47.383,lng:19.214,createdAt:Date.now()-7200000,expiresAt:Date.now()+72000000,votes:3},
+{id:'2',type:'grass',desc:'Erős toklász a vasúti töltés mentén',lat:47.379,lng:19.225,createdAt:Date.now()-1800000,expiresAt:Date.now()+36000000,votes:5},
+{id:'3',type:'poison',desc:'Gyanús kék granulátum a bokorban!',lat:47.386,lng:19.208,createdAt:Date.now()-600000,expiresAt:Date.now()+18000000,votes:8},
+{id:'4',type:'wild',desc:'Róka a temető mögött este',lat:47.375,lng:19.21,createdAt:Date.now()-12000000,expiresAt:Date.now()+54000000,votes:2},
+{id:'5',type:'info',desc:'Friss víz a Tulipán ovinál',lat:47.3815,lng:19.218,createdAt:Date.now()-24000000,expiresAt:Date.now()+7200000,votes:12}
+];
+let filters=Object.keys(TYPES).reduce((a,k)=>{a[k]=true;return a},{}),selectedType='glass',picked={lat:47.381,lng:19.213},map,markersLayer,userMarker,tempMarker;
+function initMap(){
+ map=L.map('map',{zoomControl:false}).setView([47.381,19.213],14);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(map);
+ markersLayer=L.layerGroup().addTo(map);
+ L.control.zoom({position:'topleft'}).addTo(map);
+ map.on('click',e=>{picked={lat:e.latlng.lat,lng:e.latlng.lng};updateTemp();document.getElementById('fCoord').value=picked.lat.toFixed(5)+', '+picked.lng.toFixed(5);});
+ setTimeout(()=>map.invalidateSize(),200);
+ render();
+}
+function makeIcon(type){
+ const t=TYPES[type];return L.divIcon({className:'',html:`<div class="custom-pin" style="background:${t.color}"><span>${t.emoji}</span></div>`,iconSize:[36,36],iconAnchor:[18,36]});
+}
+function renderMarkers(){
+ markersLayer.clearLayers();
+ getVisible().forEach(r=>{
+  const m=L.marker([r.lat,r.lng],{icon:makeIcon(r.type)}).addTo(markersLayer);
+  const tp=TYPES[r.type];
+  m.bindPopup(`<b>${tp.emoji} ${tp.label}</b><br>${r.desc}<br><small>${r.votes} megerősítés • lejár ${Math.ceil((r.expiresAt-Date.now())/3600000)}ó</small><br><button onclick="vote('${r.id}')" style="margin-top:6px;padding:4px 8px;border-radius:6px;border:0;background:#111;color:#fff;cursor:pointer">👍 Megerősít</button>`);
+ });
+}
+function getVisible(){return reports.filter(r=>r.expiresAt>Date.now() && filters[r.type]);}
+function renderChips(){const c=document.getElementById('chips');c.innerHTML='';Object.entries(TYPES).forEach(([k,v])=>{const el=document.createElement('div');el.className='chip'+(filters[k]?'':' off');el.innerHTML=`<span class="dot" style="background:${v.color}"></span>${v.emoji} ${v.label}`;el.onclick=()=>{filters[k]=!filters[k];render();};c.appendChild(el);});}
+function renderTypeGrid(){const g=document.getElementById('typeGrid');g.innerHTML='';Object.entries(TYPES).forEach(([k,v])=>{const d=document.createElement('div');d.className='type-opt'+(selectedType===k?' sel':'');d.innerHTML=`<span class="dot" style="background:${v.color}"></span>${v.emoji} ${v.label}`;d.onclick=()=>{selectedType=k;renderTypeGrid();};g.appendChild(d);});}
+function renderFeed(){
+ const feed=document.getElementById('feed');feed.innerHTML='';const now=Date.now();
+ getVisible().sort((a,b)=>b.votes-a.votes).forEach(r=>{
+  const remain=r.expiresAt-now;const total=r.expiresAt-r.createdAt;const pct=Math.max(0,remain/total*100);const tp=TYPES[r.type];
+  const el=document.createElement('div');el.className='card';
+  el.innerHTML=`<div class="meta"><span style="display:flex;gap:5px;align-items:center"><span class="dot" style="background:${tp.color}"></span><b>${tp.label}</b></span><span>${Math.ceil(remain/3600000)}ó van hátra</span></div><div style="font-size:12px">${r.desc}</div><div class="progress"><i style="width:${pct}%;background:${tp.color}"></i></div><div class="meta"><span>${r.votes} megerősítés</span><span onclick="event.stopPropagation();vote('${r.id}');">👍</span></div>`;
+  el.onclick=()=>{map.setView([r.lat,r.lng],16);};
+  feed.appendChild(el);
+ });
+ document.getElementById('cnt').textContent=`● ${getVisible().length} aktív`;
+}
+function render(){renderChips();renderTypeGrid();renderMarkers();renderFeed();localStorage.setItem('mancs_reports',JSON.stringify(reports));}
+function updateTemp(){if(!map) return; if(tempMarker) map.removeLayer(tempMarker); tempMarker=L.marker([picked.lat,picked.lng],{icon:L.divIcon({className:'',html:`<div style="background:#111;color:#fff;padding:3px 7px;border-radius:999px;font-size:10px;white-space:nowrap">📍 Új jelzés</div>`,iconSize:[70,20],iconAnchor:[35,0]}),draggable:true}).addTo(map); tempMarker.on('dragend',e=>{const p=e.target.getLatLng();picked={lat:p.lat,lng:p.lng};document.getElementById('fCoord').value=picked.lat.toFixed(5)+', '+picked.lng.toFixed(5);});}
+function vote(id){const r=reports.find(x=>x.id===id);if(r){r.votes++;render();}}
+function switchTab(t){document.getElementById('t1').classList.toggle('active',t==='feed');document.getElementById('t2').classList.toggle('active',t==='info');document.getElementById('feedPanel').style.display=t==='feed'?'block':'none';document.getElementById('infoPanel').style.display=t==='info'?'block':'none';setTimeout(()=>map&&map.invalidateSize(),100);}
+function openModal(){document.getElementById('modal').classList.add('open');document.getElementById('fCoord').value=picked.lat.toFixed(5)+', '+picked.lng.toFixed(5);}
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+function submitReport(){const desc=document.getElementById('fDesc').value.trim();if(!desc) return alert('Írj leírást!');const ttl=parseInt(document.getElementById('fTtl').value);reports.unshift({id:Date.now()+'',type:selectedType,desc,lat:picked.lat,lng:picked.lng,createdAt:Date.now(),expiresAt:Date.now()+ttl*3600000,votes:1});document.getElementById('fDesc').value='';closeModal();render();updateTemp();}
+function locateMe(){if(!navigator.geolocation) return; navigator.geolocation.getCurrentPosition(p=>{const lat=p.coords.latitude,lng=p.coords.longitude;picked={lat,lng};if(userMarker) map.removeLayer(userMarker);userMarker=L.circleMarker([lat,lng],{radius:8,color:'#fff',fillColor:'#111',fillOpacity:1,weight:3}).addTo(map);map.setView([lat,lng],15);updateTemp();render();},{},{enableHighAccuracy:true});}
+window.addEventListener('load',initMap);
+setInterval(()=>{const b=reports.length;reports=reports.filter(r=>r.expiresAt>Date.now());if(reports.length!==b) render();},60000);
+</script>
+</body>
+</html>

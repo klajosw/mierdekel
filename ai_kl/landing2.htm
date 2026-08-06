@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mierdekel.hu - Informatikai Szakértelem</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+        
+        :root {
+            --primary: 59 130 246;
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        
+        .heading-font {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .hero-bg {
+            background: linear-gradient(135deg, #0f172a 0%, #1e2937 100%);
+        }
+
+        .service-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .service-card:hover {
+            transform: translateY(-12px) scale(1.03);
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+        }
+
+        .nav-link {
+            position: relative;
+        }
+        
+        .nav-link:after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -4px;
+            left: 0;
+            background-color: rgb(59 130 246);
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link:hover:after {
+            width: 100%;
+        }
+
+        .gradient-text {
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200">
+    <!-- NAV -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-lg border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-2xl font-bold">M</div>
+                <div>
+                    <span class="heading-font text-2xl font-semibold tracking-tight">Mierdekel</span>
+                    <span class="text-xs text-slate-400 block -mt-1">.hu</span>
+                </div>
+            </div>
+            
+            <div class="hidden md:flex items-center gap-8 text-sm font-medium">
+                <a href="#szolgaltatasok" class="nav-link">Szolgáltatások</a>
+                <a href="#rolam" class="nav-link">Rólam</a>
+                <a href="#kapcsolat" class="nav-link">Kapcsolat</a>
+            </div>
+            
+            <a href="#kapcsolat" 
+               class="px-6 py-3 bg-blue-600 hover:bg-blue-500 transition-colors rounded-2xl font-semibold flex items-center gap-2">
+                <i class="fas fa-paper-plane"></i>
+                <span>Kapcsolat</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero-bg min-h-screen flex items-center pt-20">
+        <div class="max-w-7xl mx-auto px-6 py-24 grid md:grid-cols-2 gap-12 items-center">
+            <div class="space-y-8">
+                <div class="inline-flex items-center gap-2 px-4 py-2 bg-slate-800/50 rounded-3xl text-sm border border-slate-700">
+                    <span class="relative flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                    Elérhető - Aktuális projektek
+                </div>
+                
+                <h1 class="heading-font text-6xl md:text-7xl font-bold leading-tight tracking-tighter">
+                    Informatikai<br>problémákra<br><span class="gradient-text">megoldásokat</span>
+                </h1>
+                
+                <p class="text-xl text-slate-400 max-w-lg">
+                    Oktatástól az AI-ig, adatbázisoktól a térinformatikáig. 
+                    Modern technológiákkal, gyakorlati tapasztalattal segítek vállalkozásoknak és egyéneknek.
+                </p>
+                
+                <div class="flex flex-wrap gap-4">
+                    <a href="#kapcsolat" 
+                       class="px-8 py-4 bg-white text-slate-900 hover:bg-slate-100 transition-all rounded-3xl font-semibold text-lg flex items-center gap-3 group">
+                        Kezdjük el!
+                        <i class="fas fa-arrow-right group-active:translate-x-2 transition"></i>
+                    </a>
+                    <a href="https://klajosw.blogspot.com" target="_blank"
+                       class="px-8 py-4 border border-slate-700 hover:border-slate-500 transition-all rounded-3xl font-medium text-lg flex items-center gap-3">
+                        Blogom
+                    </a>
+                </div>
+                
+                <div class="flex items-center gap-8 pt-6 text-sm">
+                    <div>
+                        <div class="text-emerald-400 font-mono text-3xl font-bold">15+</div>
+                        <div class="text-slate-400">Év tapasztalat</div>
+                    </div>
+                    <div>
+                        <div class="text-emerald-400 font-mono text-3xl font-bold">8</div>
+                        <div class="text-slate-400">Szakterület</div>
+                    </div>
+                    <div>
+                        <div class="text-emerald-400 font-mono text-3xl font-bold">100%</div>
+                        <div class="text-slate-400">Gyakorlati fókusz</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hero vizuál -->
+            <div class="relative">
+                <div class="absolute -inset-10 bg-blue-500/10 blur-3xl rounded-[4rem]"></div>
+                <div class="bg-slate-900/70 backdrop-blur-xl border border-slate-700 rounded-3xl p-8 relative">
+                    <div class="aspect-video bg-gradient-to-br from-blue-900/50 to-slate-800 rounded-2xl flex items-center justify-center overflow-hidden">
+                        <div class="text-center">
+                            <div class="w-24 h-24 mx-auto bg-gradient-to-br from-blue-400 to-cyan-400 rounded-2xl flex items-center justify-center mb-6 rotate-12 shadow-2xl">
+                                <i class="fas fa-brain text-5xl text-slate-900"></i>
+                            </div>
+                            <p class="text-blue-300 font-medium">AI • Cloud • Data • Automation</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Floating badges -->
+                    <div class="absolute -top-6 -right-6 bg-slate-800 border border-slate-600 rounded-2xl px-5 py-3 flex items-center gap-3 shadow-xl">
+                        <i class="fas fa-robot text-2xl text-amber-400"></i>
+                        <div>
+                            <div class="text-sm font-semibold">AI Megoldások</div>
+                            <div class="text-xs text-slate-400">Aktív</div>
+                        </div>
+                    </div>
+                    
+                    <div class="absolute -bottom-6 -left-6 bg-slate-800 border border-slate-600 rounded-2xl px-5 py-3 flex items-center gap-3 shadow-xl">
+                        <i class="fas fa-map-marked-alt text-2xl text-emerald-400"></i>
+                        <div>
+                            <div class="text-sm font-semibold">Térinformatika</div>
+                            <div class="text-xs text-slate-400">Élő térképek</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-slate-400 text-xs tracking-widest">
+            <div>Görgess le</div>
+            <i class="fas fa-chevron-down animate-bounce"></i>
+        </div>
+    </section>
+
+    <!-- SZOLGALTATASOK -->
+    <section id="szolgaltatasok" class="py-24 bg-slate-900">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <span class="px-4 py-2 bg-blue-950 text-blue-400 text-sm rounded-3xl font-medium">Szakmai területeim</span>
+                <h2 class="heading-font text-5xl font-bold mt-4">Miben tudok segíteni?</h2>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Card 1 -->
+                <div class="service-card bg-slate-800/50 border border-slate-700 rounded-3xl p-8 hover:border-blue-500 group">
+                    <div class="w-14 h-14 bg-blue-500/10 text-blue-400 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-3">Oktatás & Mentorálás</h3>
+                    <p class="text-slate-400">Online képzések, felkészítés, tesztek, vizsgák lebonyolítása. Junior fejlesztők mentorálása és szakértői tanácsadás.</p>
+                    <a href="https://forms.gle/nNR1qDaNhvRxyeaQ8" target="_blank" class="mt-8 inline-flex items-center text-blue-400 hover:text-blue-300 text-sm font-medium">
+                        Képzés igénylése <i class="ml-2 fas fa-arrow-right"></i>
+                    </a>
+                </div>
+                
+                <!-- Card 2 -->
+                <div class="service-card bg-slate-800/50 border border-slate-700 rounded-3xl p-8 hover:border-purple-500 group">
+                    <div class="w-14 h-14 bg-purple-500/10 text-purple-400 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition">
+                        <i class="fas fa-cloud"></i>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-3">Cloud & Open Source</h3>
+                    <p class="text-slate-400">Felhőalapú megoldások bevezetése, Open Source technológiák támogatása, oktatása és optimalizálása.</p>
+                </div>
+                
+                <!-- Card 3 -->
+                <div class="service-card bg-slate-800/50 border border-slate-700 rounded-3xl p-8 hover:border-amber-500 group">
+                    <div class="w-14 h-14 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-3">Mesterséges Intelligencia</h3>
+                    <p class="text-slate-400">AI megoldások bevezetése, automatizálás (Power Automate, Python, stb.), intelligens folyamatok.</p>
+                </div>
+                
+                <!-- Card 4 -->
+                <div class="service-card bg-slate-800/50 border border-slate-700 rounded-3xl p-8 hover:border-emerald-500 group">
+                    <div class="w-14 h-14 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-3">Adat & Analitika</h3>
+                    <p class="text-slate-400">Adatbázis építés, optimalizálás, adatbányászat, riportok, vizualizáció, geo-elemzés.</p>
+                </div>
+                
+                <!-- Card 5 -->
+                <div class="service-card bg-slate-800/50 border border-slate-700 rounded-3xl p-8 hover:border-rose-500 group">
+                    <div class="w-14 h-14 bg-rose-500/10 text-rose-400 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition">
+                        <i class="fas fa-map"></i>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-3">Térinformatika</h3>
+                    <p class="text-slate-400">Digitális térképek, GPS adatok feldolgozása, geo-pozíció alapú elemzések és vizualizációk.</p>
+                    <a href="https://forms.gle/qJh68bL7Z9adxk8R9" target="_blank" class="mt-8 inline-flex items-center text-blue-400 hover:text-blue-300 text-sm font-medium">
+                        Térkép projekt <i class="ml-2 fas fa-arrow-right"></i>
+                    </a>
+                </div>
+                
+                <!-- Card 6 -->
+                <div class="service-card bg-slate-800/50 border border-slate-700 rounded-3xl p-8 hover:border-cyan-500 group">
+                    <div class="w-14 h-14 bg-cyan-500/10 text-cyan-400 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition">
+                        <i class="fas fa-palette"></i>
+                    </div>
+                    <h3 class="text-2xl font-semibold mb-3">Digitális Tartalom</h3>
+                    <p class="text-slate-400">Weboldalak, videók, képek, dizájn, tartalomgyártás és cégportálok teljes körű támogatása.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RÓLAM / ÉRTÉKEK -->
+    <section id="rolam" class="py-24">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid md:grid-cols-12 gap-16 items-center">
+                <div class="md:col-span-5">
+                    <div class="sticky top-28">
+                        <h2 class="heading-font text-5xl font-bold leading-tight">Gyakorlatias tudás, azonnali érték</h2>
+                        <p class="mt-6 text-slate-400 text-lg">
+                            Nem csak elméletet adok át. Valós projektekkel, élő példákkal és azonnal használható megoldásokkal dolgozom.
+                        </p>
+                        <div class="mt-12 flex gap-4">
+                            <div class="text-center">
+                                <div class="text-4xl font-mono font-bold text-blue-400">AI</div>
+                                <div class="text-xs uppercase tracking-widest">Modern eszközök</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-4xl font-mono font-bold text-emerald-400">DATA</div>
+                                <div class="text-xs uppercase tracking-widest">Tisztán és jól</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="md:col-span-7 space-y-8">
+                    <div class="bg-slate-900 border border-slate-800 p-8 rounded-3xl">
+                        <p class="italic text-lg">"A technológia csak akkor értékes, ha megold problémákat és növeli a hatékonyságot."</p>
+                        <div class="mt-6 flex items-center gap-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-2xl"></div>
+                            <div>
+                                <div class="font-semibold">Klajkó László (mierdekel)</div>
+                                <div class="text-slate-400 text-sm">Informatikai szakértő, mentor, tanácsadó</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="bg-slate-900/70 p-6 rounded-3xl">
+                            <i class="fas fa-lightbulb text-4xl text-yellow-400 mb-4"></i>
+                            <h4 class="font-semibold mb-1">Folyamatos tanulás</h4>
+                            <p class="text-sm text-slate-400">Mindig az aktuális, legértékesebb technológiákkal dolgozom.</p>
+                        </div>
+                        <div class="bg-slate-900/70 p-6 rounded-3xl">
+                            <i class="fas fa-handshake text-4xl text-emerald-400 mb-4"></i>
+                            <h4 class="font-semibold mb-1">Személyre szabott</h4>
+                            <p class="text-sm text-slate-400">Minden projektet az ügyfél igényeihez igazítok.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- KAPCSOLAT -->
+    <section id="kapcsolat" class="py-24 bg-slate-900">
+        <div class="max-w-4xl mx-auto px-6 text-center">
+            <h2 class="heading-font text-5xl font-bold mb-6">Vegyük fel a kapcsolatot</h2>
+            <p class="text-slate-400 max-w-md mx-auto">Mondd el, miben segíthetek! Kérdőíveimmel gyorsan el tudunk indulni.</p>
+            
+            <div class="mt-16 grid md:grid-cols-2 gap-8">
+                <a href="https://forms.gle/nNR1qDaNhvRxyeaQ8" target="_blank"
+                   class="group block bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-blue-500 p-8 rounded-3xl transition-all text-left">
+                    <i class="fas fa-graduation-cap text-4xl text-blue-400 mb-6"></i>
+                    <div class="font-semibold text-xl mb-2 group-hover:text-blue-300">Oktatás / Mentorálás</div>
+                    <div class="text-sm text-slate-400">Képzés, vizsga, junior támogatás</div>
+                </a>
+                
+                <a href="https://forms.gle/Ctedj4ZC2xVGC6MNA" target="_blank"
+                   class="group block bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-purple-500 p-8 rounded-3xl transition-all text-left">
+                    <i class="fas fa-rocket text-4xl text-purple-400 mb-6"></i>
+                    <div class="font-semibold text-xl mb-2 group-hover:text-purple-300">Új technológiák</div>
+                    <div class="text-sm text-slate-400">Cloud, AI, Open Source bevezetés</div>
+                </a>
+                
+                <a href="https://forms.gle/eAJFXvo3Nqm7ovT76" target="_blank"
+                   class="group block bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500 p-8 rounded-3xl transition-all text-left">
+                    <i class="fas fa-chart-bar text-4xl text-emerald-400 mb-6"></i>
+                    <div class="font-semibold text-xl mb-2 group-hover:text-emerald-300">Adat & Elemzés</div>
+                    <div class="text-sm text-slate-400">Adatbázis, riportok, feltárás</div>
+                </a>
+                
+                <a href="https://forms.gle/5GJF1UNaCX3XBMsy8" target="_blank"
+                   class="group block bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-rose-500 p-8 rounded-3xl transition-all text-left">
+                    <i class="fas fa-video text-4xl text-rose-400 mb-6"></i>
+                    <div class="font-semibold text-xl mb-2 group-hover:text-rose-300">Digitális Tartalom</div>
+                    <div class="text-sm text-slate-400">Web, dizájn, videó, kép</div>
+                </a>
+            </div>
+            
+            <div class="mt-16 pt-12 border-t border-slate-800 flex flex-col md:flex-row items-center justify-center gap-8">
+                <a href="mailto:mierdekel@gmail.com" class="flex items-center gap-3 hover:text-blue-300 transition">
+                    <i class="fas fa-envelope text-2xl"></i>
+                    <span>mierdekel@gmail.com</span>
+                </a>
+                
+                <div class="flex gap-6 text-2xl">
+                    <a href="https://www.facebook.com/mierdekel/" target="_blank" class="hover:text-blue-400 transition"><i class="fab fa-facebook"></i></a>
+                    <a href="https://x.com/mierdekel" target="_blank" class="hover:text-sky-400 transition"><i class="fab fa-x-twitter"></i></a>
+                    <a href="https://hu.pinterest.com/mierdekel/" target="_blank" class="hover:text-red-400 transition"><i class="fab fa-pinterest"></i></a>
+                </div>
+            </div>
+            
+            <p class="text-xs text-slate-500 mt-20">
+                Adatkezelés: Csak a szükséges információkat kezeljük a feladat teljesítése érdekében, szerződéssel.
+            </p>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-black py-12 border-t border-slate-900">
+        <div class="max-w-7xl mx-auto px-6 text-center text-slate-500 text-sm">
+            <p>© 2026 Mierdekel.hu • Minden jog fenntartva</p>
+            <p class="mt-2">
+                <a href="https://klajosw.blogspot.com" target="_blank" class="hover:text-slate-300">Blog</a> • 
+                <a href="https://sites.google.com/site/klajosw" target="_blank" class="hover:text-slate-300">Eredeti oldal</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Tailwind script already included via CDN
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                if (this.getAttribute('href').length > 1) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }
+            });
+        });
+        
+        // Simple scroll effect for nav
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 100) {
+                nav.classList.add('shadow-2xl');
+            } else {
+                nav.classList.remove('shadow-2xl');
+            }
+        });
+    </script>
+</body>
+</html>

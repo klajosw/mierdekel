@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lokális Kutyás Riasztórendszer</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+            z-index: 1;
+        }
+        .ui-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+            width: 300px;
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #c9302c;
+        }
+        .location-btn {
+            background-color: #5cb85c;
+            margin-bottom: 15px;
+        }
+        .location-btn:hover {
+            background-color: #4cae4c;
+        }
+        #status {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+        }
+        /* Egyedi marker stílus a popuphoz */
+        .leaflet-popup-content h3 {
+            margin: 0 0 5px 0;
+            color: #d9534f;
+        }
+        .leaflet-popup-content p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        .timestamp {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 5px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div class="ui-panel">
+        <h2>Riasztás Bejelentése</h2>
+        
+        <button class="location-btn" onclick="centerMapOnUser()">📍 Helyzetem lekérése</button>
+
+        <div class="form-group">
+            <label for="alertType">Veszélyforrás típusa:</label>
+            <select id="alertType">
+                <option value="mérgezett csali">Mérgezett csali</option>
+                <option value="agresszív kóbor kutya">Agresszív kóbor kutya</option>
+                <option value="törött üveg/veszélyes hulladék">Törött üveg / Veszélyes hulladék</option>
+                <option value="kullancs fertőzött terület">Kullancs fertőzött terület</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="alertDescription">Rövid leírás (opcionális):</label>
+            <input type="text" id="alertDescription" placeholder="Pl.: a bokor alatt a park szélén">
+        </div>
+
+        <button onclick="addAlert()">⚠️ Bejelentés küldése</button>
+        <div id="status">Kattints a térképre vagy kérd le a helyzeted egy pont kijelöléséhez.</div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Térkép inicializálása Budapest koordinátákkal
+        let map = L.map('map').setView([47.4979, 19.0402], 13);
+        let currentMarker = null; // A felhasználó által kijelölt pont
+        let alerts = []; // A bejelentések tárolására (memóriában)
+
+        // OpenStreetMap csempe betöltése
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Térképre kattintás esemény: új pont kijelölése
+        map.on('click', function(e) {
+            setSelectionMarker(e.latlng);
+        });
+
+        // Pont kijelölése a térképen
+        function setSelectionMarker(latlng) {
+            if (currentMarker) {
+                map.removeLayer(currentMarker);
+            }
+            currentMarker = L.marker(latlng).addTo(map);
+            document.getElementById('status').innerText = "Pozíció kijelölve: " + latlng.lat.toFixed(4) + ", " + latlng.lng.toFixed(4);
+        }
+
+        // Felhasználó helyzetének lekérése (Geolocation API)
+        function centerMapOnUser() {
+            if ("geolocation" in navigator) {
+                document.getElementById('status').innerText = "Pozíció keresése...";
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    let latlng = L.latLng(position.coords.latitude, position.coords.longitude);
+                    map.setView(latlng, 16);
+                    setSelectionMarker(latlng);
+                }, function(error) {
+                    document.getElementById('status').innerText = "Hiba a helyzet lekérésekor: " + error.message;
+                });
+            } else {
+                document.getElementById('status').innerText = "A böngésző nem támogatja a helymeghatározást.";
+            }
+        }
+
+        // Új riasztás rögzítése
+        function addAlert() {
+            if (!currentMarker) {
+                alert("Kérlek, először jelölj ki egy pontot a térképen vagy kérd le a helyzetedet!");
+                return;
+            }
+
+            let type = document.getElementById('alertType').value;
+            let description = document.getElementById('alertDescription').value;
+            let timestamp = new Date().getTime(); // Rögzítés ideje milliszekundumban
+
+            // Adatstruktúra létrehozása
+            let alertData = {
+                latlng: currentMarker.getLatLng(),
+                type: type,
+                description: description,
+                timestamp: timestamp
+            };
+
+            alerts.push(alertData);
+            
+            // Marker eltávolítása a kijelölés után
+            map.removeLayer(currentMarker);
+            currentMarker = null;
+            document.getElementById('alertDescription').value = "";
+            document.getElementById('status').innerText = "Sikeres bejelentés!";
+
+            renderAlerts();
+        }
+
+        // Riasztások megjelenítése és a 24 órás elévülés ellenőrzése
+        function renderAlerts() {
+            // Meglévő fix markerek törlése (ebben a prototípusban a térkép minden rétegét frissítjük)
+            // Éles környezetben külön LayerGroup-ot érdemes használni.
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.Marker && layer !== currentMarker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            let currentTime = new Date().getTime();
+            let twentyFourHours = 24 * 60 * 60 * 1000;
+
+            // Szűrés: csak azokat tartjuk meg, amelyek nem régebbiek 24 óránál
+            alerts = alerts.filter(function(alertItem) {
+                return (currentTime - alertItem.timestamp) < twentyFourHours;
+            });
+
+            // Túlélő riasztások kirajzolása
+            alerts.forEach(function(alertItem) {
+                // Egyedi ikon készítése veszélytípustól függően (opcionális, most piros szín kódolva)
+                let customIcon = L.icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+
+                let marker = L.marker(alertItem.latlng, {icon: customIcon}).addTo(map);
+                
+                let timeString = new Date(alertItem.timestamp).toLocaleTimeString('hu-HU');
+                let popupContent = `
+                    <h3>Veszély: ${alertItem.type}</h3>
+                    <p>${alertItem.description ? alertItem.description : "Nincs megadva leírás."}</p>
+                    <span class="timestamp">Bejelentve: ${timeString} (24 óra után elévül)</span>
+                `;
+                marker.bindPopup(popupContent);
+            });
+        }
+
+        // Időzítő beállítása az automatikus tisztításhoz (pl. percenként frissít)
+        setInterval(renderAlerts, 60000);
+
+    </script>
+</body>
+</html>

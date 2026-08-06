@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hullámzó Szinusz és Koszinusz</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script>
+        let t = 0;
+        let circleX = 100;
+        let circleY = 100;
+        let circleRadius = 50;
+
+        function setup() {
+            createCanvas(400, 400);
+        }
+
+        function draw() {
+            background(0);
+            stroke(255);
+            noFill();
+            
+            // Rajzoljuk meg a kört
+            stroke(128);
+            circle(circleX, circleY, 2 * circleRadius);
+            
+            // Számoljuk ki a pont koordinátáit a kör kerületén
+            let angle = t;
+            let pointX = circleX + circleRadius * cos(angle);
+            let pointY = circleY + circleRadius * sin(angle);
+            
+            // Húzzunk egy vonalat a kör középpontjától a pontig
+            stroke(255);
+            line(circleX, circleY, pointX, pointY);
+            
+            // Rajzoljuk meg a pontot
+            fill(255, 0, 0);
+            circle(pointX, pointY, 8);
+            
+            translate(50, height / 2);
+            
+            stroke('red');
+            beginShape();
+            for (let x = 0; x < width - 100; x += 5) {
+                let y = 50 * sin(0.05 * x + t);
+                vertex(x, y);
+            }
+            endShape();
+            
+            stroke('blue');
+            beginShape();
+            for (let x = 0; x < width - 100; x += 5) {
+                let y = 50 * cos(0.05 * x + t);
+                vertex(x, y);
+            }
+            endShape();
+            
+            t += 0.1;
+        }
+    </script>
+</head>
+<body>
+</body>
+</html>

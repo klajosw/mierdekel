@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Molekula Építő</title>
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --secondary: #2196F3;
+            --danger: #f44336;
+            --warning: #FFC107;
+            --dark: #333;
+            --light: #f9f9f9;
+            --panel-bg: #ffffff;
+            --border-radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', 'Nunito', 'Segoe UI', sans-serif;
+            background-color: #e0f7fa;
+            color: var(--dark);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Top Navigation Bar */
+        #topbar {
+            background-color: var(--panel-bg);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        .mode-group, .action-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 10px 15px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .btn-mode {
+            background-color: #e0e0e0;
+            color: var(--dark);
+        }
+
+        .btn-mode.active {
+            background-color: var(--secondary);
+            color: white;
+            box-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
+        }
+
+        .btn-action {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .btn-warning {
+            background-color: var(--warning);
+            color: var(--dark);
+        }
+
+        /* Main Layout */
+        #main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebars */
+        .sidebar {
+            width: 250px;
+            background-color: var(--panel-bg);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+            z-index: 5;
+            overflow-y: auto;
+        }
+
+        #right-sidebar {
+            box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+        }
+
+        h2 {
+            font-size: 18px;
+            color: var(--secondary);
+            margin-bottom: 10px;
+            text-align: center;
+            border-bottom: 2px dashed #b3e5fc;
+            padding-bottom: 10px;
+        }
+
+        /* Atom Buttons */
+        .atom-btn {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 10px;
+            background-color: var(--light);
+            border: 2px solid #ddd;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .atom-btn:hover {
+            background-color: #e1f5fe;
+            border-color: var(--secondary);
+        }
+
+        .atom-btn.selected {
+            background-color: #b3e5fc;
+            border-color: var(--secondary);
+            box-shadow: 0 0 8px rgba(33, 150, 243, 0.4);
+        }
+
+        .atom-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid rgba(0,0,0,0.2);
+        }
+
+        /* Canvas Container */
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            cursor: grab;
+        }
+
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+
+        /* Educational Panel Elements */
+        .stat-box {
+            background-color: #fff9c4;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            border: 2px solid #fff59d;
+            margin-bottom: 15px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        #hint-box {
+            background-color: #e8f5e9;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            border: 2px solid #c8e6c9;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        /* Feedback Modal */
+        #feedback-modal {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            padding: 15px 25px;
+            border-radius: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes popIn {
+            0% { transform: translate(-50%, -20px) scale(0.8); opacity: 0; }
+            100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            #main { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; flex-direction: row; flex-wrap: wrap; padding: 10px; }
+            .atom-btn { flex: 1; min-width: 120px; }
+            #topbar { flex-wrap: wrap; gap: 10px; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Navigation -->
+    <div id="topbar">
+        <div class="mode-group">
+            <button class="btn-mode active" id="mode-add-atom" onclick="setMode('add_atom')">🔵 Atom hozzáadása</button>
+            <button class="btn-mode" id="mode-add-bond" onclick="setMode('add_bond')">🔗 Kötés hozzáadása</button>
+            <button class="btn-mode" id="mode-delete" onclick="setMode('delete')">🗑️ Törlés</button>
+        </div>
+        <div class="action-group">
+            <button class="btn-action" onclick="checkMolecule()">🧪 Molekula ellenőrzése</button>
+            <button class="btn-warning" id="btn-animate" onclick="toggleAnimation()">✨ Animáció!</button>
+            <button class="btn-action" onclick="saveImage()">💾 Kép mentése</button>
+            <button class="btn-danger" onclick="resetScene()">🔄 Visszaállítás</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main">
+        <!-- Left Sidebar: Atom Selection -->
+        <div class="sidebar" id="left-sidebar">
+            <h2>🧪 Elemek</h2>
+            <button class="atom-btn selected" onclick="selectElement('H')">
+                <div class="atom-color" style="background-color: #ffffff;"></div>
+                Hidrogén (H)
+            </button>
+            <button class="atom-btn" onclick="selectElement('O')">
+                <div class="atom-color" style="background-color: #ff0000;"></div>
+                Oxigén (O)
+            </button>
+            <button class="atom-btn" onclick="selectElement('C')">
+                <div class="atom-color" style="background-color: #333333;"></div>
+                Szén (C)
+            </button>
+            <button class="atom-btn" onclick="selectElement('N')">
+                <div class="atom-color" style="background-color: #0000ff;"></div>
+                Nitrogén (N)
+            </button>
+        </div>
+
+        <!-- 3D Canvas -->
+        <div id="canvas-container">
+            <div id="feedback-modal"></div>
+        </div>
+
+        <!-- Right Sidebar: Educational Info -->
+        <div class="sidebar" id="right-sidebar">
+            <h2>📊 Statisztika</h2>
+            <div class="stat-box">
+                <div class="stat-row"><span>Atomok:</span> <span id="stat-atoms">0 / 20</span></div>
+                <div class="stat-row"><span>Kötések:</span> <span id="stat-bonds">0</span></div>
+            </div>
+            
+            <h2>💡 Segítség</h2>
+            <div id="hint-box">
+                Tipp: A vízhez 1 Oxigén és 2 Hidrogén kell! Válaszd ki az atomot, és kattints a képernyőre!
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js r128 CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // --- CONFIGURATION & STATE ---
+        const MAX_ATOMS = 20;
+        
+        // Element definitions (CPK colors, relative radii, max valences)
+        const ELEMENTS = {
+            'H': { color: 0xffffff, radius: 0.5, valence: 1, name: 'Hidrogén' },
+            'O': { color: 0xff0000, radius: 0.8, valence: 2, name: 'Oxigén' },
+            'C': { color: 0x333333, radius: 1.0, valence: 4, name: 'Szén' },
+            'N': { color: 0x0000ff, radius: 0.9, valence: 3, name: 'Nitrogén' }
+        };
+
+        // Target molecules for validation
+        const MOLECULES = [
+            { name: 'Víz (H₂O)', atoms: {H:2, O:1}, bonds: 2, fact: 'A Föld felszínének 71%-át víz borítja!' },
+            { name: 'Szén-dioxid (CO₂)', atoms: {C:1, O:2}, bonds: 2, fact: 'A növények ezt lélegzik be!' },
+            { name: 'Metán (CH₄)', atoms: {C:1, H:4}, bonds: 4, fact: 'A tehenek emésztése során is keletkezik!' },
+            { name: 'Ammónia (NH₃)', atoms: {N:1, H:3}, bonds: 3, fact: 'Erős szagú gáz, tisztítószerekben is van!' },
+            { name: 'Hidrogén gáz (H₂)', atoms: {H:2}, bonds: 1, fact: 'A legkönnyebb gáz az univerzumban!' },
+            { name: 'Oxigén gáz (O₂)', atoms: {O:2}, bonds: 1, fact: 'Ezt lélegezzük be, hogy éljünk!' }
+        ];
+
+        // Application state
+        let currentMode = 'add_atom'; // add_atom, add_bond, delete
+        let selectedElement = 'H';
+        let atoms = [];
+        let bonds = [];
+        let selectedAtomForBond = null;
+        let isAnimating = false;
+        let animationTime = 0;
+
+        // --- THREE.JS SETUP ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Child-friendly sky blue
+
+        // Group to hold all molecule parts (makes manual rotation easy)
+        const moleculeGroup = new THREE.Group();
+        scene.add(moleculeGroup);
+
+        // Invisible plane for raycasting when adding atoms (made larger to support panning)
+        const backgroundPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(1000, 1000),
+            new THREE.MeshBasicMaterial({ visible: false })
+        );
+        scene.add(backgroundPlane);
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.z = 20;
+
+        // preserveDrawingBuffer is required to save the canvas as an image
+        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        const backLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        backLight.position.set(-10, -20, -10);
+        scene.add(backLight);
+
+        // --- MANUAL ORBIT CONTROLS ---
+        let isDragging = false;
+        let dragButton = -1; // 0: left, 2: right
+        let startMousePosition = { x: 0, y: 0 };
+        let previousMousePosition = { x: 0, y: 0 };
+
+        // Prevent context menu to allow right-click dragging
+        container.addEventListener('contextmenu', e => e.preventDefault());
+
+        container.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragButton = e.button;
+            startMousePosition = { x: e.clientX, y: e.clientY };
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        container.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const deltaMove = {
+                x: e.clientX - previousMousePosition.x,
+                y: e.clientY - previousMousePosition.y
+            };
+
+            if (dragButton === 0) {
+                // Left drag: Rotate molecule
+                moleculeGroup.rotation.y += deltaMove.x * 0.01;
+                moleculeGroup.rotation.x += deltaMove.y * 0.01;
+            } else if (dragButton === 2) {
+                // Right drag: Pan camera
+                camera.position.x -= deltaMove.x * 0.03;
+                camera.position.y += deltaMove.y * 0.03;
+            }
+
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        container.addEventListener('mouseup', (e) => {
+            isDragging = false;
+            
+            // Calculate distance moved to distinguish click from drag
+            const dist = Math.hypot(e.clientX - startMousePosition.x, e.clientY - startMousePosition.y);
+            
+            // Only trigger click actions for left clicks that didn't move much
+            if (e.button === 0 && dist < 5) {
+                handleCanvasClick(e);
+            }
+            dragButton = -1;
+        });
+
+        container.addEventListener('mouseleave', () => {
+            isDragging = false;
+            dragButton = -1;
+        });
+
+        // Scroll: Zoom
+        container.addEventListener('wheel', (e) => {
+            camera.position.z += e.deltaY * 0.02;
+            camera.position.z = Math.max(5, Math.min(camera.position.z, 100)); // Clamp zoom
+        });
+
+        // Touch support for mobile
+        container.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                dragButton = 0; // Treat single touch as left click/drag
+                startMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (e.touches.length === 2) {
+                isDragging = true;
+                dragButton = 2; // Treat two-finger touch as right click/pan
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+        }, {passive: false});
+
+        container.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault(); // Prevent scrolling
+
+            if (e.touches.length === 1 && dragButton === 0) {
+                // Single touch: Rotate
+                const deltaMove = {
+                    x: e.touches[0].clientX - previousMousePosition.x,
+                    y: e.touches[0].clientY - previousMousePosition.y
+                };
+                moleculeGroup.rotation.y += deltaMove.x * 0.01;
+                moleculeGroup.rotation.x += deltaMove.y * 0.01;
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (e.touches.length === 2 && dragButton === 2) {
+                // Two-finger touch: Pan
+                const deltaMove = {
+                    x: e.touches[0].clientX - previousMousePosition.x,
+                    y: e.touches[0].clientY - previousMousePosition.y
+                };
+                camera.position.x -= deltaMove.x * 0.03;
+                camera.position.y += deltaMove.y * 0.03;
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+        }, {passive: false});
+
+        container.addEventListener('touchend', (e) => {
+            isDragging = false;
+            // Handle tap (click) if it was a single touch and didn't move much
+            if (dragButton === 0 && e.changedTouches.length > 0) {
+                const touch = e.changedTouches[0];
+                const dist = Math.hypot(touch.clientX - startMousePosition.x, touch.clientY - startMousePosition.y);
+                if (dist < 5) {
+                    handleCanvasClick({ clientX: touch.clientX, clientY: touch.clientY });
+                }
+            }
+            dragButton = -1;
+        });
+
+        // --- RAYCASTING & INTERACTION ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function handleCanvasClick(event) {
+            // Calculate mouse position in normalized device coordinates (-1 to +1)
+            const rect = container.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            if (currentMode === 'add_atom') {
+                if (atoms.length >= MAX_ATOMS) {
+                    showFeedback("❌ Elérted a maximális atomszámot (20)!", "var(--danger)");
+                    return;
+                }
+                
+                // Intersect with background plane to place atom in 3D space
+                const intersects = raycaster.intersectObject(backgroundPlane);
+                if (intersects.length > 0) {
+                    // Convert intersection point to moleculeGroup's local space
+                    const point = intersects[0].point;
+                    moleculeGroup.worldToLocal(point);
+                    addAtom(point);
+                }
+            } 
+            else if (currentMode === 'add_bond' || currentMode === 'delete') {
+                // Intersect with atoms and bonds
+                const intersects = raycaster.intersectObjects(moleculeGroup.children);
+                if (intersects.length > 0) {
+                    const clickedObject = intersects[0].object;
+                    
+                    if (currentMode === 'add_bond' && clickedObject.userData.type === 'atom') {
+                        handleAddBondClick(clickedObject);
+                    } 
+                    else if (currentMode === 'delete') {
+                        if (clickedObject.userData.type === 'atom') {
+                            deleteAtom(clickedObject);
+                        } else if (clickedObject.userData.type === 'bond') {
+                            deleteBond(clickedObject);
+                        }
+                    }
+                } else if (currentMode === 'add_bond') {
+                    // Clicked empty space, deselect
+                    clearBondSelection();
+                }
+            }
+        }
+
+        // --- CORE LOGIC ---
+
+        function addAtom(position) {
+            const elData = ELEMENTS[selectedElement];
+            
+            // Create shiny sphere
+            const geometry = new THREE.SphereGeometry(elData.radius, 32, 32);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: elData.color,
+                shininess: 100,
+                specular: 0x444444
+            });
+            
+            const atom = new THREE.Mesh(geometry, material);
+            atom.position.copy(position);
+            
+            // Store data for logic and animation
+            atom.userData = {
+                type: 'atom',
+                element: selectedElement,
+                valence: elData.valence,
+                baseY: position.y, // For animation
+                offset: Math.random() * Math.PI * 2 // Random phase for animation
+            };
+
+            moleculeGroup.add(atom);
+            atoms.push(atom);
+            
+            updateStats();
+        }
+
+        function handleAddBondClick(atom) {
+            if (!selectedAtomForBond) {
+                // Select first atom
+                selectedAtomForBond = atom;
+                // Highlight
+                atom.material.emissive.setHex(0x555555);
+            } else {
+                // Select second atom
+                if (selectedAtomForBond !== atom) {
+                    createBond(selectedAtomForBond, atom);
+                }
+                clearBondSelection();
+            }
+        }
+
+        function clearBondSelection() {
+            if (selectedAtomForBond) {
+                selectedAtomForBond.material.emissive.setHex(0x000000);
+                selectedAtomForBond = null;
+            }
+        }
+
+        function createBond(atom1, atom2) {
+            // Check if bond already exists
+            const exists = bonds.some(b => 
+                (b.userData.atom1 === atom1 && b.userData.atom2 === atom2) ||
+                (b.userData.atom1 === atom2 && b.userData.atom2 === atom1)
+            );
+            
+            if (exists) {
+                showFeedback("❌ Ezek az atomok már össze vannak kötve!", "var(--warning)");
+                return;
+            }
+
+            // Check valences
+            const bonds1 = getAtomBonds(atom1).length;
+            const bonds2 = getAtomBonds(atom2).length;
+
+            if (bonds1 >= atom1.userData.valence) {
+                showFeedback(`❌ A(z) ${atom1.userData.element} atom nem tud több kötést létrehozni!`, "var(--danger)");
+                return;
+            }
+            if (bonds2 >= atom2.userData.valence) {
+                showFeedback(`❌ A(z) ${atom2.userData.element} atom nem tud több kötést létrehozni!`, "var(--danger)");
+                return;
+            }
+
+            // Create visual cylinder
+            const distance = atom1.position.distanceTo(atom2.position);
+            const geometry = new THREE.CylinderGeometry(0.15, 0.15, distance, 16);
+            const material = new THREE.MeshPhongMaterial({ color: 0xaaaaaa });
+            const bond = new THREE.Mesh(geometry, material);
+
+            bond.userData = {
+                type: 'bond',
+                atom1: atom1,
+                atom2: atom2
+            };
+
+            moleculeGroup.add(bond);
+            bonds.push(bond);
+            
+            updateBondVisuals(bond); // Position and rotate correctly
+            updateStats();
+        }
+
+        function updateBondVisuals(bond) {
+            const a1 = bond.userData.atom1.position;
+            const a2 = bond.userData.atom2.position;
+            
+            // Position at midpoint
+            bond.position.copy(a1).lerp(a2, 0.5);
+            
+            // Look at atom2
+            bond.quaternion.setFromUnitVectors(
+                new THREE.Vector3(0, 1, 0), 
+                a2.clone().sub(a1).normalize()
+            );
+        }
+
+        function getAtomBonds(atom) {
+            return bonds.filter(b => b.userData.atom1 === atom || b.userData.atom2 === atom);
+        }
+
+        function deleteAtom(atom) {
+            // Remove connected bonds
+            const connectedBonds = getAtomBonds(atom);
+            connectedBonds.forEach(b => deleteBond(b));
+
+            // Remove atom
+            moleculeGroup.remove(atom);
+            atoms = atoms.filter(a => a !== atom);
+            
+            // Cleanup geometry/material
+            atom.geometry.dispose();
+            atom.material.dispose();
+            
+            if (selectedAtomForBond === atom) clearBondSelection();
+            updateStats();
+        }
+
+        function deleteBond(bond) {
+            moleculeGroup.remove(bond);
+            bonds = bonds.filter(b => b !== bond);
+            bond.geometry.dispose();
+            bond.material.dispose();
+            updateStats();
+        }
+
+        function resetScene() {
+            // Remove all atoms and bonds
+            [...atoms].forEach(a => deleteAtom(a));
+            moleculeGroup.rotation.set(0,0,0);
+            camera.position.set(0, 0, 20);
+            isAnimating = false;
+            document.getElementById('btn-animate').innerHTML = "✨ Animáció!";
+            updateStats();
+            showFeedback("🔄 Tér törölve!", "var(--secondary)");
+        }
+
+        // --- VALIDATION ---
+        function checkMolecule() {
+            if (atoms.length === 0) {
+                showFeedback("❌ Előbb építs valamit!", "var(--warning)");
+                return;
+            }
+
+            // Count atoms by element
+            const counts = {};
+            atoms.forEach(a => {
+                const el = a.userData.element;
+                counts[el] = (counts[el] || 0) + 1;
+            });
+
+            const totalBonds = bonds.length;
+
+            // Find matching molecule
+            let matched = null;
+            for (const mol of MOLECULES) {
+                let matchAtoms = true;
+                
+                // Check if target molecule atoms match current atoms
+                for (const el in mol.atoms) {
+                    if (counts[el] !== mol.atoms[el]) matchAtoms = false;
+                }
+                // Check if current atoms have any extra elements not in target
+                for (const el in counts) {
+                    if (counts[el] !== (mol.atoms[el] || 0)) matchAtoms = false;
+                }
+
+                if (matchAtoms && totalBonds === mol.bonds) {
+                    matched = mol;
+                    break;
+                }
+            }
+
+            if (matched) {
+                showFeedback(`✅ Szép munka! Megépítetted: ${matched.name}!<br><small>${matched.fact}</small>`, "var(--primary)");
+                // Trigger a little celebration animation
+                if (!isAnimating) toggleAnimation();
+            } else {
+                showFeedback("❌ Még nem az igazi. Ellenőrizd az atomokat és a kötéseket!", "var(--danger)");
+            }
+        }
+
+        // --- UI & UTILS ---
+        function setMode(mode) {
+            currentMode = mode;
+            clearBondSelection();
+            
+            // Update UI buttons
+            document.querySelectorAll('.btn-mode').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`mode-${mode.replace('_', '-')}`).classList.add('active');
+        }
+
+        function selectElement(el) {
+            selectedElement = el;
+            setMode('add_atom'); // Auto-switch to add mode
+            
+            // Update UI buttons
+            document.querySelectorAll('.atom-btn').forEach(btn => btn.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+        }
+
+        function updateStats() {
+            document.getElementById('stat-atoms').innerText = `${atoms.length} / ${MAX_ATOMS}`;
+            document.getElementById('stat-bonds').innerText = bonds.length;
+        }
+
+        function showFeedback(htmlMessage, bgColor) {
+            const modal = document.getElementById('feedback-modal');
+            modal.innerHTML = htmlMessage;
+            modal.style.backgroundColor = bgColor;
+            modal.style.color = bgColor === 'var(--warning)' ? 'var(--dark)' : 'white';
+            modal.style.display = 'block';
+            
+            // Reset animation
+            modal.style.animation = 'none';
+            modal.offsetHeight; // trigger reflow
+            modal.style.animation = null;
+
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 4000);
+        }
+
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+            const btn = document.getElementById('btn-animate');
+            if (isAnimating) {
+                btn.innerHTML = "🛑 Animáció leállítása";
+                btn.classList.replace('btn-warning', 'btn-danger');
+            } else {
+                btn.innerHTML = "✨ Animáció!";
+                btn.classList.replace('btn-danger', 'btn-warning');
+                
+                // Reset positions
+                atoms.forEach(a => {
+                    a.position.y = a.userData.baseY;
+                });
+                bonds.forEach(b => updateBondVisuals(b));
+            }
+        }
+
+        function saveImage() {
+            // Render one frame to ensure buffer is fresh
+            renderer.render(scene, camera);
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            
+            const link = document.createElement('a');
+            link.download = 'molekula.png';
+            link.href = dataURL;
+            link.click();
+            
+            showFeedback("💾 Kép sikeresen letöltve!", "var(--secondary)");
+        }
+
+        // Handle Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // --- RENDER LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isAnimating) {
+                animationTime += 0.05;
+                
+                // Wobble atoms
+                atoms.forEach(atom => {
+                    // Sine wave motion based on base position and random offset
+                    atom.position.y = atom.userData.baseY + Math.sin(animationTime + atom.userData.offset) * 0.3;
+                });
+                
+                // Update bonds to follow atoms
+                bonds.forEach(bond => {
+                    updateBondVisuals(bond);
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Start loop
+        animate();
+
+    </script>
+</body>
+</html>

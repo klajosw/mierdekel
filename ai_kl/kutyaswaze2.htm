@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kutyás Riasztó • Lokális Térkép</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background: #1a472a;
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .logo span {
+            color: #ffd700;
+        }
+        
+        main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        #map {
+            flex: 1;
+            position: relative;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background: white;
+            border-left: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .tab-bar {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 14px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .tab.active {
+            background: #1a472a;
+            color: white;
+        }
+        
+        .panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        .report-form {
+            display: none;
+        }
+        
+        .report-form.active {
+            display: block;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        
+        button {
+            background: #1a472a;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: #2a5c3d;
+        }
+        
+        .alert-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .alert-item {
+            background: #f8f9fa;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 5px solid #e74c3c;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .alert-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .alert-type {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #e74c3c;
+        }
+        
+        .layer-control {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 180px;
+        }
+        
+        .legend {
+            font-size: 0.85rem;
+        }
+        
+        .marker-popup {
+            max-width: 250px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">Kutyás<span>RIASZTÓ</span></div>
+        <div>
+            <button onclick="getCurrentLocation()">📍 Közelben</button>
+        </div>
+    </header>
+    
+    <main>
+        <!-- TÉRKÉP -->
+        <div id="map"></div>
+        
+        <!-- OLDALSÁV -->
+        <div class="sidebar">
+            <div class="tab-bar">
+                <div class="tab active" onclick="switchTab(0)">Riasztások</div>
+                <div class="tab" onclick="switchTab(1)">Bejelentés</div>
+            </div>
+            
+            <!-- RIASZTÁS LISTA -->
+            <div id="alert-panel" class="panel">
+                <h3>Aktuális riasztások a környéken</h3>
+                <div id="alert-list" class="alert-list"></div>
+            </div>
+            
+            <!-- BEJELENTÉS ŰRLAP -->
+            <div id="report-panel" class="panel report-form">
+                <h3>Új riasztás bejelentése</h3>
+                <label>Típus</label>
+                <select id="alert-type">
+                    <option value="aggressive">Agresszív kutya</option>
+                    <option value="glass">Üvegszilánk / veszélyes szemét</option>
+                    <option value="hole">Gödör / sérült járda</option>
+                    <option value="wild">Vadállat / róka</option>
+                    <option value="other">Egyéb</option>
+                </select>
+                
+                <label>Leírás</label>
+                <textarea id="alert-desc" rows="3" placeholder="Részletes leírás..."></textarea>
+                
+                <label>Hely (kattints a térképre vagy használd a GPS-t)</label>
+                <input type="text" id="alert-location" readonly placeholder="Kattints a térképre...">
+                
+                <label>Érvényesség (óra)</label>
+                <input type="number" id="alert-expire" value="24" min="1" max="72">
+                
+                <button onclick="submitReport()" style="width:100%; margin-top:15px;">Bejelentés küldése</button>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Réteg vezérlő -->
+    <div class="layer-control">
+        <strong>Rétegek</strong><br><br>
+        <label><input type="checkbox" checked onchange="toggleLayer(this, 'all')"> Összes riasztás</label><br>
+        <label><input type="checkbox" checked onchange="toggleLayer(this, 'aggressive')"> Agresszív kutyák</label><br>
+        <label><input type="checkbox" checked onchange="toggleLayer(this, 'glass')"> Üvegszilánk</label><br>
+        <label><input type="checkbox" checked onchange="toggleLayer(this, 'hole')"> Gödör / akadály</label><br>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Globális változók
+        let map;
+        let markers = [];
+        let alerts = [];
+        let currentLatLng = null;
+        
+        // Minta adatok (valós alkalmazásban backend lenne)
+        function loadSampleData() {
+            alerts = [
+                {
+                    id: 1,
+                    type: "aggressive",
+                    title: "Agresszív kutya",
+                    desc: "Nagy barna kutya szabadon rohangál a parkban",
+                    lat: 47.4979,
+                    lng: 19.0402,
+                    time: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+                    expires: new Date(Date.now() + 1000 * 60 * 60 * 20)
+                },
+                {
+                    id: 2,
+                    type: "glass",
+                    title: "Üvegszilánk",
+                    desc: "Sörösüveg törött a játszótér szélén",
+                    lat: 47.4995,
+                    lng: 19.0380,
+                    time: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+                    expires: new Date(Date.now() + 1000 * 60 * 60 * 10)
+                }
+            ];
+        }
+        
+        // Térkép inicializálása
+        function initMap() {
+            map = L.map('map', {
+                center: [47.4979, 19.0402], // Budapest
+                zoom: 15,
+                zoomControl: true
+            });
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Kattintás esemény a bejelentéshez
+            map.on('click', function(e) {
+                currentLatLng = e.latlng;
+                document.getElementById('alert-location').value = 
+                    `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+                
+                // Automatikusan nyissa meg a bejelentés panelt
+                switchTab(1);
+            });
+            
+            renderMarkers();
+        }
+        
+        // Jelölők kirajzolása
+        function renderMarkers() {
+            // Régi jelölők törlése
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            
+            const now = Date.now();
+            
+            alerts.forEach(alert => {
+                if (new Date(alert.expires) < now) return; // lejárt
+                
+                let color = '#e74c3c';
+                if (alert.type === 'glass') color = '#f39c12';
+                if (alert.type === 'hole') color = '#3498db';
+                
+                const marker = L.circleMarker([alert.lat, alert.lng], {
+                    radius: 10,
+                    fillColor: color,
+                    color: '#fff',
+                    weight: 3,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                marker.bindPopup(`
+                    <div class="marker-popup">
+                        <strong>${alert.title}</strong><br>
+                        ${alert.desc}<br><br>
+                        <small>Bejelentve: ${new Date(alert.time).toLocaleTimeString('hu-HU')}</small>
+                    </div>
+                `);
+                
+                markers.push(marker);
+            });
+        }
+        
+        // Riasztások listájának frissítése
+        function renderAlertList() {
+            const container = document.getElementById('alert-list');
+            container.innerHTML = '';
+            
+            const now = Date.now();
+            
+            alerts.forEach(alert => {
+                if (new Date(alert.expires) < now) return;
+                
+                const div = document.createElement('div');
+                div.className = 'alert-item';
+                div.innerHTML = `
+                    <div class="alert-type">${alert.title}</div>
+                    <div>${alert.desc}</div>
+                    <small>${Math.round((new Date(alert.expires) - now) / (1000*60*60))} óra múlva lejár</small>
+                `;
+                div.onclick = () => {
+                    map.flyTo([alert.lat, alert.lng], 17);
+                };
+                container.appendChild(div);
+            });
+            
+            if (container.children.length === 0) {
+                container.innerHTML = '<p style="color:#777; text-align:center; padding:20px;">Nincs aktív riasztás a környéken.</p>';
+            }
+        }
+        
+        // Bejelentés küldése
+        function submitReport() {
+            const type = document.getElementById('alert-type').value;
+            const desc = document.getElementById('alert-desc').value.trim();
+            const hours = parseInt(document.getElementById('alert-expire').value);
+            
+            if (!currentLatLng || !desc) {
+                alert("Kérlek válassz helyet a térképen és írj leírást!");
+                return;
+            }
+            
+            const newAlert = {
+                id: Date.now(),
+                type: type,
+                title: document.getElementById('alert-type').options[document.getElementById('alert-type').selectedIndex].text,
+                desc: desc,
+                lat: currentLatLng.lat,
+                lng: currentLatLng.lng,
+                time: new Date().toISOString(),
+                expires: new Date(Date.now() + hours * 60 * 60 * 1000)
+            };
+            
+            alerts.unshift(newAlert);
+            renderMarkers();
+            renderAlertList();
+            
+            // Vissza a listához
+            switchTab(0);
+            
+            // Űrlap törlése
+            document.getElementById('alert-desc').value = '';
+            document.getElementById('alert-location').value = '';
+            currentLatLng = null;
+            
+            alert("Bejelentés sikeresen rögzítve! 24 óra múlva automatikusan elévül.");
+        }
+        
+        // Tab váltás
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach((t, i) => {
+                t.classList.toggle('active', i === tab);
+            });
+            
+            document.getElementById('alert-panel').style.display = tab === 0 ? 'block' : 'none';
+            document.getElementById('report-panel').classList.toggle('active', tab === 1);
+        }
+        
+        // Rétegek ki/bekapcsolása (egyszerűsített)
+        function toggleLayer(checkbox, type) {
+            renderMarkers(); // valós appban szűrni kellene
+            renderAlertList();
+        }
+        
+        // GPS pozíció lekérése
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const { latitude, longitude } = pos.coords;
+                    map.flyTo([latitude, longitude], 16);
+                    currentLatLng = { lat: latitude, lng: longitude };
+                    document.getElementById('alert-location').value = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+                }, () => {
+                    alert("Nem sikerült a pozíció lekérése.");
+                });
+            }
+        }
+        
+        // Automatikus takarítás (lejárt elemek)
+        function cleanupExpired() {
+            const now = Date.now();
+            alerts = alerts.filter(a => new Date(a.expires) > now);
+            renderMarkers();
+            renderAlertList();
+        }
+        
+        // Inicializálás
+        window.onload = function() {
+            loadSampleData();
+            initMap();
+            renderAlertList();
+            
+            // Takarítás 30 másodpercenként (demo)
+            setInterval(cleanupExpired, 30000);
+            
+            // Demo: időnként új riasztás
+            setTimeout(() => {
+                if (alerts.length < 5) {
+                    alerts.push({
+                        id: Date.now(),
+                        type: "wild",
+                        title: "Róka a parkban",
+                        desc: "Kisebb róka látható a bokrok között",
+                        lat: 47.4965,
+                        lng: 19.0425,
+                        time: new Date().toISOString(),
+                        expires: new Date(Date.now() + 1000 * 60 * 60 * 18)
+                    });
+                    renderMarkers();
+                    renderAlertList();
+                }
+            }, 8000);
+        };
+    </script>
+</body>
+</html>

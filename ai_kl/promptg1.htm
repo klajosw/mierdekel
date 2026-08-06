@@ -1,0 +1,339 @@
+﻿<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magyar Művészeti AI Prompt Generátor</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent-color: #d4af37; /* Arany szín a magyar örökséghez */
+            --accent-hover: #b3932b;
+            --border-color: #404040;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        h1, h2 {
+            color: var(--accent-color);
+            text-align: center;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        h1 { margin-bottom: 30px; }
+        h2 { font-size: 1.2rem; margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+
+        @media (min-width: 900px) {
+            .container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .panel {
+            background-color: var(--bg-secondary);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: inherit;
+            box-sizing: border-box; /* Fontos a padding miatt */
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--accent-color);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 4px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-copy {
+            background-color: transparent;
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            margin-top: 10px;
+            padding: 10px;
+            font-size: 0.9rem;
+        }
+
+        .btn-copy:hover {
+            background-color: var(--accent-color);
+            color: var(--bg-primary);
+        }
+
+        #outputPrompt {
+            height: 500px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap; /* Sortörések megtartása */
+            resize: vertical;
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Magyar Örökség & Művészet AI Prompt Generátor</h1>
+
+    <div class="container">
+        <div class="panel">
+            <form id="promptForm">
+                
+                <h2>1. Alapkoncepció és Kompozíció</h2>
+                <div class="form-group">
+                    <label for="coreTheme">Fő téma / Ihlet:</label>
+                    <select id="coreTheme">
+                        <option value="magyar - hun örökség és kultúra">Magyar - Hun örökség és kultúra</option>
+                        <option value="Budapest századfordulós eleganciája">Budapest századfordulós eleganciája</option>
+                        <option value="magyar népmesék és mondavilág">Magyar népmesék és mondavilág</option>
+                        <option value="a puszta és a vidék romantikája">A puszta és a vidék romantikája</option>
+                        <option value="modern magyar építészet és design">Modern magyar építészet és design</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="compositionStyle">Vizuális keret / Kompozíció:</label>
+                    <select id="compositionStyle">
+                        <option value="egy áramló, kifejező művészi ecsetvonás tiszta fehér háttéren, amelyen belül a kompozíció kibontakozik">Áramló ecsetvonás fehér háttéren (mint a példában)</option>
+                        <option value="egy régi, patinás múzeumi olajfestmény keretén belül kibontakozó jelenet">Klasszikus múzeumi olajfestmény keret</option>
+                        <option value="egy filmszerű, szélesvásznú panoráma kompozíció">Szélesvásznú filmes panoráma</option>
+                        <option value="egy szürrealista kollázs, ahol a különböző elemek egymásba olvadnak">Szürrealista kollázs</option>
+                    </select>
+                </div>
+
+                <h2>2. Tartalmi Elemek</h2>
+                <div class="form-group">
+                    <label for="landmarks">Helyszínek / Építészet (vesszővel elválasztva):</label>
+                    <input type="text" id="landmarks" placeholder="Pl.: Budapest, Lánchíd, Balaton-felvidéki tanúhegyek, Hortobágy">
+                    <div class="hint">Hagyja üresen, ha nem releváns.</div>
+                </div>
+                <div class="form-group">
+                    <label for="scenes">Jelenetek / Emberek:</label>
+                    <input type="text" id="scenes" placeholder="Pl.: Hagyományos piacozók, huszárok, népviseletes táncosok, kávéházi élet">
+                </div>
+                <div class="form-group">
+                    <label for="nature">Természeti elemek:</label>
+                    <input type="text" id="nature" placeholder="Pl.: Duna kanyarulat, őszi erdő, aranyló búzamezők">
+                </div>
+
+                <h2>3. Szöveges Tartalom (Tipográfia)</h2>
+                 <div class="form-group">
+                    <label for="mainTitle">Főcím felirat (Nagy, elegáns):</label>
+                    <input type="text" id="mainTitle" placeholder="Pl.: MAGYAR GENIUSZ, BUDAPEST ANNO">
+                </div>
+                 <div class="form-group">
+                    <label for="subtitleMood">Alcím témája (Költői, rövid):</label>
+                    <input type="text" id="subtitleMood" placeholder="Pl.: Az időtlen örökség és bölcsesség kifejezése">
+                </div>
+                <div class="form-group">
+                    <label for="signatureText">Aláírás szövege (Jobb alsó sarok):</label>
+                    <input type="text" id="signatureText" placeholder="Pl.: Készítette: [Az Ön Neve]">
+                </div>
+
+                <h2>4. Stílus és Technika</h2>
+                 <div class="form-group">
+                    <label for="visualStyle">Vizuális Stílus:</label>
+                    <select id="visualStyle">
+                        <option value="Rendkívül részletes, filmszerű, művészi realizmus">Filmszerű Művészi Realizmus (Példa szerint)</option>
+                        <option value="Expresszív, texturált olajfestmény stílus, látható ecsetkezeléssel">Expresszív Olajfestmény</option>
+                        <option value="Finom, áttetsző akvarell és tusrajz keveréke">Akvarell és Tus</option>
+                        <option value="Szecessziós (Art Nouveau) stílus, gazdag díszítésekkel, Mucha nyomán">Magyar Szecesszió</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="colorPalette">Színpaletta:</label>
+                    <select id="colorPalette">
+                        <option value="Meleg, hagyományos színpaletta (arany, homok, türkiz, mélykék, földtónusok)">Meleg Tradicionális (Arany, Földszínek, Türkiz)</option>
+                        <option value="Drámai, kontrasztos (mélyvörös, éjkék, arany akcentusok)">Drámai Kontrasztos</option>
+                        <option value="Visszafogott, monokróm szépia tónusok">Nosztalgikus Szépia</option>
+                        <option value="Élénk, gazdag népművészeti színek (piros, zöld, kék, sárga)">Élénk Népművészeti</option>
+                    </select>
+                </div>
+                 <div class="form-group">
+                    <label for="aspectRatio">Képarány (Aspect Ratio):</label>
+                    <select id="aspectRatio">
+                        <option value="4:7" selected>4:7 (Álló plakát - Példa szerint)</option>
+                        <option value="2:3">2:3 (Klasszikus álló)</option>
+                        <option value="16:9">16:9 (Fekvő filmes)</option>
+                        <option value="1:1">1:1 (Négyzetes közösségi média)</option>
+                        <option value="21:9">21:9 (Ultra-széles)</option>
+                    </select>
+                </div>
+                
+                <button type="button" class="btn" onclick="generatePrompt()">Prompt Generálása</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>Generált Részletes Prompt Parancs</h2>
+            <textarea id="outputPrompt" readonly placeholder="Itt jelenik meg a generált prompt..."></textarea>
+            <button type="button" class="btn btn-copy" onclick="copyToClipboard()">Vágólapra másolás</button>
+        </div>
+    </div>
+
+    <script>
+        function generatePrompt() {
+            // 1. Adatok begyűjtése az űrlapról
+            const coreTheme = document.getElementById('coreTheme').value;
+            const compositionStyle = document.getElementById('compositionStyle').value;
+            
+            const landmarks = document.getElementById('landmarks').value.trim();
+            const scenes = document.getElementById('scenes').value.trim();
+            const nature = document.getElementById('nature').value.trim();
+
+            const mainTitle = document.getElementById('mainTitle').value.trim();
+            const subtitleMood = document.getElementById('subtitleMood').value.trim();
+            const signatureText = document.getElementById('signatureText').value.trim();
+
+            const visualStyle = document.getElementById('visualStyle').value;
+            const colorPalette = document.getElementById('colorPalette').value;
+            const aspectRatio = document.getElementById('aspectRatio').value;
+
+            // 2. A prompt felépítése a példa struktúrája alapján
+            let prompt = "";
+
+            // Bevezetés és fő koncepció
+            prompt += `Tervezzen egy kifinomult, művészi alkotást, amelyet a következő téma ihletett: ${coreTheme}.\n\n`;
+            prompt += `A fő vizuális koncepció ${compositionStyle}, amelyen belül egy gazdag művészi kompozíció bontakozik ki.\n\n`;
+
+            // Tartalmi elemek felsorolása
+            prompt += `A műalkotásnak tartalmaznia kell:\n`;
+            if (landmarks) {
+                prompt += `- Ikonikus építészeti nevezetességek és történelmi helyszínek: [${landmarks}]\n`;
+            }
+            if (scenes) {
+                prompt += `- Jelenetek a mindennapi életből és kultúrából: [${scenes}]\n`;
+            }
+            if (nature) {
+                prompt += `- A témához kapcsolódó természeti tájak és elemek: [${nature}]\n`;
+            }
+            
+            // Ha semmilyen tartalmat nem adott meg a felhasználó, adjunk hozzá egy általános sort
+            if (!landmarks && !scenes && !nature) {
+                 prompt += `- Gazdag, részletgazdag jelenetek, amelyek a választott témát illusztrálják.\n`;
+            }
+
+            prompt += `\n`;
+
+            // Szöveges elemek (Tipográfia)
+            if (mainTitle) {
+                prompt += `Helyezzen el a kompozícióban egy nagyméretű, elegáns feliratot gyönyörű, díszes betűkkel, amely a következő szöveget írja: [${mainTitle}], luxus arany vagy meleg barna színben.\n\n`;
+            }
+
+            if (subtitleMood) {
+                prompt += `A főcím vagy a központi elem alatt egy rövid, költői magyar alcímet illusztrálj finom betűkkel, amely kifejezi a következőket: ${subtitleMood}.\n\n`;
+            }
+
+            // Fix elem a példa alapján: Oldalsó szövegek
+            prompt += `A kompozíció szélein finom, költői magyar szövegrészeket illeszts be, elegáns, kalligrafikus betűtípussal, amelyek kiemelik a kulturális és történelmi mélységet anélkül, hogy túlzsúfolnák a dizájnt.\n\n`;
+
+            // Vizuális stílus és technikai részletek
+            prompt += `Vizuális stílus:\n`;
+            prompt += `- ${visualStyle}\n`;
+            prompt += `- ${colorPalette}\n`;
+            prompt += `- Az ecsetvonásokba vagy a választott médiumba zökkenőmentesen integrált művészi textúrák\n`;
+            prompt += `- Erős mélység, lágy árnyékok, luxus szerkesztői minőség\n\n`;
+
+            // Aláírás
+            if (signatureText) {
+                prompt += `A terv alsó sarkában helyezzen el egy tiszta és elegáns aláírást a "${signatureText}" felirattal. Az aláírásnak professzionalizmust és művészi kidolgozást kell közvetítenie, élénkített arany vagy mély meleg barna színben, enyhe ragyogással az olvashatóság érdekében.\n\n`;
+            }
+
+            // Általános hangulat és technikai paraméterek
+            prompt += `Általános hangulat: Időtlen identitás, örökség, elegancia és bölcsesség.\n`;
+            prompt += `Csak magyar szöveg a képen. Angol szöveg nem jelenhet meg.\n`;
+            prompt += `Közösségi médiához optimalizált kompozíció, vizuálisan magával ragadó, múzeumi minőségű kimenet, 8K ultra részletes felbontás, --ar ${aspectRatio}`;
+
+            // 3. Kimenet megjelenítése
+            document.getElementById('outputPrompt').value = prompt;
+        }
+
+        function copyToClipboard() {
+            const outputTextarea = document.getElementById('outputPrompt');
+            outputTextarea.select();
+            outputTextarea.setSelectionRange(0, 99999); /* Mobil eszközökhöz */
+            
+            try {
+                navigator.clipboard.writeText(outputTextarea.value).then(() => {
+                    alert("A prompt sikeresen a vágólapra másolva!");
+                });
+            } catch (err) {
+                console.error('Hiba a másolás során:', err);
+                // Fallback régebbi böngészőkhöz, ha a navigator.clipboard nem működne
+                document.execCommand('copy');
+                alert("A prompt a vágólapra másolva (fallback módszer)!");
+            }
+        }
+
+        // Opcionális: Generálás automatikusan az oldal betöltésekor egy alapértelmezett példával
+        window.onload = function() {
+            // Kitöltünk pár mezőt default értékkel a demonstráció kedvéért
+            document.getElementById('landmarks').value = "Budapest, Lánchíd, Parlament";
+            document.getElementById('mainTitle').value = "MAGYAR ÖRÖKSÉG";
+            generatePrompt();
+        };
+    </script>
+</body>
+</html>

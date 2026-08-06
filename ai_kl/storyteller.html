@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✦ Krónikás — Az AI Történetmesélő</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Cinzel:wght@400;600&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1209;
+    --parchment: #f5ead6;
+    --parchment-dark: #e8d5b0;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --crimson: #8b1a1a;
+    --shadow: rgba(26,18,9,0.4);
+    --glow: rgba(201,168,76,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0d0a05;
+    color: var(--parchment);
+    font-family: 'IM Fell English', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* === HÁTTÉR ANIMÁCIÓ === */
+  .bg-layer {
+    position: fixed; inset: 0; z-index: 0;
+    background: 
+      radial-gradient(ellipse at 20% 20%, rgba(139,26,26,0.12) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(201,168,76,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(13,10,5,1) 0%, #0d0a05 100%);
+  }
+
+  .stars {
+    position: fixed; inset: 0; z-index: 0;
+    background-image: 
+      radial-gradient(1px 1px at 10% 15%, rgba(201,168,76,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 45%, rgba(245,234,214,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 55% 25%, rgba(201,168,76,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 75% 65%, rgba(245,234,214,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 10%, rgba(201,168,76,0.7) 0%, transparent 100%),
+      radial-gradient(1px 1px at 15% 80%, rgba(245,234,214,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 90%, rgba(201,168,76,0.3) 0%, transparent 100%),
+      radial-gradient(2px 2px at 40% 5%, rgba(201,168,76,0.8) 0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 40%, rgba(245,234,214,0.5) 0%, transparent 100%);
+  }
+
+  /* === FŐ KONTÉNER === */
+  .app {
+    position: relative; z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+    min-height: 100vh;
+  }
+
+  /* === FEJLÉC === */
+  header {
+    text-align: center;
+    padding: 3rem 0 2rem;
+    position: relative;
+  }
+
+  .ornament {
+    color: var(--gold);
+    font-size: 1.2rem;
+    letter-spacing: 0.5rem;
+    opacity: 0.7;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  h1 {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(2.2rem, 5vw, 3.5rem);
+    font-weight: 600;
+    color: var(--gold-light);
+    text-shadow: 0 0 40px var(--glow), 0 2px 4px rgba(0,0,0,0.8);
+    letter-spacing: 0.15em;
+    line-height: 1.1;
+  }
+
+  .tagline {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: var(--parchment-dark);
+    opacity: 0.7;
+    margin-top: 0.8rem;
+    font-size: 1.1rem;
+  }
+
+  .header-divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.5rem 0;
+    opacity: 0.5;
+  }
+  .header-divider::before, .header-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  .header-divider span { color: var(--gold); font-size: 1.2rem; }
+
+  /* === MŰFAJ VÁLASZTÓ === */
+  .genre-section {
+    margin-bottom: 2rem;
+  }
+
+  .section-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    opacity: 0.8;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  .genre-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .genre-btn {
+    background: rgba(201,168,76,0.05);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 4px;
+    padding: 0.8rem 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    color: var(--parchment-dark);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.95rem;
+  }
+
+  .genre-btn:hover {
+    background: rgba(201,168,76,0.12);
+    border-color: rgba(201,168,76,0.5);
+    color: var(--gold-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(201,168,76,0.15);
+  }
+
+  .genre-btn.active {
+    background: rgba(201,168,76,0.18);
+    border-color: var(--gold);
+    color: var(--gold-light);
+    box-shadow: 0 0 20px rgba(201,168,76,0.2);
+  }
+
+  .genre-icon { display: block; font-size: 1.5rem; margin-bottom: 0.3rem; }
+
+  /* === KEZDŐ PANEL === */
+  .start-panel {
+    background: rgba(245,234,214,0.04);
+    border: 1px solid rgba(201,168,76,0.15);
+    border-radius: 6px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .start-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+
+  .start-input {
+    width: 100%;
+    background: rgba(13,10,5,0.6);
+    border: 1px solid rgba(201,168,76,0.25);
+    border-radius: 4px;
+    padding: 1rem 1.2rem;
+    color: var(--parchment);
+    font-family: 'IM Fell English', serif;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    resize: none;
+    min-height: 100px;
+    transition: border-color 0.3s;
+    margin-top: 0.8rem;
+  }
+
+  .start-input:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 20px rgba(201,168,76,0.1);
+  }
+
+  .start-input::placeholder { color: rgba(245,234,214,0.3); font-style: italic; }
+
+  /* === KARAKTERKÁRTYA === */
+  .char-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .char-input {
+    background: rgba(13,10,5,0.6);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 4px;
+    padding: 0.7rem 1rem;
+    color: var(--parchment);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+  }
+
+  .char-input:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+
+  .char-input::placeholder { color: rgba(245,234,214,0.3); }
+
+  /* === GOMBOK === */
+  .btn-primary {
+    background: linear-gradient(135deg, #8b6914, #c9a84c, #8b6914);
+    border: none;
+    border-radius: 4px;
+    padding: 0.9rem 2.5rem;
+    color: var(--ink);
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(201,168,76,0.3);
+    display: inline-block;
+    margin-top: 1.5rem;
+    text-transform: uppercase;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(201,168,76,0.4);
+    background: linear-gradient(135deg, #a07d1a, #e8c97a, #a07d1a);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* === TÖRTÉNET MEGJELENÍTŐ === */
+  .story-container {
+    display: none;
+  }
+
+  .story-container.active {
+    display: block;
+    animation: fadeIn 0.8s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .story-scroll {
+    background: 
+      linear-gradient(180deg, rgba(139,105,20,0.05) 0%, transparent 5%, transparent 95%, rgba(139,105,20,0.05) 100%),
+      rgba(245,234,214,0.04);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 6px;
+    padding: 2.5rem;
+    margin-bottom: 1.5rem;
+    max-height: 500px;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  .story-scroll::before, .story-scroll::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+
+  .story-scroll::before { top: 0; }
+  .story-scroll::after { bottom: 0; }
+
+  .story-scroll::-webkit-scrollbar { width: 4px; }
+  .story-scroll::-webkit-scrollbar-track { background: transparent; }
+  .story-scroll::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; opacity: 0.5; }
+
+  .story-entry {
+    margin-bottom: 1.8rem;
+    animation: entryFade 0.6s ease;
+    position: relative;
+    padding-left: 1.5rem;
+  }
+
+  @keyframes entryFade {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .story-entry.ai-entry::before {
+    content: '✦';
+    position: absolute;
+    left: 0;
+    top: 0.3rem;
+    color: var(--gold);
+    font-size: 0.8rem;
+    opacity: 0.7;
+  }
+
+  .story-entry.user-entry::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    top: 0.15rem;
+    color: var(--crimson);
+    font-size: 1.1rem;
+    opacity: 0.8;
+  }
+
+  .ai-text {
+    font-family: 'IM Fell English', serif;
+    font-size: 1.1rem;
+    line-height: 1.85;
+    color: var(--parchment);
+    text-indent: 2em;
+  }
+
+  .ai-text:first-child { text-indent: 0; }
+
+  .user-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: rgba(245,234,214,0.6);
+  }
+
+  /* === DÖNTÉS KÁRTYÁK === */
+  .choices-panel {
+    margin-bottom: 1.5rem;
+  }
+
+  .choices-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    opacity: 0.6;
+    text-transform: uppercase;
+    margin-bottom: 0.8rem;
+    display: block;
+  }
+
+  .choices-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .choice-btn {
+    background: rgba(201,168,76,0.04);
+    border: 1px solid rgba(201,168,76,0.18);
+    border-radius: 4px;
+    padding: 0.9rem 1.2rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    text-align: left;
+    color: var(--parchment-dark);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .choice-btn:hover {
+    background: rgba(201,168,76,0.1);
+    border-color: rgba(201,168,76,0.4);
+    color: var(--gold-light);
+    transform: translateX(4px);
+  }
+
+  .choice-num {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    color: var(--gold);
+    opacity: 0.7;
+    min-width: 20px;
+  }
+
+  /* === SZABAD DÖNTÉS === */
+  .custom-action {
+    display: flex;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .custom-input {
+    flex: 1;
+    background: rgba(13,10,5,0.6);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    color: var(--parchment);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+  }
+
+  .custom-input:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+
+  .custom-input::placeholder { color: rgba(245,234,214,0.3); font-style: italic; }
+
+  .btn-send {
+    background: rgba(201,168,76,0.15);
+    border: 1px solid var(--gold);
+    border-radius: 4px;
+    padding: 0.75rem 1.2rem;
+    color: var(--gold);
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.25s;
+  }
+
+  .btn-send:hover {
+    background: rgba(201,168,76,0.25);
+    box-shadow: 0 0 15px rgba(201,168,76,0.2);
+  }
+
+  /* === STATISZTIKÁK === */
+  .stats-bar {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.9rem;
+    color: rgba(245,234,214,0.5);
+  }
+
+  .stat-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    opacity: 0.6;
+  }
+
+  /* === TÖLTŐ ANIMÁCIÓ === */
+  .loading {
+    display: none;
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .loading.active { display: block; }
+
+  .quill-anim {
+    display: inline-block;
+    font-size: 2rem;
+    animation: writeAnim 1.5s ease-in-out infinite;
+  }
+
+  @keyframes writeAnim {
+    0%, 100% { transform: rotate(-15deg) translateY(0); opacity: 0.6; }
+    50% { transform: rotate(-5deg) translateY(-8px); opacity: 1; }
+  }
+
+  .loading-text {
+    display: block;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: rgba(245,234,214,0.5);
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  /* === ÚJRAINDÍTÁS === */
+  .btn-restart {
+    background: transparent;
+    border: 1px solid rgba(139,26,26,0.4);
+    border-radius: 4px;
+    padding: 0.5rem 1.2rem;
+    color: rgba(139,26,26,0.7);
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: all 0.25s;
+    float: right;
+  }
+
+  .btn-restart:hover {
+    background: rgba(139,26,26,0.1);
+    border-color: var(--crimson);
+    color: var(--crimson);
+  }
+
+  /* === API BEÁLLÍTÁS === */
+  .api-banner {
+    background: rgba(139,26,26,0.1);
+    border: 1px solid rgba(139,26,26,0.3);
+    border-radius: 4px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.95rem;
+    color: rgba(245,234,214,0.7);
+    display: none;
+  }
+
+  .api-banner.show { display: block; }
+  .api-banner strong { color: #e88080; }
+
+  .api-row {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 0.8rem;
+  }
+
+  .api-input {
+    flex: 1;
+    background: rgba(13,10,5,0.8);
+    border: 1px solid rgba(139,26,26,0.3);
+    border-radius: 4px;
+    padding: 0.6rem 0.9rem;
+    color: var(--parchment);
+    font-family: monospace;
+    font-size: 0.85rem;
+  }
+
+  .api-input:focus { outline: none; border-color: var(--crimson); }
+
+  .btn-api {
+    background: rgba(139,26,26,0.2);
+    border: 1px solid rgba(139,26,26,0.4);
+    border-radius: 4px;
+    padding: 0.6rem 1rem;
+    color: #e88080;
+    cursor: pointer;
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    transition: all 0.25s;
+  }
+
+  .btn-api:hover { background: rgba(139,26,26,0.3); }
+
+  /* RESZPONZÍV */
+  @media (max-width: 600px) {
+    .char-row { grid-template-columns: 1fr; }
+    .stats-bar { gap: 1rem; }
+    .genre-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-layer"></div>
+<div class="stars"></div>
+
+<div class="app">
+  <header>
+    <span class="ornament">✦ ✦ ✦</span>
+    <h1>Krónikás</h1>
+    <p class="tagline">Az AI által életre keltett történetek könyve</p>
+    <div class="header-divider"><span>⚜</span></div>
+  </header>
+
+  <!-- API BEÁLLÍTÁS -->
+  <div class="api-banner show" id="apiBanner">
+    <strong>⚙ Gemini API kulcs szükséges</strong> — Ez az alkalmazás a Google Gemini API-t használja. 
+    Add meg az API kulcsodat az alábbi mezőben (Google AI Studio → Get API Key).
+    <div class="api-row">
+      <input type="password" class="api-input" id="apiKeyInput" placeholder="AIza...">
+      <button class="btn-api" onclick="saveApiKey()">Mentés</button>
+    </div>
+  </div>
+
+  <!-- KEZDŐ PANEL -->
+  <div id="startPanel">
+    <!-- Műfaj választó -->
+    <div class="genre-section">
+      <span class="section-label">✦ Válassz műfajt</span>
+      <div class="genre-grid">
+        <button class="genre-btn active" onclick="selectGenre(this, 'fantasy')" data-genre="fantasy">
+          <span class="genre-icon">⚔️</span>Fantasy
+        </button>
+        <button class="genre-btn" onclick="selectGenre(this, 'horror')" data-genre="horror">
+          <span class="genre-icon">🕷️</span>Horror
+        </button>
+        <button class="genre-btn" onclick="selectGenre(this, 'scifi')" data-genre="scifi">
+          <span class="genre-icon">🚀</span>Sci-Fi
+        </button>
+        <button class="genre-btn" onclick="selectGenre(this, 'mystery')" data-genre="mystery">
+          <span class="genre-icon">🔍</span>Krimi
+        </button>
+        <button class="genre-btn" onclick="selectGenre(this, 'romance')" data-genre="romance">
+          <span class="genre-icon">🌹</span>Románc
+        </button>
+        <button class="genre-btn" onclick="selectGenre(this, 'historical')" data-genre="historical">
+          <span class="genre-icon">🏰</span>Történelmi
+        </button>
+      </div>
+    </div>
+
+    <!-- Karakter + kezdet -->
+    <div class="start-panel">
+      <span class="section-label">✦ A te karaktered</span>
+      <div class="char-row">
+        <input class="char-input" id="charName" type="text" placeholder="Karaktered neve...">
+        <input class="char-input" id="charRole" type="text" placeholder="Foglalkozása / szerepe...">
+      </div>
+
+      <span class="section-label" style="margin-top:1.5rem">✦ A történet kezdete (vagy hagyd üresen)</span>
+      <textarea class="start-input" id="startText" rows="4"
+        placeholder="Írj egy kezdő mondatot, helyszínt, vagy egy rejtélyes részletet... A maradékot az AI kitalálja."></textarea>
+
+      <button class="btn-primary" onclick="startStory()">⚡ Indítsd el a krónikát</button>
+    </div>
+  </div>
+
+  <!-- TÖRTÉNET PANEL -->
+  <div class="story-container" id="storyContainer">
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-dot"></div>
+        <span id="chapterCount">1. fejezet</span>
+      </div>
+      <div class="stat-item">
+        <div class="stat-dot" style="background:#8b1a1a"></div>
+        <span id="characterStat">—</span>
+      </div>
+      <div class="stat-item">
+        <div class="stat-dot" style="background:#4a6b8a"></div>
+        <span id="genreStat">Fantasy</span>
+      </div>
+      <button class="btn-restart" onclick="resetStory()">↺ Új történet</button>
+    </div>
+
+    <div class="story-scroll" id="storyScroll"></div>
+
+    <div class="loading" id="loading">
+      <span class="quill-anim">🖋️</span>
+      <span class="loading-text">A krónikás ír...</span>
+    </div>
+
+    <div class="choices-panel" id="choicesPanel"></div>
+
+    <div class="custom-action">
+      <input class="custom-input" id="customAction" type="text"
+        placeholder="Vagy írd meg, mit tesz a karaktered..." 
+        onkeydown="if(event.key==='Enter') sendCustomAction()">
+      <button class="btn-send" onclick="sendCustomAction()" title="Küldés">→</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// === ÁLLAPOT ===
+let state = {
+  apiKey: localStorage.getItem('gemini_api_key') || '',
+  genre: 'fantasy',
+  charName: '',
+  charRole: '',
+  history: [],      // [{role, parts}]
+  chapter: 1,
+  choices: []
+};
+
+// API kulcs kezelés
+if (state.apiKey) {
+  document.getElementById('apiBanner').classList.remove('show');
+}
+
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) return;
+  state.apiKey = key;
+  localStorage.setItem('gemini_api_key', key);
+  document.getElementById('apiBanner').classList.remove('show');
+}
+
+function selectGenre(btn, genre) {
+  document.querySelectorAll('.genre-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.genre = genre;
+}
+
+// === RENDSZER PROMPT MŰFAJ SZERINT ===
+const genrePrompts = {
+  fantasy: 'epikus fantasy világ, mágia, sárkányok, kalandok, régi királyságok',
+  horror: 'sötét horror, feszültség, titokzatos jelenségek, félelem, pszichológiai mélység',
+  scifi: 'science fiction, űr, technológia, jövő, idegen civilizációk, AI',
+  mystery: 'krimi, rejtélyek, nyomozás, csavaros plot twistek, titkok',
+  romance: 'romantika, érzelmek, kapcsolatok, sors, szív és lélek',
+  historical: 'történelmi kor, hiteles részletek, nagy személyek és kisemberek'
+};
+
+const genreNames = {
+  fantasy: 'Fantasy', horror: 'Horror', scifi: 'Sci-Fi',
+  mystery: 'Krimi', romance: 'Románc', historical: 'Történelmi'
+};
+
+function buildSystemPrompt() {
+  const char = state.charName ? `A főszereplő neve: ${state.charName}` : 'A főszereplőt a játékos alakítja';
+  const role = state.charRole ? `, foglalkozása/szerepe: ${state.charRole}` : '';
+  
+  return `Te egy zseniális interaktív történetmesélő vagy. Műfaj: ${genrePrompts[state.genre]}.
+${char}${role}.
+
+SZABÁLYOK:
+1. Minden válasznál írj 2-3 lebilincselő bekezdést, majd adj 3 választási lehetőséget.
+2. A szöveg legyen drámai, érzékletes, filmszerű magyar prózában.
+3. A választásokat így formázd (JSON-ban a válasz végén):
+CHOICES_JSON:[{"text":"1. lehetőség szövege"},{"text":"2. lehetőség szövege"},{"text":"3. lehetőség szövege"}]
+4. Ha a felhasználó cselekszik, folytasd a történetet az ő döntése alapján.
+5. Mindig maradj a műfaj hangulatában.
+6. A főhős neve mindig "${state.charName || 'a hős'}".
+7. Legyen feszültség, csavarások, váratlan fordulatok.
+8. Ne ismételj, mindig haladj előre a cselekménnyel.`;
+}
+
+// === GEMINI API HÍVÁS ===
+async function callGemini(userMessage) {
+  if (!state.apiKey) {
+    document.getElementById('apiBanner').classList.add('show');
+    throw new Error('Nincs API kulcs');
+  }
+
+  state.history.push({ role: 'user', parts: [{ text: userMessage }] });
+
+  const body = {
+    contents: state.history,
+    systemInstruction: { parts: [{ text: buildSystemPrompt() }] },
+    generationConfig: {
+      temperature: 0.9,
+      maxOutputTokens: 1200,
+    }
+  };
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.apiKey}`;
+  
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || 'API hiba');
+  }
+
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  
+  state.history.push({ role: 'model', parts: [{ text }] });
+  return text;
+}
+
+// === SZÖVEG FELDOLGOZÁS ===
+function parseResponse(raw) {
+  let story = raw;
+  let choices = [];
+
+  const jsonMatch = raw.match(/CHOICES_JSON:(\[.*?\])/s);
+  if (jsonMatch) {
+    try {
+      choices = JSON.parse(jsonMatch[1]);
+      story = raw.replace(/CHOICES_JSON:.*$/s, '').trim();
+    } catch(e) {}
+  }
+
+  return { story, choices };
+}
+
+// === UI FRISSÍTÉSEK ===
+function addStoryEntry(text, isUser = false) {
+  const scroll = document.getElementById('storyScroll');
+  const entry = document.createElement('div');
+  entry.className = `story-entry ${isUser ? 'user-entry' : 'ai-entry'}`;
+  
+  if (isUser) {
+    entry.innerHTML = `<span class="user-text">› ${text}</span>`;
+  } else {
+    const paragraphs = text.split('\n').filter(p => p.trim());
+    entry.innerHTML = paragraphs.map(p => `<p class="ai-text">${p}</p>`).join('');
+  }
+  
+  scroll.appendChild(entry);
+  scroll.scrollTop = scroll.scrollHeight;
+}
+
+function showChoices(choices) {
+  const panel = document.getElementById('choicesPanel');
+  if (!choices.length) { panel.innerHTML = ''; return; }
+  
+  state.choices = choices;
+  panel.innerHTML = `
+    <span class="choices-label">✦ Mit teszel?</span>
+    <div class="choices-grid">
+      ${choices.map((c, i) => `
+        <button class="choice-btn" onclick="selectChoice(${i})">
+          <span class="choice-num">${['I','II','III'][i]}</span>
+          <span>${c.text}</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function setLoading(active) {
+  document.getElementById('loading').className = 'loading' + (active ? ' active' : '');
+  document.getElementById('choicesPanel').style.opacity = active ? '0.3' : '1';
+  document.getElementById('choicesPanel').style.pointerEvents = active ? 'none' : 'auto';
+}
+
+// === FŐ FUNKCIÓK ===
+async function startStory() {
+  if (!state.apiKey) {
+    document.getElementById('apiBanner').classList.add('show');
+    return;
+  }
+
+  state.charName = document.getElementById('charName').value.trim() || 'Ismeretlen vándor';
+  state.charRole = document.getElementById('charRole').value.trim();
+  const startText = document.getElementById('startText').value.trim();
+
+  // UI átváltás
+  document.getElementById('startPanel').style.display = 'none';
+  document.getElementById('storyContainer').classList.add('active');
+  document.getElementById('characterStat').textContent = state.charName;
+  document.getElementById('genreStat').textContent = genreNames[state.genre];
+
+  const prompt = startText 
+    ? `Kezdd el a történetet ezzel az elemmel: "${startText}". Írj lenyűgöző bevezető jeleneteket.`
+    : `Kezdd el a ${genreNames[state.genre]} történetet! Írj drámai, cselekvéssel teli bevezető jelenetet, ami azonnal belerántja az olvasót.`;
+
+  setLoading(true);
+  try {
+    const raw = await callGemini(prompt);
+    const { story, choices } = parseResponse(raw);
+    addStoryEntry(story);
+    showChoices(choices);
+  } catch(e) {
+    addStoryEntry(`⚠ Hiba: ${e.message}`);
+  }
+  setLoading(false);
+}
+
+async function selectChoice(idx) {
+  const choice = state.choices[idx];
+  if (!choice) return;
+
+  addStoryEntry(choice.text, true);
+  document.getElementById('choicesPanel').innerHTML = '';
+  
+  state.chapter++;
+  document.getElementById('chapterCount').textContent = `${state.chapter}. fejezet`;
+
+  setLoading(true);
+  try {
+    const raw = await callGemini(`A játékos választotta: "${choice.text}". Folytasd a történetet!`);
+    const { story, choices } = parseResponse(raw);
+    addStoryEntry(story);
+    showChoices(choices);
+  } catch(e) {
+    addStoryEntry(`⚠ Hiba: ${e.message}`);
+  }
+  setLoading(false);
+}
+
+async function sendCustomAction() {
+  const input = document.getElementById('customAction');
+  const action = input.value.trim();
+  if (!action) return;
+  
+  input.value = '';
+  addStoryEntry(action, true);
+  document.getElementById('choicesPanel').innerHTML = '';
+  
+  state.chapter++;
+  document.getElementById('chapterCount').textContent = `${state.chapter}. fejezet`;
+
+  setLoading(true);
+  try {
+    const raw = await callGemini(`A játékos azt teszi: "${action}". Folytasd a történetet ennek alapján!`);
+    const { story, choices } = parseResponse(raw);
+    addStoryEntry(story);
+    showChoices(choices);
+  } catch(e) {
+    addStoryEntry(`⚠ Hiba: ${e.message}`);
+  }
+  setLoading(false);
+}
+
+function resetStory() {
+  state.history = [];
+  state.chapter = 1;
+  document.getElementById('storyScroll').innerHTML = '';
+  document.getElementById('choicesPanel').innerHTML = '';
+  document.getElementById('storyContainer').classList.remove('active');
+  document.getElementById('startPanel').style.display = 'block';
+  document.getElementById('startText').value = '';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filmes Prompt Készítő Studio Ultra</title>
+    <style>
+        :root { --primary: #e50914; --bg: #141414; --card: #222; --text: #eee; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        .container { max-width: 1000px; margin: auto; background: var(--card); padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { text-align: center; color: var(--primary); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 30px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { background: #2c2c2c; padding: 15px; border-radius: 8px; border: 1px solid #444; }
+        label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #aaa; text-transform: uppercase; }
+        select, input { width: 100%; padding: 10px; background: #111; border: 1px solid #555; color: white; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+        .custom-input { margin-top: 10px; border-color: var(--primary); font-style: italic; }
+        .full-width { grid-column: span 2; }
+        #result-container { margin-top: 30px; background: #000; padding: 25px; border-radius: 8px; border: 2px solid var(--primary); }
+        textarea { width: 100%; height: 120px; background: transparent; color: #00ff41; border: none; font-family: 'Courier New', monospace; font-size: 16px; resize: none; outline: none; line-height: 1.5; }
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        button { flex: 1; padding: 15px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+        .copy-btn { background: var(--primary); color: white; }
+        .reset-btn { background: #444; color: white; }
+        button:hover { opacity: 0.8; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } .full-width { grid-column: span 1; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Film Prompt Studio Ultra</h1>
+    
+    <div class="grid">
+        <div class="form-group full-width">
+            <label>👤 Alany és Akció (Magyarul írd, a promptba angolul kerül)</label>
+            <input type="text" id="subject" placeholder="Pl: Egy páncélos lovag áll a vár bástyáján..." oninput="handleSubjectInput()">
+            <small id="translation-status" style="color: #888; font-size: 10px; display: block; mt: 5px;"></small>
+        </div>
+
+        <div class="form-group full-width" style="border: 1px solid var(--primary);">
+            <label>📐 Képarány és Verzió</label>
+            <select id="sel-format" onchange="build()">
+                <option value="--ar 16:9 --v 6.0">Filmes hatás (16:9)</option>
+                <option value="--ar 1:1 --v 6.0">Portré / Négyzet (1:1)</option>
+                <option value="--ar 9:16 --v 6.0">Mobilos videó frame (9:16)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>🎬 Műfaj / Stílus</label>
+            <select id="sel-genre" onchange="sync('genre', this.value)">
+                <option value="">-- Válassz (50 opció) --</option>
+                <option value="Action movie style">Akció</option><option value="Adventure film style">Kaland</option><option value="Animation style">Animáció</option><option value="Biographical film style">Életrajzi</option><option value="Comedy movie style">Vígjáték</option><option value="Crime drama style">Bűnügyi</option><option value="Documentary style">Dokumentumfilm</option><option value="Drama movie style">Dráma</option><option value="Family movie style">Családi</option><option value="Epic Fantasy style">Fantasy</option><option value="Film Noir, black and white">Film Noir</option><option value="Historical drama style">Történelmi</option><option value="Horror movie style">Horror</option><option value="Music film style">Zenei</option><option value="Musical movie style">Musical</option><option value="Mystery film style">Rejtély</option><option value="Romance movie style">Romantikus</option><option value="Science fiction style">Sci-Fi</option><option value="Sports movie style">Sport</option><option value="Thriller movie style">Thriller</option><option value="War movie style">Háborús</option><option value="Western movie style">Western</option><option value="Cyberpunk aesthetic">Cyberpunk</option><option value="Steampunk aesthetic">Steampunk</option><option value="Dieselpunk aesthetic">Dieselpunk</option><option value="Biopunk aesthetic">Biopunk</option><option value="Solarpunk aesthetic">Solarpunk</option><option value="Psychological thriller style">Pszichológiai thriller</option><option value="Slasher horror style">Slasher</option><option value="Supernatural horror style">Természetfeletti</option><option value="Space Opera style">Űropera</option><option value="Post-apocalyptic style">Poszt-apokaliptikus</option><option value="Dystopian movie style">Disztópia</option><option value="Utopian movie style">Utópia</option><option value="Superhero movie style">Szuperhős</option><option value="Martial arts film style">Harcművészeti</option><option value="Samurai film style">Szamuráj</option><option value="Neo-Noir style">Neo-Noir</option><option value="Gothic horror style">Gótikus</option><option value="Fairy tale style">Tündérmese</option><option value="Surrealist film style">Szürrealizmus</option><option value="Mockumentary style">Áldokumentum</option><option value="Found footage style">Talált kamera</option><option value="Spaghetti Western style">Spagettiwestern</option><option value="Kaiju monster movie style">Kaiju</option><option value="Heist movie style">Rablós</option><option value="Spy thriller style">Kémfilm</option><option value="Coming-of-age drama style">Coming-of-age</option><option value="Legal drama style">Jogi dráma</option><option value="Medical drama style">Orvosi dráma</option>
+            </select>
+            <input type="text" id="genre" class="custom-input" placeholder="Egyedi stílus..." oninput="build()">
+        </div>
+
+        <div class="form-group">
+            <label>⏳ Korszak</label>
+            <select id="sel-era" onchange="sync('era', this.value)">
+                <option value="">-- Válassz (50 opció) --</option>
+                <option value="set in Prehistoric times">Őskor</option><option value="set in Ancient Egypt">Ókori Egyiptom</option><option value="set in Ancient Greece">Ókori Görögország</option><option value="set in the Roman Empire">Római Birodalom</option><option value="set in Medieval times">Középkor</option><option value="set in the Renaissance">Reneszánsz</option><option value="set in the Elizabethan era">Erzsébet-kor</option><option value="set in the Baroque era">Barokk</option><option value="set in the Victorian era">Viktoriánus kor</option><option value="set during the Industrial Revolution">Ipari forradalom</option><option value="set during World War I">I. Világháború</option><option value="set in the Roaring 20s">A 20-as évek</option><option value="set during the Great Depression">Nagy gazdasági világválság</option><option value="set during World War II">II. Világháború</option><option value="set in the 1950s">Az 50-es évek</option><option value="set in the 1960s">A 60-as évek</option><option value="set in the 1970s">A 70-es évek</option><option value="set in the 1980s retro era">A 80-as évek</option><option value="set in the 1990s">A 90-es évek</option><option value="set in the Y2K era">Az ezredforduló (Y2K)</option><option value="set in the Modern day">Modern kor</option><option value="set in the Near Future">Közeli jövő</option><option value="set in the Distant Future">Távoli jövő</option><option value="set in a Cyberpunk future">Cyberpunk jövő</option><option value="set in a Post-Apocalyptic future">Poszt-apokaliptikus jövő</option><option value="set in the 14th Century">14. század</option><option value="set in the 15th Century">15. század</option><option value="set in the 16th Century">16. század</option><option value="set in the 17th Century">17. század</option><option value="set in the 18th Century">18. század</option><option value="set in the Napoleonic Era">Napóleoni korszak</option><option value="set in the Wild West">Vadnyugat</option><option value="set in Feudal Japan">Feudális Japán</option><option value="set in the Ming Dynasty">Ming-dinasztia</option><option value="set in the Ottoman Empire">Oszmán Birodalom</option><option value="set during the Cold War">Hidegháború</option><option value="set in the Space Age">Űrkorszak</option><option value="set in the Information Age">Információs kor</option><option value="set in the Bronze Age">Bronzkor</option><option value="set in the Iron Age">Vaskor</option><option value="set in the Mesozoic era">Mezozoikum</option><option value="set in the Cretaceous period">Kréta kor</option><option value="set in the Jurassic period">Jura kor</option><option value="set in the Galactic Empire Era">Galaktikus birodalom kora</option><option value="set in a Steampunk Era">Steampunk korszak</option><option value="set in the Pirate Era">Kalózok kora</option><option value="set in the Prohibition Era">Szesztilalom kora</option><option value="set in the Disco Era">Disco korszak</option><option value="set in the Grunge Era">Grunge korszak</option><option value="set during the French Revolution">Francia forradalom</option>
+            </select>
+            <input type="text" id="era" class="custom-input" placeholder="Egyedi korszak..." oninput="build()">
+        </div>
+
+        <div class="form-group">
+            <label>🎥 Kameraállás</label>
+            <select id="sel-camera" onchange="sync('camera', this.value)">
+                <option value="">-- Válassz (50 opció) --</option>
+                <option value="Extreme Long Shot">Extrém nagytotál</option><option value="Long Shot">Nagytotál</option><option value="Full Shot">Egész alakos</option><option value="Medium Long Shot">Amerikai plán</option><option value="Cowboy Shot">Cowboy beállítás</option><option value="Medium Shot">Félalakos</option><option value="Medium Close-Up">Szekond</option><option value="Close-Up">Közeli</option><option value="Choker">Nagyközeli</option><option value="Extreme Close-Up">Szuperközeli</option><option value="Eye-Level shot">Szemmagasság</option><option value="High Angle shot">Felső gépállás</option><option value="Low Angle shot">Béka-perspektíva</option><option value="Dutch Angle shot">Dantei (ferde) szög</option><option value="Over-the-Shoulder shot">Váll feletti</option><option value="Point of View (POV) shot">POV (Nézőpontos)</option><option value="Bird's Eye view">Madártávlat</option><option value="Worm's Eye view">Féregtávlat</option><option value="Tracking Shot">Fahrt felvétel</option><option value="Dolly Shot">Dolly felvétel</option><option value="Pan shot">Pásztázás (Pan)</option><option value="Tilt shot">Bólogatás (Tilt)</option><option value="Zoom shot">Zoomolás</option><option value="Rack Focus">Élességváltás</option><option value="Handheld camera style">Kézikamera</option><option value="Steadicam shot">Steadicam</option><option value="Crane Shot">Daru felvétel</option><option value="Drone Shot">Drónfelvétel</option><option value="360-degree shot">360 fokos nézet</option><option value="Split Screen">Osztott képernyő</option><option value="Deep Focus">Nagy mélységélesség</option><option value="Shallow Focus">Kis mélységélesség</option><option value="Soft Focus">Lágy fókusz</option><option value="Tilt-Shift photography">Tilt-Shift hatás</option><option value="Fish-eye lens view">Halszemoptika</option><option value="Macro photography">Makró</option><option value="Silhouette shot">Sziluett</option><option value="Reflection Shot">Tükröződés</option><option value="Low-Key lighting shot">Low-Key (Sötét tónus)</option><option value="High-Key lighting shot">High-Key (Világos tónus)</option><option value="Backlit shot">Ellenfényes</option><option value="Side-lit shot">Oldalfényes</option><option value="Front-lit shot">Szemközti fény</option><option value="Top-lit shot">Felső fény</option><option value="Under-lit shot">Alsó fény</option><option value="Rim Light shot">Élfény</option><option value="Kicker light shot">Kicker fény</option><option value="Fill Light shot">Derítőfény</option><option value="Leading Lines composition">Vezető vonalak</option><option value="Rule of Thirds composition">Harmadolási szabály</option>
+            </select>
+            <input type="text" id="camera" class="custom-input" placeholder="Kamera..." oninput="build()">
+        </div>
+
+        <div class="form-group">
+            <label>⛈️ Időjárás / Hangulat</label>
+            <select id="sel-weather" onchange="sync('weather', this.value)">
+                <option value="">-- Válassz (50 opció) --</option>
+                <option value="Sunny">Napsütés</option><option value="Clear sky">Tiszta égbolt</option><option value="Partly Cloudy">Részben felhős</option><option value="Overcast">Borult</option><option value="Gloomy">Komor</option><option value="Foggy">Ködös</option><option value="Misty">Párás</option><option value="Hazy">Füstös/Párás</option><option value="Light Rain">Szemerkélő eső</option><option value="Heavy Rain">Heves esőzés</option><option value="Thunderstorm">Vihar</option><option value="Lightning">Villámlás</option><option value="Drizzle">Szitálás</option><option value="Snowing">Havazás</option><option value="Blizzard">Hóvihar</option><option value="Sleet">Havas eső</option><option value="Hail">Jégeső</option><option value="Windy">Szeles</option><option value="Stormy">Viharos</option><option value="Tornado">Tornádó</option><option value="Hurricane">Hurrikán</option><option value="Dust Storm">Porköd</option><option value="Sandstorm">Homokvihar</option><option value="Heat Wave">Hőség</option><option value="Mirage">Délibáb</option><option value="Aurora Borealis">Sarki fény</option><option value="Rainbow">Szivárvány</option><option value="Eclipse">Napfogyatkozás</option><option value="Blood Moon">Vérhold</option><option value="Full Moon">Telihold</option><option value="Starry Night">Csillagos éjszaka</option><option value="Sunrise">Napkelte</option><option value="Sunset">Naplemente</option><option value="Golden Hour">Aranyóra</option><option value="Blue Hour">Kék óra</option><option value="Twilight">Alkonyat</option><option value="Midnight">Éjfél</option><option value="Damp">Nyirkos</option><option value="Humid">Párás hőség</option><option value="Dry">Szárazság</option><option value="Arid">Arid (Kietlen)</option><option value="Frosty">Zúzmarás</option><option value="Icy">Jeges</option><option value="Volcanic Ash">Vulkáni hamu</option><option value="Toxic Clouds">Toxikus felhők</option><option value="Cosmic Nebula">Kozmikus köd</option><option value="Meteor Shower">Meteorzápor</option><option value="Underwater atmosphere">Víz alatti</option><option value="Deep Sea atmosphere">Mélytengeri</option><option value="Zero Gravity atmosphere">Zéró gravitáció</option>
+            </select>
+            <input type="text" id="weather" class="custom-input" placeholder="Időjárás..." oninput="build()">
+        </div>
+
+        <div class="form-group">
+            <label>💡 Világítás</label>
+            <select id="sel-lighting" onchange="sync('lighting', this.value)">
+                <option value="">-- Válassz (50 opció) --</option>
+                <option value="Natural Light">Természetes fény</option><option value="Ambient Light">Környezeti fény</option><option value="Artificial Light">Mesterséges fény</option><option value="Hard Light">Kemény fény</option><option value="Soft Light">Lágy fény</option><option value="Diffused light">Diffúz fény</option><option value="Bounce light">Visszavert fény</option><option value="Three-Point Lighting">Hárompontos világítás</option><option value="Key Light">Főfény</option><option value="Fill Light">Derítőfény</option><option value="Backlight">Ellenfény</option><option value="Rim Light">Élfény</option><option value="Kicker light">Kicker fény</option><option value="Butterfly Lighting">Pillangó világítás</option><option value="Rembrandt Lighting">Rembrandt világítás</option><option value="Split Lighting">Osztott világítás</option><option value="Loop Lighting">Hurok világítás</option><option value="High-Key lighting">High-Key (Világos)</option><option value="Low-Key lighting">Low-Key (Sötét)</option><option value="Chiaroscuro">Chiaroscuro (Fény-árnyék)</option><option value="Tenebrism">Tenebrizmus</option><option value="Silhouette lighting">Sziluett világítás</option><option value="Candlelight">Gyertyafény</option><option value="Firelight">Tűzfény</option><option value="Torchlight">Fáklyafény</option><option value="Neon lights">Neon fények</option><option value="Fluorescent lighting">Fénycső világítás</option><option value="Incandescent lighting">Izzólámpa fény</option><option value="LED lighting">LED világítás</option><option value="Laser light">Lézer fény</option><option value="Strobe light">Stroboszkóp</option><option value="Flash photography">Vaku</option><option value="Colored Gels">Színes zselék</option><option value="Volumetric lighting">Volumetrikus fény</option><option value="God Rays">Isten-sugarak</option><option value="Lens Flare">Lencse becsillanás</option><option value="Bokeh">Bokeh (Elmosódás)</option><option value="Glow effect">Ragyogás</option><option value="Bioluminescence">Biolumineszcencia</option><option value="Phosphorescence">Foszforeszkálás</option><option value="Radioactive Glow">Radioaktív ragyogás</option><option value="Moonlight">Holdfény</option><option value="Sunlight">Napsugár</option><option value="Starlight">Csillagfény</option><option value="Underwater Light">Víz alatti fény</option><option value="Street Lamps">Utcai lámpák</option><option value="Car Headlights">Autó fényszórók</option><option value="Flashlight">Zseblámpa fény</option><option value="TV Screen Glow">TV képernyő fénye</option><option value="Fairy Lights">Fényfüzér</option>
+            </select>
+            <input type="text" id="lighting" class="custom-input" placeholder="Világítás..." oninput="build()">
+        </div>
+
+        <div class="form-group">
+            <label>🔍 Objektív</label>
+            <select id="sel-lens" onchange="sync('lens', this.value)">
+                <option value="">-- Válassz (50 opció) --</option>
+                <option value="14mm Ultra Wide lens">14mm Ultra Széles</option><option value="24mm Wide lens">24mm Széles</option><option value="35mm Standard lens">35mm Standard</option><option value="50mm Nifty Fifty lens">50mm Alapobjektív</option><option value="85mm Portrait lens">85mm Portré</option><option value="135mm Telephoto lens">135mm Teleobjektív</option><option value="200mm Long Telephoto lens">200mm Hosszú Tele</option><option value="400mm Super Telephoto lens">400mm Szuper Tele</option><option value="Zoom Lens">Zoom objektív</option><option value="Prime Lens">Fix objektív</option><option value="Fisheye lens">Halszemoptika</option><option value="Anamorphic lens">Anamorfikus lencse</option><option value="Macro lens">Makró objektív</option><option value="Tilt-Shift lens">Tilt-Shift lencse</option><option value="Lensbaby lens">Lensbaby</option><option value="Pin Hole lens">Lyukkamera</option><option value="Vintage lens">Vintage lencse</option><option value="Leica Glass">Leica lencse</option><option value="Zeiss Optics">Zeiss optika</option><option value="Panavision lens">Panavision</option><option value="Arri Alexa optics">Arri Alexa lencse</option><option value="Red Digital Cinema optics">Red Digital Cinema</option><option value="GoPro Wide angle">GoPro Széles látószög</option><option value="iPhone Camera lens">iPhone kamera</option><option value="Disposable Camera lens">Eldobható kamera</option><option value="8mm Film look">8mm-es film</option><option value="16mm Film look">16mm-es film</option><option value="35mm Film look">35mm-es film</option><option value="70mm IMAX format">70mm IMAX</option><option value="Polarizing Filter">Polarizált szűrő</option><option value="ND Filter">ND szűrő</option><option value="UV Filter">UV szűrő</option><option value="Mist Filter">Köd szűrő</option><option value="Pro-Mist filter">Pro-Mist szűrő</option><option value="Star Filter">Csillag szűrő</option><option value="Infrared lens">Infravörös</option><option value="Night Vision">Éjjellátó</option><option value="Thermal Vision">Hőkamera</option><option value="X-Ray vision look">Röntgen</option><option value="Kaleidoscope lens">Kaleidoszkóp</option><option value="Prism effect">Prizma</option><option value="Broken Lens effect">Törött lencse</option><option value="Smudged Lens effect">Maszatos lencse</option><option value="Dirty Lens effect">Koszos lencse</option><option value="Water Droplets on Lens">Vízcseppek a lencsén</option><option value="Cracked Lens effect">Repedt lencse</option><option value="Holga style">Holga lencse</option><option value="Lomo style">Lomo hatás</option><option value="Polaroid style">Polaroid hatás</option><option value="CCTV Lens look">CCTV kamera</option>
+            </select>
+            <input type="text" id="lens" class="custom-input" placeholder="Objektív..." oninput="build()">
+        </div>
+
+        <div class="form-group">
+            <label>🎨 Színvilág</label>
+            <select id="sel-color" onchange="sync('color', this.value)">
+                <option value="">-- Válassz (50 opció) --</option>
+                <option value="Teal and Orange color grading">Teal and Orange</option><option value="Monochrome">Monokróm</option><option value="Black and White">Fekete-fehér</option><option value="Sepia tones">Szépia</option><option value="Technicolor">Technicolor</option><option value="Kodachrome style">Kodachrome</option><option value="Ektachrome style">Ektachrome</option><option value="Fujifilm look">Fujifilm</option><option value="Polaroid Color style">Polaroid színek</option><option value="Desaturated colors">Telítetlen</option><option value="Highly Saturated colors">Erősen telített</option><option value="Vibrant colors">Vibráló</option><option value="Muted colors">Visszafogott színek</option><option value="Pastel colors">Pasztell</option><option value="Neon colors">Neon színek</option><option value="Triadic color scheme">Triádikus színek</option><option value="Analogous color scheme">Analóg színek</option><option value="Complementary color scheme">Komplementer színek</option><option value="Split-Complementary color scheme">Osztott komplementer</option><option value="High Contrast">Erős kontraszt</option><option value="Low Contrast">Alacsony kontraszt</option><option value="Gritty/Grainy look">Nyers/Szemcsés</option><option value="Clean digital look">Tiszta színek</option><option value="Digital color style">Digitális</option><option value="Analog film color">Analóg</option><option value="Warm Tones">Meleg tónusok</option><option value="Cool Tones">Hideg tónusok</option><option value="Earth Tones">Földszínek</option><option value="Gold and Black palette">Arany és Fekete</option><option value="Red and Blue palette">Piros és Kék</option><option value="Cyberpunk Purple/Blue palette">Cyberpunk Lila</option><option value="Forest Green palette">Erdei Zöld</option><option value="Ocean Blue palette">Óceánkék</option><option value="Sunset Orange palette">Naplemente Narancs</option><option value="Midnight Blue palette">Éjféli Kék</option><option value="Ghostly Pale palette">Szellemfehér</option><option value="Gothic Dark palette">Gótikus Sötét</option><option value="Psychedelic colors">Pszichedelikus</option><option value="Infrared Color palette">Infravörös színek</option><option value="Sepia Wash">Szépia mosás</option><option value="Bleach Bypass effect">Bleach Bypass</option><option value="Cross Processed look">Kereszthívás</option><option value="Two-Tone color scheme">Kéttónusú</option><option value="Duotone style">Duotone</option><option value="Tritone style">Tritone</option><option value="Color Splash effect">Color Splash</option><option value="Vintage Fade">Vintage fakulás</option><option value="Cinematic Teal">Cinematikus Teal</option><option value="Moody Grey palette">Komor Szürke</option><option value="Soft Pastel palette">Lágy Pasztell</option>
+            </select>
+            <input type="text" id="color" class="custom-input" placeholder="Színek..." oninput="build()">
+        </div>
+    </div>
+
+    <div id="result-container" class="full-width">
+        <label>🚀 Kimásolható Összetett Prompt (Angol nyelvű AI generátorokhoz):</label>
+        <textarea id="final-prompt" readonly placeholder="Kezdj el gépelni az Alany mezőbe..."></textarea>
+        <div class="btn-group">
+            <button class="copy-btn" onclick="copy()">Prompt Másolása</button>
+            <button class="reset-btn" onclick="resetAll()">Mindent töröl</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let translatedSubject = "";
+    let timeoutId = null;
+
+    function handleSubjectInput() {
+        const text = document.getElementById('subject').value.trim();
+        const status = document.getElementById('translation-status');
+        
+        if (!text) {
+            translatedSubject = "";
+            build();
+            return;
+        }
+
+        status.innerText = "Fordítás...";
+        
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            translate(text);
+        }, 800);
+    }
+
+    async function translate(text) {
+        const status = document.getElementById('translation-status');
+        try {
+            const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=hu|en`);
+            const data = await response.json();
+            translatedSubject = data.responseData.translatedText;
+            status.innerText = "✓ Lefordítva";
+            build();
+        } catch (error) {
+            status.innerText = "Hiba a fordításkor, de az eredeti bekerül.";
+            translatedSubject = text; 
+            build();
+        }
+    }
+
+    function sync(id, val) {
+        if(val !== undefined) {
+            document.getElementById(id).value = val;
+            build();
+        }
+    }
+
+    function build() {
+        const currentSubject = translatedSubject || document.getElementById('subject').value.trim();
+        const formatParams = document.getElementById('sel-format').value;
+        const otherIds = ['genre', 'era', 'camera', 'weather', 'lighting', 'lens', 'color'];
+        let resultParts = [];
+        
+        if(currentSubject) resultParts.push(currentSubject);
+        
+        otherIds.forEach(id => {
+            const val = document.getElementById(id).value.trim();
+            if(val) resultParts.push(val);
+        });
+
+        if(resultParts.length > 0) {
+            const finalString = resultParts.join(", ") + ", cinematic photography, photorealistic, 8k, highly detailed, masterwork " + formatParams;
+            document.getElementById('final-prompt').value = finalString;
+        } else {
+            document.getElementById('final-prompt').value = "";
+        }
+    }
+
+    function copy() {
+        const area = document.getElementById('final-prompt');
+        if(!area.value) return;
+        area.select();
+        navigator.clipboard.writeText(area.value);
+        const btn = document.querySelector('.copy-btn');
+        btn.innerText = "KIMÁSOLVA! ✓";
+        btn.style.background = "#10b981";
+        setTimeout(() => { btn.innerText = "PROMPT MÁSOLÁSA"; btn.style.background = ""; }, 2000);
+    }
+
+    function resetAll() {
+        document.querySelectorAll('input').forEach(i => i.value = "");
+        document.querySelectorAll('select').forEach(s => s.selectedIndex = (s.id === 'sel-format' ? 0 : 0));
+        document.getElementById('final-prompt').value = "";
+        document.getElementById('translation-status').innerText = "";
+        translatedSubject = "";
+        build();
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="hu" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Certifications Dashboard</title>
+    
+    <!-- External CSS & Libraries -->
+    <!-- Chart.js interaktív diagramokhoz -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse CSV feldolgozáshoz és elemzéshez -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- FontAwesome ikonokhoz -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter betűtípus -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ==========================================================================
+           1. Globális CSS Változók & Témák (Sötét / Világos)
+           ========================================================================== */
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --card-border: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-primary: #3b82f6;
+            --accent-hover: #2563eb;
+            --accent-glow: rgba(59, 130, 246, 0.25);
+            --table-header-bg: #111827;
+            --table-row-hover: #26354a;
+            --input-bg: #0f172a;
+            --badge-bg: rgba(59, 130, 246, 0.15);
+            --badge-text: #60a5fa;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --card-border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --accent-primary: #2563eb;
+            --accent-hover: #1d4ed8;
+            --accent-glow: rgba(37, 99, 235, 0.15);
+            --table-header-bg: #f8fafc;
+            --table-row-hover: #f1f5f9;
+            --input-bg: #ffffff;
+            --badge-bg: rgba(37, 99, 235, 0.1);
+            --badge-text: #2563eb;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Base Resets */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* ==========================================================================
+           2. Fejléc Elrendezés (Header Layout)
+           ========================================================================== */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--card-border);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .title-area h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .title-area h1 i {
+            color: var(--accent-primary);
+        }
+
+        .title-area p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        .controls-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .select-custom, .btn-action {
+            background-color: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--card-border);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            outline: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .select-custom:hover, .btn-action:hover {
+            border-color: var(--accent-primary);
+        }
+
+        /* ==========================================================================
+           3. KPI Összegző Kártyák (KPI Summary Cards)
+           ========================================================================== */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .kpi-info h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .kpi-info .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .kpi-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            background: var(--badge-bg);
+            color: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        /* ==========================================================================
+           4. Diagram Rács (Analytics Grid)
+           ========================================================================== */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .chart-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .chart-card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .chart-header {
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+            width: 100%;
+        }
+
+        /* ==========================================================================
+           5. Szűrő & Kereső Sáv (Filters & Search)
+           ========================================================================== */
+        .filter-section {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px 12px 0 0;
+            padding: 20px;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 14px 10px 40px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .search-box input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .filter-dropdowns {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-dropdowns select {
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            border: 1px solid var(--card-border);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        /* ==========================================================================
+           6. Adattáblázat (Data Table)
+           ========================================================================== */
+        .table-container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            overflow-x: auto;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+
+        th {
+            background-color: var(--table-header-bg);
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--card-border);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--card-border);
+            color: var(--text-main);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background-color: var(--table-row-hover);
+        }
+
+        .badge-authority {
+            background-color: var(--badge-bg);
+            color: var(--badge-text);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+
+        .btn-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            padding: 6px 12px;
+            border-radius: 6px;
+            background-color: var(--badge-bg);
+            transition: all 0.2s;
+        }
+
+        .btn-link:hover {
+            background-color: var(--accent-primary);
+            color: #ffffff;
+        }
+
+        .no-link {
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 0.85rem;
+        }
+
+        /* Betöltő és Hibaállapotok Stílusa */
+        .status-message {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .status-message i {
+            margin-right: 8px;
+        }
+
+        /* Responsive Igazítások */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .controls-area {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .filter-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-dropdowns {
+                flex-direction: column;
+            }
+            .filter-dropdowns select {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Fejléc (Cím, Nyelvválasztó, Témaváltó) -->
+    <header>
+        <div class="title-area">
+            <h1><i class="fa-solid fa-certificate"></i> <span id="txt-title">LinkedIn Tanúsítványok</span></h1>
+            <p id="txt-subtitle">Interaktív elemző és kimutatás dashboard</p>
+        </div>
+        <div class="controls-area">
+            <!-- Nyelvválasztó Dropdown -->
+            <select id="lang-select" class="select-custom" onchange="changeLanguage(this.value)">
+                <option value="hu" selected>🇭🇺 Magyar</option>
+                <option value="en">🇬🇧 English</option>
+                <option value="de">🇩🇪 Deutsch</option>
+            </select>
+            <!-- Témaváltó Gomb (Világos / Sötét) -->
+            <button class="btn-action" onclick="toggleTheme()" id="btn-theme">
+                <i class="fa-solid fa-sun" id="theme-icon"></i>
+                <span id="txt-theme">Világos mód</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- KPI Mutató Kártyák -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-info">
+                <h3 id="lbl-kpi-total">Összes tanúsítvány</h3>
+                <div class="value" id="kpi-total">-</div>
+            </div>
+            <div class="kpi-icon"><i class="fa-solid fa-award"></i></div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-info">
+                <h3 id="lbl-kpi-issuers">Kibocsátó szervezet</h3>
+                <div class="value" id="kpi-issuers">-</div>
+            </div>
+            <div class="kpi-icon"><i class="fa-solid fa-building-columns"></i></div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-info">
+                <h3 id="lbl-kpi-top">Fő kibocsátó</h3>
+                <div class="value" id="kpi-top" style="font-size: 1.3rem;">-</div>
+            </div>
+            <div class="kpi-icon"><i class="fa-solid fa-star"></i></div>
+        </div>
+    </div>
+
+    <!-- Analitikai Diagramok -->
+    <div class="charts-grid">
+        <!-- Kör / Fánk Diagram -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <h2 id="lbl-chart-pie">Kibocsátók szerinti megoszlás</h2>
+            </div>
+            <div class="chart-container">
+                <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Oszlop Diagram -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <h2 id="lbl-chart-bar">Tanúsítványok száma szervezet szerint</h2>
+            </div>
+            <div class="chart-container">
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Vonal / Idővonal Diagram -->
+        <div class="chart-card full-width">
+            <div class="chart-header">
+                <h2 id="lbl-chart-line">Megszerzett tanúsítványok idővonala</h2>
+            </div>
+            <div class="chart-container">
+                <canvas id="lineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kereső és Szűrő Sáv -->
+    <div class="filter-section">
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="search-input" placeholder="Keresés név, kibocsátó vagy azonosító alapján..." oninput="filterData()">
+        </div>
+        <div class="filter-dropdowns">
+            <select id="filter-authority" onchange="filterData()">
+                <option value="" id="opt-all-authorities">Minden kibocsátó</option>
+            </select>
+            <select id="filter-year" onchange="filterData()">
+                <option value="" id="opt-all-years">Minden év</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Adattáblázat -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th id="th-name">Tanúsítvány Neve</th>
+                    <th id="th-authority">Kibocsátó</th>
+                    <th id="th-date">Kibocsátás Dátuma</th>
+                    <th id="th-license">Licensz / Oklevél Szám</th>
+                    <th id="th-action">Művelet</th>
+                </tr>
+            </thead>
+            <tbody id="cert-table-body">
+                <tr>
+                    <td colspan="5" class="status-message">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Adatok betöltése a GitHub-ról...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==========================================================================
+   7. JavaScript Logika (Adatlekérés, Elemzés, UI Kezelés)
+   ========================================================================== -->
+<script>
+    /**
+     * Konfiguráció és Külső Erőforrás URL
+     * Nyers GitHub URL a CSV adatforráshoz.
+     */
+    const CSV_URL = "https://raw.githubusercontent.com/klajosw/mierdekel/refs/heads/main/certi/Certifications.csv";
+
+    // Globális adatállapot
+    let rawCertifications = [];
+    let currentLang = "hu";
+    
+    // Chart.js instanciák referenciái
+    let pieChartInstance = null;
+    let barChartInstance = null;
+    let lineChartInstance = null;
+
+    /**
+     * Többnyelvűségi Szótár (i18n)
+     * Magyar (hu), Angol (en), Német (de) fordítások.
+     */
+    const i18n = {
+        hu: {
+            title: "LinkedIn Tanúsítványok",
+            subtitle: "Interaktív elemző és kimutatás dashboard",
+            themeLight: "Világos mód",
+            themeDark: "Sötét mód",
+            kpiTotal: "Összes tanúsítvány",
+            kpiIssuers: "Kibocsátó szervezet",
+            kpiTop: "Fő kibocsátó",
+            chartPie: "Kibocsátók szerinti megoszlás",
+            chartBar: "Tanúsítványok száma szervezet szerint",
+            chartLine: "Megszerzett tanúsítványok idővonala",
+            searchPlaceholder: "Keresés név, kibocsátó vagy azonosító alapján...",
+            allAuthorities: "Minden kibocsátó",
+            allYears: "Minden év",
+            thName: "Tanúsítvány Neve",
+            thAuthority: "Kibocsátó",
+            thDate: "Kibocsátás Dátuma",
+            thLicense: "Licensz / Oklevél Szám",
+            thAction: "Művelet",
+            btnView: "Megtekintés",
+            noLink: "Nincs link",
+            chartCertCount: "Tanúsítványok száma",
+            loading: "Adatok betöltése a GitHub-ról...",
+            errorLoading: "Hiba történt az adatok letöltése során.",
+            noData: "Nincs a szűrésnek megfelelő találat."
+        },
+        en: {
+            title: "LinkedIn Certifications",
+            subtitle: "Interactive Analytics & Overview Dashboard",
+            themeLight: "Light Mode",
+            themeDark: "Dark Mode",
+            kpiTotal: "Total Certifications",
+            kpiIssuers: "Issuing Authorities",
+            kpiTop: "Top Issuer",
+            chartPie: "Distribution by Issuer",
+            chartBar: "Certifications Count by Issuer",
+            chartLine: "Certifications Timeline",
+            searchPlaceholder: "Search by name, issuer or license ID...",
+            allAuthorities: "All Issuers",
+            allYears: "All Years",
+            thName: "Certificate Name",
+            thAuthority: "Issuing Authority",
+            thDate: "Issue Date",
+            thLicense: "License Number",
+            thAction: "Action",
+            btnView: "View Certificate",
+            noLink: "No Link",
+            chartCertCount: "Number of Certifications",
+            loading: "Loading data from GitHub...",
+            errorLoading: "Failed to load CSV data.",
+            noData: "No matching records found."
+        },
+        de: {
+            title: "LinkedIn Zertifikate",
+            subtitle: "Interaktives Analyse- und Übersichtsdashboard",
+            themeLight: "Heller Modus",
+            themeDark: "Dunkler Modus",
+            kpiTotal: "Zertifikate Gesamt",
+            kpiIssuers: "Ausstellende Organisationen",
+            kpiTop: "Hauptaussteller",
+            chartPie: "Verteilung nach Aussteller",
+            chartBar: "Anzahl der Zertifikate nach Organisation",
+            chartLine: "Zertifikate Zeitverlauf",
+            searchPlaceholder: "Suche nach Name, Aussteller oder Lizenznummer...",
+            allAuthorities: "Alle Aussteller",
+            allYears: "Alle Jahre",
+            thName: "Zertifikatname",
+            thAuthority: "Aussteller",
+            thDate: "Ausstellungsdatum",
+            thLicense: "Lizenznummer",
+            thAction: "Aktion",
+            btnView: "Anzeigen",
+            noLink: "Kein Link",
+            chartCertCount: "Anzahl der Zertifikate",
+            loading: "Daten werden von GitHub geladen...",
+            errorLoading: "Fehler beim Laden der CSV-Daten.",
+            noData: "Keine übereinstimmenden Datensätze gefunden."
+        }
+    };
+
+    /**
+     * Alkalmazás Inicializálása (DOM Content Loaded)
+     */
+    document.addEventListener("DOMContentLoaded", () => {
+        loadDataFromGitHub();
+        changeLanguage('hu'); // Alapértelmezett magyar nyelv beállítása
+    });
+
+    /**
+     * CSV adatok dinamikus letöltése a GitHub tárolóból PapaParse használatával
+     */
+    function loadDataFromGitHub() {
+        Papa.parse(CSV_URL, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                if (results.data && results.data.length > 0) {
+                    rawCertifications = results.data;
+                    initDashboard();
+                } else {
+                    showTableMessage(i18n[currentLang].errorLoading, true);
+                }
+            },
+            error: function(err) {
+                console.error("CSV letöltési hiba:", err);
+                showTableMessage(i18n[currentLang].errorLoading, true);
+            }
+        });
+    }
+
+    /**
+     * A teljes Dashboard felépítése a letöltött adatokból
+     */
+    function initDashboard() {
+        populateFilterDropdowns();
+        renderKPIs(rawCertifications);
+        renderTable(rawCertifications);
+        initCharts(rawCertifications);
+    }
+
+    /**
+     * Témaváltó logika (Sötét / Világos mód)
+     */
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute("data-theme");
+        const newTheme = currentTheme === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", newTheme);
+
+        const icon = document.getElementById("theme-icon");
+        if (newTheme === "light") {
+            icon.className = "fa-solid fa-moon";
+        } else {
+            icon.className = "fa-solid fa-sun";
+        }
+
+        updateThemeTexts(newTheme);
+        updateChartsTheme();
+    }
+
+    function updateThemeTexts(theme) {
+        const txtTheme = document.getElementById("txt-theme");
+        if (theme === "light") {
+            txtTheme.textContent = i18n[currentLang].themeDark;
+        } else {
+            txtTheme.textContent = i18n[currentLang].themeLight;
+        }
+    }
+
+    /**
+     * Nyelvválasztó funkció dinamikus UI szöveg frissítéssel
+     */
+    function changeLanguage(lang) {
+        currentLang = lang;
+        const t = i18n[lang];
+
+        document.getElementById("txt-title").textContent = t.title;
+        document.getElementById("txt-subtitle").textContent = t.subtitle;
+        document.getElementById("lbl-kpi-total").textContent = t.kpiTotal;
+        document.getElementById("lbl-kpi-issuers").textContent = t.kpiIssuers;
+        document.getElementById("lbl-kpi-top").textContent = t.kpiTop;
+        document.getElementById("lbl-chart-pie").textContent = t.chartPie;
+        document.getElementById("lbl-chart-bar").textContent = t.chartBar;
+        document.getElementById("lbl-chart-line").textContent = t.chartLine;
+        document.getElementById("search-input").placeholder = t.searchPlaceholder;
+        document.getElementById("opt-all-authorities").textContent = t.allAuthorities;
+        document.getElementById("opt-all-years").textContent = t.allYears;
+        document.getElementById("th-name").textContent = t.thName;
+        document.getElementById("th-authority").textContent = t.thAuthority;
+        document.getElementById("th-date").textContent = t.thDate;
+        document.getElementById("th-license").textContent = t.thLicense;
+        document.getElementById("th-action").textContent = t.thAction;
+
+        const theme = document.documentElement.getAttribute("data-theme");
+        updateThemeTexts(theme);
+        
+        if (rawCertifications.length > 0) {
+            filterData();
+        }
+    }
+
+    /**
+     * Dinamikus szűrő opciók kinyerése a nyers adatokból
+     */
+    function populateFilterDropdowns() {
+        const authoritySelect = document.getElementById("filter-authority");
+        const yearSelect = document.getElementById("filter-year");
+
+        const authorities = [...new Set(rawCertifications.map(item => item.Authority).filter(Boolean))];
+        authorities.forEach(auth => {
+            const opt = document.createElement("option");
+            opt.value = auth;
+            opt.textContent = auth;
+            authoritySelect.appendChild(opt);
+        });
+
+        const years = [...new Set(rawCertifications.map(item => {
+            const dateStr = item["Started On"] || item["Finished On"];
+            return dateStr ? dateStr.split(" ")[1] || dateStr : null;
+        }).filter(Boolean))];
+        
+        years.sort((a, b) => b - a).forEach(year => {
+            const opt = document.createElement("option");
+            opt.value = year;
+            opt.textContent = year;
+            yearSelect.appendChild(opt);
+        });
+    }
+
+    /**
+     * Adatszűrés Keresési kifejezés, Szervezet és Év alapján
+     */
+    function filterData() {
+        const query = document.getElementById("search-input").value.toLowerCase();
+        const selectedAuthority = document.getElementById("filter-authority").value;
+        const selectedYear = document.getElementById("filter-year").value;
+
+        const filtered = rawCertifications.filter(item => {
+            const matchesQuery = (item.Name && item.Name.toLowerCase().includes(query)) ||
+                                 (item.Authority && item.Authority.toLowerCase().includes(query)) ||
+                                 (item["License Number"] && item["License Number"].toLowerCase().includes(query));
+            
+            const matchesAuthority = selectedAuthority === "" || item.Authority === selectedAuthority;
+            
+            const dateStr = item["Started On"] || item["Finished On"] || "";
+            const matchesYear = selectedYear === "" || dateStr.includes(selectedYear);
+
+            return matchesQuery && matchesAuthority && matchesYear;
+        });
+
+        renderKPIs(filtered);
+        renderTable(filtered);
+        updateCharts(filtered);
+    }
+
+    /**
+     * KPI Mutatók kiszámítása és megjelenítése
+     */
+    function renderKPIs(data) {
+        document.getElementById("kpi-total").textContent = data.length;
+
+        const authorities = data.map(i => i.Authority).filter(Boolean);
+        const uniqueAuthorities = [...new Set(authorities)];
+        document.getElementById("kpi-issuers").textContent = uniqueAuthorities.length;
+
+        if (data.length === 0) {
+            document.getElementById("kpi-top").textContent = "-";
+            return;
+        }
+
+        const counts = {};
+        authorities.forEach(a => counts[a] = (counts[a] || 0) + 1);
+        const topIssuer = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b, "-");
+        document.getElementById("kpi-top").textContent = topIssuer;
+    }
+
+    /**
+     * Adattáblázat dinamikus feltöltése
+     */
+    function renderTable(data) {
+        const tbody = document.getElementById("cert-table-body");
+        tbody.innerHTML = "";
+        const t = i18n[currentLang];
+
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="status-message">${t.noData}</td></tr>`;
+            return;
+        }
+
+        data.forEach(item => {
+            const tr = document.createElement("tr");
+
+            const linkHtml = item.Url ? 
+                `<a href="${item.Url}" target="_blank" rel="noopener noreferrer" class="btn-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> ${t.btnView}</a>` : 
+                `<span class="no-link">${t.noLink}</span>`;
+
+            tr.innerHTML = `
+                <td><strong>${item.Name || 'N/A'}</strong></td>
+                <td><span class="badge-authority">${item.Authority || 'N/A'}</span></td>
+                <td>${item["Started On"] || item["Finished On"] || 'N/A'}</td>
+                <td><code>${item["License Number"] || 'N/A'}</code></td>
+                <td>${linkHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function showTableMessage(msg, isError = false) {
+        const tbody = document.getElementById("cert-table-body");
+        const icon = isError ? "fa-triangle-exclamation" : "fa-spinner fa-spin";
+        tbody.innerHTML = `<tr><td colspan="5" class="status-message"><i class="fa-solid ${icon}"></i> ${msg}</td></tr>`;
+    }
+
+    /**
+     * Chart.js Téma Színek lekérése az aktuális CSS változókból
+     */
+    function getChartThemeColors() {
+        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+        return {
+            textColor: isDark ? '#94a3b8' : '#64748b',
+            gridColor: isDark ? '#334155' : '#e2e8f0'
+        };
+    }
+
+    /**
+     * Diagramok Inicializálása (Kör, Oszlop, Vonal)
+     */
+    function initCharts(data) {
+        const themeColors = getChartThemeColors();
+        
+        const authCounts = {};
+        data.forEach(i => {
+            if (i.Authority) authCounts[i.Authority] = (authCounts[i.Authority] || 0) + 1;
+        });
+
+        const timelineCounts = {};
+        data.forEach(i => {
+            const date = i["Started On"] || i["Finished On"] || "N/A";
+            timelineCounts[date] = (timelineCounts[date] || 0) + 1;
+        });
+
+        // 1. Kör / Fánk Diagram
+        const ctxPie = document.getElementById('pieChart').getContext('2d');
+        pieChartInstance = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(authCounts),
+                datasets: [{
+                    data: Object.values(authCounts),
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: themeColors.textColor }
+                    }
+                }
+            }
+        });
+
+        // 2. Hasáb / Oszlop Diagram
+        const ctxBar = document.getElementById('barChart').getContext('2d');
+        barChartInstance = new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(authCounts),
+                datasets: [{
+                    label: i18n[currentLang].chartCertCount,
+                    data: Object.values(authCounts),
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: themeColors.textColor, stepSize: 1 },
+                        grid: { color: themeColors.gridColor }
+                    },
+                    x: {
+                        ticks: { color: themeColors.textColor },
+                        grid: { display: false }
+                    }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // 3. Vonal Diagram
+        const ctxLine = document.getElementById('lineChart').getContext('2d');
+        lineChartInstance = new Chart(ctxLine, {
+            type: 'line',
+            data: {
+                labels: Object.keys(timelineCounts),
+                datasets: [{
+                    label: i18n[currentLang].chartCertCount,
+                    data: Object.values(timelineCounts),
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#10b981'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: themeColors.textColor, stepSize: 1 },
+                        grid: { color: themeColors.gridColor }
+                    },
+                    x: {
+                        ticks: { color: themeColors.textColor },
+                        grid: { color: themeColors.gridColor }
+                    }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    /**
+     * Diagramok frissítése szűrés után
+     */
+    function updateCharts(data) {
+        const authCounts = {};
+        data.forEach(i => {
+            if (i.Authority) authCounts[i.Authority] = (authCounts[i.Authority] || 0) + 1;
+        });
+
+        const timelineCounts = {};
+        data.forEach(i => {
+            const date = i["Started On"] || i["Finished On"] || "N/A";
+            timelineCounts[date] = (timelineCounts[date] || 0) + 1;
+        });
+
+        if (pieChartInstance) {
+            pieChartInstance.data.labels = Object.keys(authCounts);
+            pieChartInstance.data.datasets[0].data = Object.values(authCounts);
+            pieChartInstance.update();
+        }
+
+        if (barChartInstance) {
+            barChartInstance.data.labels = Object.keys(authCounts);
+            barChartInstance.data.datasets[0].data = Object.values(authCounts);
+            barChartInstance.update();
+        }
+
+        if (lineChartInstance) {
+            lineChartInstance.data.labels = Object.keys(timelineCounts);
+            lineChartInstance.data.datasets[0].data = Object.values(timelineCounts);
+            lineChartInstance.update();
+        }
+    }
+
+    /**
+     * Diagramok színeinek igazítása témaváltáskor
+     */
+    function updateChartsTheme() {
+        const themeColors = getChartThemeColors();
+        
+        [pieChartInstance, barChartInstance, lineChartInstance].forEach(chart => {
+            if (!chart) return;
+            if (chart.options.plugins && chart.options.plugins.legend) {
+                chart.options.plugins.legend.labels.color = themeColors.textColor;
+            }
+            if (chart.options.scales) {
+                if (chart.options.scales.x) {
+                    chart.options.scales.x.ticks.color = themeColors.textColor;
+                    if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = themeColors.gridColor;
+                }
+                if (chart.options.scales.y) {
+                    chart.options.scales.y.ticks.color = themeColors.textColor;
+                    if (chart.options.scales.y.grid) chart.options.scales.y.grid.color = themeColors.gridColor;
+                }
+            }
+            chart.update();
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Irodai helyfoglalás — prototípus</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EEF1F4;
+    --panel: #FFFFFF;
+    --panel-border: #DCE1E6;
+    --ink: #1B2430;
+    --muted: #5B6672;
+    --accent: #2F6F63;
+    --accent-dark: #24564C;
+    --accent-soft: #E4EFEC;
+    --amber: #E8A33D;
+    --amber-soft: #FBF0DD;
+    --free: #2F6F63;
+    --booked: #C24B4B;
+    --booked-soft: #F8E7E5;
+    --inactive: #B7BEC6;
+    --grid-line: #D9DEE3;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(27,36,48,0.06), 0 4px 16px rgba(27,36,48,0.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'IBM Plex Sans', sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    display:grid;
+    grid-template-columns: 300px 1fr;
+    grid-template-rows: 60px 1fr;
+    grid-template-areas:
+      "topbar topbar"
+      "sidebar main";
+    height:100vh;
+    min-height:600px;
+  }
+  /* ---- Topbar ---- */
+  .topbar{
+    grid-area: topbar;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 20px;
+    background:var(--panel);
+    border-bottom:1px solid var(--panel-border);
+    z-index:10;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:17px;
+    letter-spacing:-0.01em;
+  }
+  .brand-mark{
+    width:26px;height:26px;
+    border-radius:6px;
+    background:var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    color:white;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    font-weight:600;
+  }
+  .brand small{
+    display:block;
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:400;
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:0;
+    margin-top:1px;
+  }
+  .topbar-right{
+    display:flex;
+    align-items:center;
+    gap:16px;
+  }
+  .date-picker{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+  }
+  .date-picker input[type=date]{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    border:1px solid var(--panel-border);
+    border-radius:6px;
+    padding:6px 8px;
+    color:var(--ink);
+    background:var(--bg);
+  }
+  .user-chip{
+    display:flex;align-items:center;gap:8px;
+    font-size:13px;
+    color:var(--muted);
+    padding:5px 10px 5px 5px;
+    border:1px solid var(--panel-border);
+    border-radius:20px;
+  }
+  .user-avatar{
+    width:24px;height:24px;border-radius:50%;
+    background:var(--amber-soft);
+    color:#8a5c14;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;font-weight:600;
+  }
+  /* ---- Sidebar ---- */
+  .sidebar{
+    grid-area: sidebar;
+    background:var(--panel);
+    border-right:1px solid var(--panel-border);
+    padding:18px 16px 16px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+  }
+  .side-section-title{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--muted);
+    margin:0 0 10px;
+  }
+  .floor-tabs{
+    display:flex;
+    background:var(--bg);
+    border-radius:8px;
+    padding:3px;
+    gap:2px;
+  }
+  .floor-tab{
+    flex:1;
+    text-align:center;
+    padding:8px 4px;
+    border-radius:6px;
+    font-size:13px;
+    font-weight:500;
+    cursor:pointer;
+    color:var(--muted);
+    transition:background .15s, color .15s;
+    user-select:none;
+  }
+  .floor-tab.active{
+    background:var(--panel);
+    color:var(--ink);
+    box-shadow:var(--shadow);
+  }
+  .search-box{
+    position:relative;
+  }
+  .search-box input{
+    width:100%;
+    padding:9px 10px 9px 32px;
+    border:1px solid var(--panel-border);
+    border-radius:8px;
+    font-size:13px;
+    font-family:inherit;
+    background:var(--bg);
+    color:var(--ink);
+  }
+  .search-box input:focus{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+    background:var(--panel);
+  }
+  .search-box::before{
+    content:"";
+    position:absolute;
+    left:10px; top:50%;
+    width:13px;height:13px;
+    transform:translateY(-50%);
+    border:2px solid var(--muted);
+    border-radius:50%;
+  }
+  .search-box::after{
+    content:"";
+    position:absolute;
+    left:19px; top:16px;
+    width:6px;height:2px;
+    background:var(--muted);
+    transform:rotate(45deg);
+  }
+  .filter-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:10px;
+  }
+  .chip{
+    font-size:12px;
+    font-family:'IBM Plex Mono', monospace;
+    padding:5px 9px;
+    border-radius:14px;
+    border:1px solid var(--panel-border);
+    color:var(--muted);
+    cursor:pointer;
+    background:var(--panel);
+    user-select:none;
+    transition:all .15s;
+  }
+  .chip.active{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:white;
+  }
+  .legend{
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+  }
+  .legend-item{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    font-size:13px;
+    color:var(--ink);
+  }
+  .legend-dot{
+    width:11px;height:11px;
+    border-radius:50%;
+    flex-shrink:0;
+  }
+  .legend-count{
+    margin-left:auto;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .my-bookings{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .booking-card{
+    border:1px solid var(--panel-border);
+    border-radius:8px;
+    padding:10px 11px;
+    font-size:12.5px;
+    background:var(--bg);
+  }
+  .booking-card .bc-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:3px;
+  }
+  .booking-card .bc-seat{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    color:var(--accent-dark);
+  }
+  .booking-card .bc-cancel{
+    font-size:11px;
+    color:var(--booked);
+    cursor:pointer;
+    font-family:'IBM Plex Mono', monospace;
+    border:none;
+    background:none;
+    padding:0;
+    text-decoration:underline;
+  }
+  .booking-card .bc-meta{
+    color:var(--muted);
+  }
+  .empty-note{
+    font-size:12.5px;
+    color:var(--muted);
+    font-style:italic;
+  }
+  /* ---- Main / map ---- */
+  .main{
+    grid-area: main;
+    position:relative;
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/24px 24px,
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0/24px 24px,
+      #F6F7F9;
+  }
+  #map{
+    width:100%;
+    height:100%;
+    background:transparent;
+  }
+  .leaflet-container{
+    background:transparent;
+    font-family:'IBM Plex Sans', sans-serif;
+  }
+  .seat-pin{
+    width:22px;height:22px;
+    border-radius:5px;
+    border:2px solid white;
+    box-shadow:0 1px 3px rgba(27,36,48,0.25);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9px;
+    font-weight:600;
+    color:white;
+    cursor:pointer;
+    transition:transform .1s;
+  }
+  .seat-pin:hover{ transform:scale(1.18); z-index:1000 !important;}
+  .seat-pin.free{ background:var(--free); }
+  .seat-pin.booked{ background:var(--booked); cursor:not-allowed; }
+  .seat-pin.inactive{ background:var(--inactive); cursor:not-allowed; }
+  .seat-pin.mine{ box-shadow:0 0 0 3px var(--amber), 0 1px 3px rgba(27,36,48,0.25); }
+
+  /* ---- Booking drawer ---- */
+  .drawer{
+    position:absolute;
+    top:16px; right:16px;
+    width:280px;
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:16px;
+    transform:translateX(340px);
+    opacity:0;
+    transition:transform .22s ease, opacity .22s ease;
+    z-index:1000;
+  }
+  .drawer.open{
+    transform:translateX(0);
+    opacity:1;
+  }
+  .drawer-close{
+    position:absolute;
+    top:12px; right:12px;
+    width:20px;height:20px;
+    border:none;
+    background:none;
+    cursor:pointer;
+    color:var(--muted);
+    font-size:16px;
+    line-height:1;
+  }
+  .drawer-seat{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:20px;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .drawer-room{
+    font-size:12.5px;
+    color:var(--muted);
+    margin-top:2px;
+    margin-bottom:14px;
+  }
+  .drawer-field{
+    margin-bottom:12px;
+  }
+  .drawer-field label{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--muted);
+    font-family:'IBM Plex Mono', monospace;
+    margin-bottom:5px;
+  }
+  .slot-row{
+    display:flex;
+    gap:6px;
+  }
+  .slot-btn{
+    flex:1;
+    text-align:center;
+    padding:7px 4px;
+    border-radius:7px;
+    border:1px solid var(--panel-border);
+    font-size:12px;
+    font-family:'IBM Plex Mono', monospace;
+    cursor:pointer;
+    background:var(--bg);
+    color:var(--ink);
+  }
+  .slot-btn.active{
+    background:var(--accent-soft);
+    border-color:var(--accent);
+    color:var(--accent-dark);
+    font-weight:600;
+  }
+  .drawer-status{
+    font-size:12.5px;
+    padding:8px 10px;
+    border-radius:7px;
+    margin-bottom:12px;
+  }
+  .drawer-status.free{ background:var(--accent-soft); color:var(--accent-dark); }
+  .drawer-status.booked{ background:var(--booked-soft); color:#8a2f2f; }
+  .drawer-status.inactive{ background:var(--bg); color:var(--muted); }
+  .btn-primary{
+    width:100%;
+    padding:10px;
+    border:none;
+    border-radius:7px;
+    background:var(--accent);
+    color:white;
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+    font-family:inherit;
+    transition:background .15s;
+  }
+  .btn-primary:hover{ background:var(--accent-dark); }
+  .btn-primary:disabled{
+    background:var(--inactive);
+    cursor:not-allowed;
+  }
+  .btn-secondary{
+    width:100%;
+    padding:10px;
+    border:1px solid var(--booked);
+    border-radius:7px;
+    background:white;
+    color:var(--booked);
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .toast{
+    position:absolute;
+    bottom:20px; left:50%;
+    transform:translate(-50%, 20px);
+    background:var(--ink);
+    color:white;
+    padding:10px 18px;
+    border-radius:8px;
+    font-size:13px;
+    opacity:0;
+    transition:opacity .2s, transform .2s;
+    pointer-events:none;
+    z-index:2000;
+    font-family:'IBM Plex Sans', sans-serif;
+  }
+  .toast.show{
+    opacity:1;
+    transform:translate(-50%, 0);
+  }
+  .floor-badge{
+    position:absolute;
+    top:16px; left:16px;
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:8px;
+    padding:8px 14px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    box-shadow:var(--shadow);
+    z-index:500;
+  }
+  .floor-badge strong{ color:var(--ink); font-weight:600;}
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background:#CBD2D8; border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">HF</div>
+      <div>
+        Helyfoglalás
+        <small>Irodai szék- és asztalfoglalás</small>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="date-picker">
+        <span>📅</span>
+        <input type="date" id="datePicker">
+      </div>
+      <div class="user-chip">
+        <div class="user-avatar">KA</div>
+        Kovács Anna
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div>
+      <div class="side-section-title">Emelet</div>
+      <div class="floor-tabs" id="floorTabs"></div>
+    </div>
+
+    <div>
+      <div class="side-section-title">Keresés / szűrés</div>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Szék kód vagy szoba…">
+      </div>
+      <div class="filter-row" id="filterRow"></div>
+    </div>
+
+    <div>
+      <div class="side-section-title">Jelmagyarázat</div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div style="flex:1;">
+      <div class="side-section-title">Saját foglalásaim</div>
+      <div class="my-bookings" id="myBookings"></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div id="map"></div>
+    <div class="floor-badge" id="floorBadge"></div>
+    <div class="drawer" id="drawer">
+      <button class="drawer-close" id="drawerClose">✕</button>
+      <div class="drawer-seat" id="drawerSeat">—</div>
+      <div class="drawer-room" id="drawerRoom">—</div>
+      <div class="drawer-status" id="drawerStatus"></div>
+      <div class="drawer-field" id="slotField">
+        <label>Időszak</label>
+        <div class="slot-row" id="slotRow"></div>
+      </div>
+      <button class="btn-primary" id="bookBtn">Foglalom</button>
+      <button class="btn-secondary" id="cancelBtn" style="display:none; margin-top:8px;">Foglalás törlése</button>
+    </div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+</div>
+
+<script>
+/* ============ DEMO ADATOK ============
+   Ez kliensoldali prototípus: az alaprajzokat SVG-ként generáljuk,
+   a foglalási állapotot memóriában tartjuk (nincs valós backend/API hívás).
+   A végleges verzióban ezek helyét a /api/seats.php és /api/bookings.php
+   végpontok veszik át (lásd projekt terv).
+*/
+const CURRENT_USER = "Kovács Anna";
+
+const FLOORS = [
+  { id: 1, name: "1. emelet", w: 900, h: 560 },
+  { id: 2, name: "2. emelet", w: 900, h: 560 }
+];
+
+// Szobák (egyszerű téglalapok az alaprajzon, csak vizuális kontextushoz)
+const ROOMS = {
+  1: [
+    { x: 40,  y: 40,  w: 380, h: 220, name: "Nyílt tér — Északi szárny" },
+    { x: 460, y: 40,  w: 400, h: 140, name: "Csendes zóna" },
+    { x: 40,  y: 300, w: 820, h: 220, name: "Nyílt tér — Déli szárny" },
+    { x: 460, y: 200, w: 400, h: 80,  name: "Tárgyaló A" }
+  ],
+  2: [
+    { x: 40,  y: 40,  w: 820, h: 200, name: "Projekt terület" },
+    { x: 40,  y: 260, w: 380, h: 260, name: "Csendes zóna" },
+    { x: 460, y: 260, w: 400, h: 260, name: "Nyílt tér — Kilátás" }
+  ]
+};
+
+// Székek: id, emelet, szoba, x/y a saját alaprajzi koordinátarendszerben, típus, alap-státusz
+function seedSeats(){
+  const seats = [];
+  let n = 1;
+  // 1. emelet, Északi szárny nyílt tér — rács
+  for(let r=0;r<3;r++) for(let c=0;c<6;c++){
+    seats.push(mkSeat(1, "Északi szárny", 70+c*55, 80+r*55, "monitoros", n++));
+  }
+  // 1. emelet, Csendes zóna
+  for(let c=0;c<5;c++){
+    seats.push(mkSeat(1, "Csendes zóna", 490+c*65, 100, "csendes", n++));
+  }
+  // 1. emelet, Déli szárny
+  for(let r=0;r<3;r++) for(let c=0;c<10;c++){
+    seats.push(mkSeat(1, "Déli szárny", 70+c*76, 340+r*55, "ablak melletti", n++));
+  }
+  // 2. emelet, Projekt terület
+  for(let r=0;r<2;r++) for(let c=0;c<10;c++){
+    seats.push(mkSeat(2, "Projekt terület", 70+c*76, 80+r*70, "monitoros", n++));
+  }
+  // 2. emelet Csendes zóna
+  for(let r=0;r<3;r++) for(let c=0;c<4;c++){
+    seats.push(mkSeat(2, "Csendes zóna", 70+c*80, 300+r*55, "csendes", n++));
+  }
+  // 2. emelet Kilátás
+  for(let c=0;c<6;c++){
+    seats.push(mkSeat(2, "Kilátás", 490+c*60, 330, "ablak melletti", n++));
+  }
+  return seats;
+}
+function mkSeat(floor, room, x, y, type, idx){
+  const code = "SZ-" + String(idx).padStart(3, "0");
+  // néhány szék legyen véletlenszerűen inaktív, hogy a demo realisztikus legyen
+  const inactive = (idx % 17 === 0);
+  return { id: idx, code, floor, room, x, y, type, inactive };
+}
+const SEATS = seedSeats();
+
+// Foglalások dátum+időszak+seatId szerint (demóhoz néhány előre kitöltve mai napra)
+const SLOTS = [
+  { id: "am", label: "Délelőtt" },
+  { id: "pm", label: "Délután" },
+  { id: "full", label: "Egész nap" }
+];
+let bookings = []; // {seatId, date, slot, user}
+
+function todayStr(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+function seedBookings(){
+  const t = todayStr();
+  bookings.push({ seatId: 3, date: t, slot: "full", user: "Nagy Péter" });
+  bookings.push({ seatId: 8, date: t, slot: "am", user: "Tóth Eszter" });
+  bookings.push({ seatId: 22, date: t, slot: "full", user: CURRENT_USER });
+  bookings.push({ seatId: 5, date: t, slot: "pm", user: "Szabó Gábor" });
+}
+seedBookings();
+
+/* ============ STATE ============ */
+let state = {
+  floor: 1,
+  date: todayStr(),
+  slot: "full",
+  typeFilter: null,
+  freeOnly: false,
+  query: "",
+  selectedSeat: null
+};
+
+document.getElementById("datePicker").value = state.date;
+
+/* ============ SVG ALAPRAJZ GENERÁLÁS ============ */
+function buildFloorSvg(floor){
+  const f = FLOORS.find(f=>f.id===floor);
+  const rooms = ROOMS[floor];
+  let roomShapes = rooms.map(r => `
+    <rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"
+          fill="#FFFFFF" stroke="#B9C2CA" stroke-width="2" stroke-dasharray="0"/>
+    <text x="${r.x+10}" y="${r.y+20}" font-family="IBM Plex Mono, monospace" font-size="12" fill="#5B6672">${r.name}</text>
+  `).join("");
+  return `
+  <svg xmlns="http://www.w3.org/2000/svg" width="${f.w}" height="${f.h}" viewBox="0 0 ${f.w} ${f.h}">
+    <rect x="0" y="0" width="${f.w}" height="${f.h}" fill="#F6F7F9"/>
+    ${roomShapes}
+    <rect x="1" y="1" width="${f.w-2}" height="${f.h-2}" fill="none" stroke="#8A94A0" stroke-width="3"/>
+  </svg>`;
+}
+function svgToDataUrl(svg){
+  return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+}
+
+/* ============ LEAFLET SETUP ============ */
+const map = L.map('map', {
+  crs: L.CRS.Simple,
+  minZoom: -2,
+  maxZoom: 2,
+  zoomSnap: 0.25,
+  attributionControl: false
+});
+
+let currentOverlay = null;
+let seatMarkers = [];
+
+function loadFloor(floorId){
+  state.floor = floorId;
+  const f = FLOORS.find(f=>f.id===floorId);
+  const bounds = [[0,0],[f.h, f.w]];
+
+  if(currentOverlay) map.removeLayer(currentOverlay);
+  currentOverlay = L.imageOverlay(svgToDataUrl(buildFloorSvg(floorId)), bounds).addTo(map);
+  map.fitBounds(bounds);
+  map.setMaxBounds(bounds.map ? bounds : bounds); // keep panning near the plan
+
+  document.getElementById("floorBadge").innerHTML =
+    `<strong>${f.name}</strong> · ${SEATS.filter(s=>s.floor===floorId).length} munkahely`;
+
+  renderFloorTabs();
+  renderSeats();
+  closeDrawer();
+}
+
+function renderFloorTabs(){
+  const el = document.getElementById("floorTabs");
+  el.innerHTML = "";
+  FLOORS.forEach(f=>{
+    const tab = document.createElement("div");
+    tab.className = "floor-tab" + (f.id===state.floor ? " active" : "");
+    tab.textContent = f.name;
+    tab.onclick = ()=> loadFloor(f.id);
+    el.appendChild(tab);
+  });
+}
+
+/* ============ SZÉK STÁTUSZ ============ */
+function seatStatus(seat){
+  if(seat.inactive) return "inactive";
+  const overlap = bookings.some(b => b.seatId===seat.id && b.date===state.date && slotsOverlap(b.slot, state.slot));
+  return overlap ? "booked" : "free";
+}
+function slotsOverlap(a, b){
+  if(a===b) return true;
+  if(a==="full" || b==="full") return true;
+  return false;
+}
+function myBookingForSeat(seat){
+  return bookings.find(b=>b.seatId===seat.id && b.date===state.date && b.user===CURRENT_USER && slotsOverlap(b.slot, state.slot));
+}
+
+/* ============ SZÉKEK RENDERELÉSE ============ */
+function seatVisible(seat){
+  if(seat.floor !== state.floor) return false;
+  if(state.typeFilter && seat.type !== state.typeFilter) return false;
+  if(state.freeOnly && seatStatus(seat) !== "free") return false;
+  if(state.query){
+    const q = state.query.toLowerCase();
+    if(!seat.code.toLowerCase().includes(q) && !seat.room.toLowerCase().includes(q)) return false;
+  }
+  return true;
+}
+
+function renderSeats(){
+  seatMarkers.forEach(m=>map.removeLayer(m));
+  seatMarkers = [];
+
+  const floorSeats = SEATS.filter(s=>s.floor===state.floor);
+  floorSeats.forEach(seat=>{
+    const visible = seatVisible(seat);
+    const status = seatStatus(seat);
+    const mine = !!myBookingForSeat(seat);
+
+    const icon = L.divIcon({
+      className: "",
+      html: `<div class="seat-pin ${status}${mine?' mine':''}" style="opacity:${visible?1:0.18}">${seat.code.slice(-2)}</div>`,
+      iconSize: [22,22],
+      iconAnchor: [11,11]
+    });
+    const marker = L.marker(latlngFor(seat), { icon, interactive: visible }).addTo(map);
+    if(visible){
+      marker.on('click', ()=> openDrawer(seat));
+    }
+    seatMarkers.push(marker);
+  });
+
+  renderLegend(floorSeats);
+}
+
+function latlngFor(seat){
+  // L.CRS.Simple: y nő felfelé a Leaflet-ben, a mi SVG-nk y-je lefelé nő -> invertálás
+  const f = FLOORS.find(f=>f.id===seat.floor);
+  return [f.h - seat.y, seat.x];
+}
+
+/* ============ LEGENDA ============ */
+function renderLegend(floorSeats){
+  const counts = { free:0, booked:0, inactive:0 };
+  floorSeats.forEach(s=> counts[seatStatus(s)]++ );
+  const el = document.getElementById("legend");
+  el.innerHTML = `
+    <div class="legend-item"><span class="legend-dot" style="background:var(--free)"></span>Szabad<span class="legend-count">${counts.free}</span></div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--booked)"></span>Foglalt<span class="legend-count">${counts.booked}</span></div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--inactive)"></span>Nem elérhető<span class="legend-count">${counts.inactive}</span></div>
+  `;
+}
+
+/* ============ SZŰRŐK ============ */
+const TYPES = ["monitoros", "csendes", "ablak melletti"];
+function renderFilters(){
+  const el = document.getElementById("filterRow");
+  el.innerHTML = "";
+  const freeChip = document.createElement("div");
+  freeChip.className = "chip" + (state.freeOnly ? " active" : "");
+  freeChip.textContent = "Csak szabad";
+  freeChip.onclick = ()=>{ state.freeOnly = !state.freeOnly; renderFilters(); renderSeats(); };
+  el.appendChild(freeChip);
+
+  TYPES.forEach(t=>{
+    const chip = document.createElement("div");
+    chip.className = "chip" + (state.typeFilter===t ? " active" : "");
+    chip.textContent = t;
+    chip.onclick = ()=>{
+      state.typeFilter = state.typeFilter===t ? null : t;
+      renderFilters(); renderSeats();
+    };
+    el.appendChild(chip);
+  });
+}
+
+document.getElementById("searchInput").addEventListener("input", e=>{
+  state.query = e.target.value;
+  renderSeats();
+});
+document.getElementById("datePicker").addEventListener("change", e=>{
+  state.date = e.target.value;
+  renderSeats();
+  renderMyBookings();
+});
+
+/* ============ FOGLALÁSI PANEL (DRAWER) ============ */
+const drawer = document.getElementById("drawer");
+function openDrawer(seat){
+  state.selectedSeat = seat;
+  const status = seatStatus(seat);
+  const mine = myBookingForSeat(seat);
+
+  document.getElementById("drawerSeat").textContent = seat.code;
+  document.getElementById("drawerRoom").textContent = `${FLOORS.find(f=>f.id===seat.floor).name} · ${seat.room} · ${seat.type}`;
+
+  const statusEl = document.getElementById("drawerStatus");
+  statusEl.className = "drawer-status " + status;
+  statusEl.textContent = status==="free" ? "Szabad a kiválasztott időszakban"
+    : status==="booked" ? (mine ? "Te foglaltad le" : "Már foglalt")
+    : "Nem elérhető (karbantartás/inaktív)";
+
+  renderSlotRow(seat);
+
+  const bookBtn = document.getElementById("bookBtn");
+  const cancelBtn = document.getElementById("cancelBtn");
+  bookBtn.style.display = mine ? "none" : "block";
+  cancelBtn.style.display = mine ? "block" : "none";
+  bookBtn.disabled = (status !== "free");
+  bookBtn.textContent = status==="free" ? "Foglalom" : "Nem foglalható";
+
+  drawer.classList.add("open");
+}
+function closeDrawer(){
+  drawer.classList.remove("open");
+  state.selectedSeat = null;
+}
+document.getElementById("drawerClose").onclick = closeDrawer;
+
+function renderSlotRow(seat){
+  const el = document.getElementById("slotRow");
+  el.innerHTML = "";
+  SLOTS.forEach(s=>{
+    const btn = document.createElement("div");
+    btn.className = "slot-btn" + (state.slot===s.id ? " active" : "");
+    btn.textContent = s.label;
+    btn.onclick = ()=>{
+      state.slot = s.id;
+      renderSlotRow(seat);
+      openDrawer(seat); // frissíti a státuszt az új időszakra
+      renderSeats();
+    };
+    el.appendChild(btn);
+  });
+}
+
+document.getElementById("bookBtn").onclick = ()=>{
+  const seat = state.selectedSeat;
+  if(!seat) return;
+  bookings.push({ seatId: seat.id, date: state.date, slot: state.slot, user: CURRENT_USER });
+  showToast(`${seat.code} lefoglalva — ${state.date}`);
+  renderSeats();
+  renderMyBookings();
+  openDrawer(seat);
+};
+document.getElementById("cancelBtn").onclick = ()=>{
+  const seat = state.selectedSeat;
+  if(!seat) return;
+  bookings = bookings.filter(b => !(b.seatId===seat.id && b.date===state.date && b.user===CURRENT_USER && slotsOverlap(b.slot, state.slot)));
+  showToast(`${seat.code} foglalás törölve`);
+  renderSeats();
+  renderMyBookings();
+  openDrawer(seat);
+};
+
+/* ============ SAJÁT FOGLALÁSOK ============ */
+function renderMyBookings(){
+  const mine = bookings.filter(b=>b.user===CURRENT_USER).sort((a,b)=> a.date.localeCompare(b.date));
+  const el = document.getElementById("myBookings");
+  if(mine.length===0){
+    el.innerHTML = `<div class="empty-note">Még nincs foglalásod erre a napra.</div>`;
+    return;
+  }
+  el.innerHTML = mine.map(b=>{
+    const seat = SEATS.find(s=>s.id===b.seatId);
+    const slotLabel = SLOTS.find(s=>s.id===b.slot).label;
+    return `
+      <div class="booking-card">
+        <div class="bc-top">
+          <span class="bc-seat">${seat.code}</span>
+          <button class="bc-cancel" onclick="quickCancel(${b.seatId}, '${b.date}', '${b.slot}')">törlés</button>
+        </div>
+        <div class="bc-meta">${FLOORS.find(f=>f.id===seat.floor).name} · ${seat.room}<br>${b.date} · ${slotLabel}</div>
+      </div>`;
+  }).join("");
+}
+function quickCancel(seatId, date, slot){
+  bookings = bookings.filter(b => !(b.seatId===seatId && b.date===date && b.slot===slot && b.user===CURRENT_USER));
+  showToast("Foglalás törölve");
+  renderSeats();
+  renderMyBookings();
+  if(state.selectedSeat && state.selectedSeat.id===seatId) openDrawer(state.selectedSeat);
+}
+
+/* ============ TOAST ============ */
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove("show"), 2400);
+}
+
+/* ============ INIT ============ */
+renderFilters();
+loadFloor(1);
+renderMyBookings();
+</script>
+</body>
+</html>

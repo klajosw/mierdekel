@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certifications Dashboard</title>
+
+    <!-- Chart.js – kör, hasáb és vonaldiagramokhoz -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+        /* =========================================================
+           CSS VÁLTOZÓK – Világos és sötét téma
+           ========================================================= */
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --primary: #60a5fa;
+            --primary-hover: #3b82f6;
+            --border: #334155;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+        }
+
+        /* Alap stílusok */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            transition: background 0.3s, color 0.3s;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* Fejléc */
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        h1 { font-size: 1.75rem; font-weight: 700; }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        /* Form elemek */
+        select, input, button {
+            padding: 0.5rem 0.85rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        button:hover { background: var(--primary-hover); }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: var(--border); }
+
+        /* Állapotüzenet (betöltés / hiba / siker) */
+        .status-bar {
+            margin-bottom: 1.25rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+        .status-bar.visible { display: block; }
+        .status-loading {
+            background: color-mix(in srgb, var(--primary) 15%, transparent);
+            color: var(--primary);
+        }
+        .status-error {
+            background: color-mix(in srgb, var(--danger) 15%, transparent);
+            color: var(--danger);
+        }
+        .status-success {
+            background: color-mix(in srgb, var(--success) 15%, transparent);
+            color: var(--success);
+        }
+
+        /* Statisztika kártyák */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: var(--card);
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+        .stat-card h3 {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+        .stat-card .value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        /* Diagramok */
+        .charts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .chart-card {
+            background: var(--card);
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+        .chart-card h3 { margin-bottom: 1rem; font-size: 1.1rem; }
+        .chart-container { position: relative; height: 260px; }
+
+        /* Eszköztár */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+        }
+        .search-box { flex: 1; min-width: 200px; }
+        .view-toggle { display: flex; gap: 0.5rem; }
+        .view-toggle button.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Táblázat */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        th, td {
+            padding: 0.85rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--bg);
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        tr:hover {
+            background: color-mix(in srgb, var(--primary) 8%, transparent);
+        }
+
+        /* Badge és link gomb */
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: color-mix(in srgb, var(--primary) 15%, transparent);
+            color: var(--primary);
+        }
+        .link-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.35rem 0.7rem;
+            background: var(--success);
+            color: white;
+            border-radius: 0.4rem;
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .link-btn:hover { opacity: 0.9; }
+
+        /* Kártyás nézet */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.25rem;
+        }
+        .cert-card {
+            background: var(--card);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            transition: transform 0.2s;
+        }
+        .cert-card:hover { transform: translateY(-3px); }
+        .cert-card h3 { font-size: 1.05rem; }
+        .cert-meta { font-size: 0.85rem; color: var(--text-muted); }
+
+        .hidden { display: none !important; }
+
+        footer {
+            margin-top: 3rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* Reszponzív */
+        @media (max-width: 640px) {
+            .charts { grid-template-columns: 1fr; }
+            th, td { padding: 0.6rem; font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- ===================== FEJLÉC ===================== -->
+        <header>
+            <h1 id="title">Certifikációk Dashboard</h1>
+            <div class="controls">
+                <!-- Nyelv választó -->
+                <select id="langSelect" aria-label="Nyelv">
+                    <option value="hu" selected>Magyar</option>
+                    <option value="en">English</option>
+                    <option value="de">Deutsch</option>
+                </select>
+
+                <!-- Téma váltó -->
+                <button id="themeToggle" class="btn-secondary" title="Téma váltása">V <> S</button>
+
+                <!-- Adatok frissítése a GitHubról -->
+                <button id="refreshBtn">Frissítés</button>
+            </div>
+        </header>
+
+        <!-- Állapotüzenet (betöltés / hiba / siker) -->
+        <div id="statusBar" class="status-bar"></div>
+
+        <!-- Statisztika kártyák -->
+        <div class="stats" id="stats"></div>
+
+        <!-- Diagramok -->
+        <div class="charts">
+            <div class="chart-card">
+                <h3 id="chartAuthorityTitle">Authority szerint</h3>
+                <div class="chart-container"><canvas id="pieChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h3 id="chartYearTitle">Év szerint (hasáb)</h3>
+                <div class="chart-container"><canvas id="barChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h3 id="chartTimelineTitle">Időbeli eloszlás</h3>
+                <div class="chart-container"><canvas id="lineChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Keresés + szűrők + nézetváltó -->
+        <div class="toolbar">
+            <input type="text" id="searchInput" class="search-box" placeholder="Keresés...">
+            <select id="filterAuthority">
+                <option value="">Összes Authority</option>
+            </select>
+            <select id="filterYear">
+                <option value="">Összes év</option>
+            </select>
+            <div class="view-toggle">
+                <button id="tableViewBtn" class="active">Táblázat</button>
+                <button id="cardViewBtn">Kártyák</button>
+            </div>
+        </div>
+
+        <!-- Táblázatos nézet -->
+        <div id="tableView">
+            <table>
+                <thead>
+                    <tr>
+                        <th id="thName">Név</th>
+                        <th id="thAuthority">Authority</th>
+                        <th id="thStarted">Kezdés</th>
+                        <th id="thFinished">Befejezés</th>
+                        <th id="thLicense">Licenc szám</th>
+                        <th id="thAction">Oklevél</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Kártyás nézet -->
+        <div id="cardView" class="cards-grid hidden"></div>
+
+        <footer id="footer">LinkedIn Certifications Export • Modern Dashboard</footer>
+    </div>
+
+    <script>
+        /* =========================================================
+           1. KONFIGURÁCIÓ
+           ========================================================= */
+
+        // A CSV fájl mindig erről a GitHub raw URL-ről töltődik be
+        const CSV_URL = 'https://raw.githubusercontent.com/klajosw/mierdekel/refs/heads/main/certi/Certifications.csv';
+
+        /* =========================================================
+           2. FORDÍTÁSOK (i18n)
+           Magyar az alapértelmezett nyelv
+           ========================================================= */
+        const i18n = {
+            hu: {
+                title: "Certifikációk Dashboard",
+                refreshBtn: "Frissítés",
+                search: "Keresés név, authority vagy licenc alapján...",
+                allAuthority: "Összes Authority",
+                allYear: "Összes év",
+                table: "Táblázat",
+                cards: "Kártyák",
+                thName: "Név",
+                thAuthority: "Authority",
+                thStarted: "Kezdés",
+                thFinished: "Befejezés",
+                thLicense: "Licenc szám",
+                thAction: "Oklevél",
+                open: "Megnyitás",
+                total: "Összes certifikáció",
+                authorities: "Authority-k",
+                years: "Évek száma",
+                latest: "Legutóbbi",
+                chartAuthority: "Authority szerint",
+                chartYear: "Év szerint (hasáb)",
+                chartTimeline: "Időbeli eloszlás",
+                footer: "LinkedIn Certifications Export • Modern Dashboard",
+                noData: "Nincs megjeleníthető adat.",
+                loading: "Adatok betöltése a GitHubról...",
+                loadSuccess: "Adatok sikeresen betöltve.",
+                loadError: "Hiba történt az adatok betöltésekor. Ellenőrizd a kapcsolatot vagy az URL-t."
+            },
+            en: {
+                title: "Certifications Dashboard",
+                refreshBtn: "Refresh",
+                search: "Search by name, authority or license...",
+                allAuthority: "All Authorities",
+                allYear: "All years",
+                table: "Table",
+                cards: "Cards",
+                thName: "Name",
+                thAuthority: "Authority",
+                thStarted: "Started On",
+                thFinished: "Finished On",
+                thLicense: "License Number",
+                thAction: "Certificate",
+                open: "Open",
+                total: "Total certifications",
+                authorities: "Authorities",
+                years: "Number of years",
+                latest: "Latest",
+                chartAuthority: "By Authority",
+                chartYear: "By Year (Bar)",
+                chartTimeline: "Timeline",
+                footer: "LinkedIn Certifications Export • Modern Dashboard",
+                noData: "No data to display.",
+                loading: "Loading data from GitHub...",
+                loadSuccess: "Data loaded successfully.",
+                loadError: "Error loading data. Check your connection or the URL."
+            },
+            de: {
+                title: "Zertifizierungen Dashboard",
+                refreshBtn: "Aktualisieren",
+                search: "Suche nach Name, Authority oder Lizenz...",
+                allAuthority: "Alle Authorities",
+                allYear: "Alle Jahre",
+                table: "Tabelle",
+                cards: "Karten",
+                thName: "Name",
+                thAuthority: "Authority",
+                thStarted: "Begonnen",
+                thFinished: "Abgeschlossen",
+                thLicense: "Lizenznummer",
+                thAction: "Zertifikat",
+                open: "Öffnen",
+                total: "Gesamtzertifizierungen",
+                authorities: "Authorities",
+                years: "Anzahl Jahre",
+                latest: "Neueste",
+                chartAuthority: "Nach Authority",
+                chartYear: "Nach Jahr (Balken)",
+                chartTimeline: "Zeitlicher Verlauf",
+                footer: "LinkedIn Zertifizierungen Export • Modernes Dashboard",
+                noData: "Keine Daten zum Anzeigen.",
+                loading: "Daten werden von GitHub geladen...",
+                loadSuccess: "Daten erfolgreich geladen.",
+                loadError: "Fehler beim Laden der Daten. Verbindung oder URL prüfen."
+            }
+        };
+
+        /* =========================================================
+           3. GLOBÁLIS VÁLTOZÓK
+           ========================================================= */
+        let currentLang = 'hu';          // Aktuális nyelv
+        let data = [];                   // Teljes adatbázis
+        let filtered = [];               // Szűrt adatok
+        let pieChart = null;             // Chart.js példányok
+        let barChart = null;
+        let lineChart = null;
+
+        /* =========================================================
+           4. CSV FELDOLGOZÁS
+           Kezeli az idézőjeleket és a mezőkön belüli vesszőket
+           ========================================================= */
+        function parseCSV(text) {
+            const lines = text.trim().split(/\r?\n/);
+            if (lines.length < 2) return [];
+
+            // Fejléc sor
+            const headers = parseCSVLine(lines[0]);
+            const rows = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue; // üres sorok kihagyása
+                const values = parseCSVLine(lines[i]);
+                const obj = {};
+                headers.forEach((h, idx) => {
+                    obj[h] = (values[idx] || '').trim();
+                });
+                rows.push(obj);
+            }
+            return rows;
+        }
+
+        // Egy CSV sor feldolgozása (idézőjelek kezelése)
+        function parseCSVLine(line) {
+            const values = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    values.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            values.push(current);
+            return values;
+        }
+
+        /* =========================================================
+           5. DÁTUM KEZELÉS
+           "Sep 2020", "2022", "Jul 2026" formátumok támogatása
+           ========================================================= */
+        function parseDate(str) {
+            if (!str || !str.trim()) return null;
+            str = str.trim();
+
+            const months = {
+                Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+                Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+            };
+
+            // "Sep 2020" vagy "Jul 2026"
+            const parts = str.split(/\s+/);
+            if (parts.length === 2) {
+                const m = months[parts[0]];
+                const y = parseInt(parts[1], 10);
+                if (m !== undefined && !isNaN(y)) {
+                    return new Date(y, m, 1);
+                }
+            }
+
+            // Csak év: "2022"
+            if (/^\d{4}$/.test(str)) {
+                return new Date(parseInt(str, 10), 0, 1);
+            }
+
+            return null;
+        }
+
+        function getYear(str) {
+            const d = parseDate(str);
+            return d ? d.getFullYear() : null;
+        }
+
+        /* =========================================================
+           6. SEGÉDFÜGGVÉNYEK
+           ========================================================= */
+        function t(key) {
+            return i18n[currentLang][key] || key;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function showStatus(message, type) {
+            const bar = document.getElementById('statusBar');
+            bar.textContent = message;
+            bar.className = 'status-bar visible status-' + type;
+            if (type === 'success') {
+                setTimeout(() => bar.classList.remove('visible'), 3000);
+            }
+        }
+
+        /* =========================================================
+           7. ADATOK BETÖLTÉSE A GITHUBRÓL
+           ========================================================= */
+        async function loadDataFromGitHub() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            refreshBtn.disabled = true;
+            showStatus(t('loading'), 'loading');
+
+            try {
+                // Cache elkerülése: időbélyeg hozzáadása
+                const url = CSV_URL + '?t=' + Date.now();
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+
+                const text = await response.text();
+                data = parseCSV(text);
+                filtered = [...data];
+
+                populateFilters();
+                renderAll();
+                showStatus(t('loadSuccess') + ' (' + data.length + ')', 'success');
+            } catch (err) {
+                console.error('CSV betöltési hiba:', err);
+                showStatus(t('loadError'), 'error');
+            } finally {
+                refreshBtn.disabled = false;
+            }
+        }
+
+        /* =========================================================
+           8. NYELV ÉS TÉMA ALKALMAZÁSA
+           ========================================================= */
+        function applyLanguage() {
+            document.getElementById('title').textContent = t('title');
+            document.getElementById('refreshBtn').textContent = t('refreshBtn');
+            document.getElementById('searchInput').placeholder = t('search');
+            document.getElementById('tableViewBtn').textContent = t('table');
+            document.getElementById('cardViewBtn').textContent = t('cards');
+            document.getElementById('thName').textContent = t('thName');
+            document.getElementById('thAuthority').textContent = t('thAuthority');
+            document.getElementById('thStarted').textContent = t('thStarted');
+            document.getElementById('thFinished').textContent = t('thFinished');
+            document.getElementById('thLicense').textContent = t('thLicense');
+            document.getElementById('thAction').textContent = t('thAction');
+            document.getElementById('chartAuthorityTitle').textContent = t('chartAuthority');
+            document.getElementById('chartYearTitle').textContent = t('chartYear');
+            document.getElementById('chartTimelineTitle').textContent = t('chartTimeline');
+            document.getElementById('footer').textContent = t('footer');
+
+            // Szűrő első opciók frissítése
+            const authSelect = document.getElementById('filterAuthority');
+            if (authSelect.options.length > 0) {
+                authSelect.options[0].textContent = t('allAuthority');
+            }
+            const yearSelect = document.getElementById('filterYear');
+            if (yearSelect.options.length > 0) {
+                yearSelect.options[0].textContent = t('allYear');
+            }
+
+            renderAll();
+        }
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            document.getElementById('themeToggle').textContent = theme === 'dark' ? 'Sötét' : 'Világos';
+            // Diagramok színeinek frissítése
+            if (data.length) updateCharts();
+        }
+
+        /* =========================================================
+           9. MEGJELENÍTÉS
+           ========================================================= */
+        function renderStats() {
+            const total = filtered.length;
+            const authorities = new Set(filtered.map(d => d.Authority).filter(Boolean)).size;
+            const years = new Set(filtered.map(d => getYear(d['Started On'])).filter(Boolean)).size;
+
+            let latest = '-';
+            if (filtered.length) {
+                const sorted = [...filtered].sort((a, b) => {
+                    const da = parseDate(a['Started On']) || new Date(0);
+                    const db = parseDate(b['Started On']) || new Date(0);
+                    return db - da;
+                });
+                latest = sorted[0].Name || '-';
+            }
+
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-card">
+                    <h3>${t('total')}</h3>
+                    <div class="value">${total}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>${t('authorities')}</h3>
+                    <div class="value">${authorities}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>${t('years')}</h3>
+                    <div class="value">${years}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>${t('latest')}</h3>
+                    <div class="value" style="font-size:1.05rem">${escapeHtml(latest)}</div>
+                </div>
+            `;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            if (!filtered.length) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted)">${t('noData')}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(row => `
+                <tr>
+                    <td><strong>${escapeHtml(row.Name)}</strong></td>
+                    <td><span class="badge">${escapeHtml(row.Authority)}</span></td>
+                    <td>${escapeHtml(row['Started On'] || '-')}</td>
+                    <td>${escapeHtml(row['Finished On'] || '-')}</td>
+                    <td>${escapeHtml(row['License Number'] || '-')}</td>
+                    <td>
+                        ${row.Url
+                            ? `<a href="${escapeHtml(row.Url)}" target="_blank" rel="noopener noreferrer" class="link-btn">${t('open')} ?</a>`
+                            : '-'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderCards() {
+            const container = document.getElementById('cardView');
+            if (!filtered.length) {
+                container.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:var(--text-muted)">${t('noData')}</p>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(row => `
+                <div class="cert-card">
+                    <h3>${escapeHtml(row.Name)}</h3>
+                    <div class="cert-meta">
+                        <span class="badge">${escapeHtml(row.Authority)}</span>
+                    </div>
+                    <div class="cert-meta">${t('thStarted')}: ${escapeHtml(row['Started On'] || '-')}</div>
+                    <div class="cert-meta">${t('thFinished')}: ${escapeHtml(row['Finished On'] || '-')}</div>
+                    <div class="cert-meta">${t('thLicense')}: ${escapeHtml(row['License Number'] || '-')}</div>
+                    ${row.Url
+                        ? `<a href="${escapeHtml(row.Url)}" target="_blank" rel="noopener noreferrer" class="link-btn" style="align-self:flex-start;margin-top:auto">${t('open')} ?</a>`
+                        : ''}
+                </div>
+            `).join('');
+        }
+
+        function updateCharts() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const textColor = isDark ? '#f1f5f9' : '#1e293b';
+            const gridColor = isDark ? '#334155' : '#e2e8f0';
+            const colors = [
+                '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+                '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+                '#f97316', '#6366f1', '#14b8a6', '#e11d48'
+            ];
+
+            // ----- Authority kördiagram -----
+            const authCount = {};
+            filtered.forEach(d => {
+                const key = d.Authority || 'Ismeretlen';
+                authCount[key] = (authCount[key] || 0) + 1;
+            });
+            const authLabels = Object.keys(authCount);
+            const authData = Object.values(authCount);
+
+            if (pieChart) pieChart.destroy();
+            pieChart = new Chart(document.getElementById('pieChart'), {
+                type: 'pie',
+                data: {
+                    labels: authLabels,
+                    datasets: [{
+                        data: authData,
+                        backgroundColor: colors.slice(0, authLabels.length)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: textColor, boxWidth: 12 }
+                        }
+                    }
+                }
+            });
+
+            // ----- Év hasábdiagram -----
+            const yearCount = {};
+            filtered.forEach(d => {
+                const y = getYear(d['Started On']);
+                if (y) yearCount[y] = (yearCount[y] || 0) + 1;
+            });
+            const years = Object.keys(yearCount).map(Number).sort((a, b) => a - b);
+            const yearData = years.map(y => yearCount[y]);
+
+            if (barChart) barChart.destroy();
+            barChart = new Chart(document.getElementById('barChart'), {
+                type: 'bar',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: t('total'),
+                        data: yearData,
+                        backgroundColor: '#3b82f6'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: textColor, stepSize: 1 },
+                            grid: { color: gridColor }
+                        },
+                        x: {
+                            ticks: { color: textColor },
+                            grid: { color: gridColor }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // ----- Időbeli kumulatív vonaldiagram -----
+            let cumulative = 0;
+            const lineData = years.map(y => {
+                cumulative += yearCount[y];
+                return cumulative;
+            });
+
+            if (lineChart) lineChart.destroy();
+            lineChart = new Chart(document.getElementById('lineChart'), {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: t('total'),
+                        data: lineData,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: textColor },
+                            grid: { color: gridColor }
+                        },
+                        x: {
+                            ticks: { color: textColor },
+                            grid: { color: gridColor }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: textColor } }
+                    }
+                }
+            });
+        }
+
+        function populateFilters() {
+            const authorities = [...new Set(data.map(d => d.Authority).filter(Boolean))].sort();
+            const years = [...new Set(data.map(d => getYear(d['Started On'])).filter(Boolean))].sort((a, b) => a - b);
+
+            const authSelect = document.getElementById('filterAuthority');
+            authSelect.innerHTML = `<option value="">${t('allAuthority')}</option>` +
+                authorities.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+
+            const yearSelect = document.getElementById('filterYear');
+            yearSelect.innerHTML = `<option value="">${t('allYear')}</option>` +
+                years.map(y => `<option value="${y}">${y}</option>`).join('');
+        }
+
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            const auth = document.getElementById('filterAuthority').value;
+            const year = document.getElementById('filterYear').value;
+
+            filtered = data.filter(row => {
+                const matchSearch = !search ||
+                    (row.Name || '').toLowerCase().includes(search) ||
+                    (row.Authority || '').toLowerCase().includes(search) ||
+                    (row['License Number'] || '').toLowerCase().includes(search);
+
+                const matchAuth = !auth || row.Authority === auth;
+                const matchYear = !year || getYear(row['Started On']) == year;
+
+                return matchSearch && matchAuth && matchYear;
+            });
+
+            renderAll();
+        }
+
+        function renderAll() {
+            renderStats();
+            renderTable();
+            renderCards();
+            updateCharts();
+        }
+
+        /* =========================================================
+           10. ESEMÉNYKEZELŐK
+           ========================================================= */
+        document.getElementById('langSelect').addEventListener('change', e => {
+            currentLang = e.target.value;
+            localStorage.setItem('lang', currentLang);
+            applyLanguage();
+        });
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', loadDataFromGitHub);
+
+        document.getElementById('searchInput').addEventListener('input', applyFilters);
+        document.getElementById('filterAuthority').addEventListener('change', applyFilters);
+        document.getElementById('filterYear').addEventListener('change', applyFilters);
+
+        document.getElementById('tableViewBtn').addEventListener('click', () => {
+            document.getElementById('tableView').classList.remove('hidden');
+            document.getElementById('cardView').classList.add('hidden');
+            document.getElementById('tableViewBtn').classList.add('active');
+            document.getElementById('cardViewBtn').classList.remove('active');
+        });
+
+        document.getElementById('cardViewBtn').addEventListener('click', () => {
+            document.getElementById('tableView').classList.add('hidden');
+            document.getElementById('cardView').classList.remove('hidden');
+            document.getElementById('cardViewBtn').classList.add('active');
+            document.getElementById('tableViewBtn').classList.remove('active');
+        });
+
+        /* =========================================================
+           11. INDÍTÁS
+           ========================================================= */
+        (function init() {
+            // Téma visszaállítása
+            const savedTheme = localStorage.getItem('theme') ||
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            setTheme(savedTheme);
+
+            // Nyelv visszaállítása (alapértelmezett: magyar)
+            const savedLang = localStorage.getItem('lang') || 'hu';
+            currentLang = savedLang;
+            document.getElementById('langSelect').value = savedLang;
+
+            // Nyelv alkalmazása
+            applyLanguage();
+
+            // Adatok betöltése a GitHubról
+            loadDataFromGitHub();
+        })();
+    </script>
+</body>
+</html>

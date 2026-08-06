@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic 3D Gallery</title>
+    <!-- Three.js a 3D animációkhoz -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: rgba(30, 30, 30, 0.75);
+            --text-color: #ffffff;
+            --border-color: rgba(255, 255, 255, 0.1);
+            
+            /* Színmód alapértelmezett (narancs) */
+            --accent-color: #ff6b00;
+            --accent-glow: rgba(255, 107, 0, 0.4);
+        }
+
+        /* Színmódok */
+        [data-theme="orange"] { --accent-color: #ff6b00; --accent-glow: rgba(255, 107, 0, 0.4); }
+        [data-theme="brown"] { --accent-color: #8b5a2b; --accent-glow: rgba(139, 90, 43, 0.4); }
+        [data-theme="blue"] { --accent-color: #0088ff; --accent-glow: rgba(0, 136, 255, 0.4); }
+        [data-theme="green"] { --accent-color: #00cc66; --accent-glow: rgba(0, 204, 102, 0.4); }
+
+        /* Világos mód */
+        [data-mode="light"] {
+            --bg-color: #f5f5f7;
+            --panel-bg: rgba(255, 255, 255, 0.8);
+            --text-color: #1d1d1f;
+            --border-color: rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Vezérlőpanel */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 340px;
+            max-height: calc(100vh - 40px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* Custom Scrollbar a panelhez */
+        .control-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+        .control-panel::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            opacity: 0.9;
+        }
+
+        select, input[type="file"], button {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+
+        [data-mode="light"] select, 
+        [data-mode="light"] button {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        select:focus, button:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        /* Gombok és választók */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: #fff;
+            border: none;
+            font-weight: 600;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        /* Fájlválasztó egyedi stílusa */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Állapotjelző */
+        #status-message {
+            font-size: 0.8rem;
+            margin-top: 5px;
+            font-style: italic;
+            opacity: 0.8;
+        }
+
+        /* Információs overlay lejátszáskor */
+        .info-overlay {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            z-index: 10;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body data-mode="dark" data-theme="orange">
+
+    <div id="canvas-container"></div>
+
+    <div class="control-panel">
+        <h2 id="t-title">Beállítások</h2>
+
+        <!-- Rendszer beállítások (Nyelv, Mód, Szín) -->
+        <div class="section">
+            <div class="grid-2">
+                <div>
+                    <label id="t-lang">Nyelv</label>
+                    <select id="lang-select">
+                        <option value="hu" selected>Magyar</option>
+                        <option value="en">English</option>
+                        <option value="de">Deutsch</option>
+                    </select>
+                </div>
+                <div>
+                    <label id="t-mode">Megjelenítés</label>
+                    <select id="mode-select">
+                        <option value="dark" selected>Sötét</option>
+                        <option value="light">Világos</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <label id="t-color">Színvilág</label>
+            <select id="theme-select">
+                <option value="orange" selected>Narancs</option>
+                <option value="brown">Barna</option>
+                <option value="blue">Kék</option>
+                <option value="green">Zöld</option>
+            </select>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
+
+        <!-- Képforrás beállítása -->
+        <div class="section">
+            <label id="t-source">Képek betöltése (Mappa / Fájlok)</label>
+            <div class="file-input-wrapper">
+                <button class="btn-primary" id="t-choose-btn">Fájlok kiválasztása</button>
+                <input type="file" id="image-input" multiple accept="image/*">
+            </div>
+            <div id="status-message">Nincs kép betöltve.</div>
+        </div>
+
+        <!-- Animáció paraméterek -->
+        <div class="section">
+            <label id="t-movement">Kép sorozat mozgása</label>
+            <select id="param-movement">
+                <option value="horizontal" selected>Vízszintes</option>
+                <option value="vertical">Függőleges</option>
+                <option value="diagonal">Átlós</option>
+            </select>
+        </div>
+
+        <div class="section">
+            <label id="t-direction">Kép forgás iránya</label>
+            <select id="param-direction">
+                <option value="right" selected>Jobbról / Fentről</option>
+                <option value="left">Balról / Lentről</option>
+            </select>
+        </div>
+
+        <div class="section">
+            <label id="t-area">Kép mozgási terület</label>
+            <select id="param-area">
+                <option value="plane" selected>Sík</option>
+                <option value="cylinder">Henger</option>
+                <option value="sphere">Gömb</option>
+            </select>
+        </div>
+
+        <div class="section">
+            <label id="t-effect">Képi effektek</label>
+            <select id="param-effect">
+                <option value="axis" selected>Tengely körüli forgás</option>
+                <option value="center">Középpont körüli forgás</option>
+                <option value="flip">Lapozás</option>
+            </select>
+        </div>
+
+        <div class="section">
+            <label id="t-speed">Képi animáció sebessége</label>
+            <select id="param-speed">
+                <option value="slow">Lassú</option>
+                <option value="medium" selected>Közepes</option>
+                <option value="fast">Gyors</option>
+            </select>
+        </div>
+
+        <button class="btn-primary" id="start-btn">START</button>
+    </div>
+
+    <div class="info-overlay" id="info-overlay" style="display: none;">
+        <span id="t-playing">Lejátszás...</span>
+    </div>
+
+    <script>
+        // Nyelvi szótár
+        const translations = {
+            hu: {
+                title: "Beállítások",
+                lang: "Nyelv",
+                mode: "Megjelenítés",
+                color: "Színvilág",
+                source: "Képek betöltése (Mappa / Fájlok)",
+                chooseBtn: "Fájlok kiválasztása",
+                movement: "Kép sorozat mozgása",
+                direction: "Kép forgás iránya",
+                area: "Kép mozgási terület",
+                effect: "Képi effektek",
+                speed: "Képi animáció sebessége",
+                playing: "Diavetítés aktív (Egérrel forgatható tér)",
+                noImages: "Nincs kép betöltve.",
+                loaded: " kép sikeresen betöltve.",
+                start: "START",
+                dark: "Sötét",
+                light: "Világos"
+            },
+            en: {
+                title: "Settings",
+                lang: "Language",
+                mode: "Appearance",
+                color: "Color Theme",
+                source: "Load Images (Folder / Files)",
+                chooseBtn: "Select Files",
+                movement: "Image Sequence Movement",
+                direction: "Image Rotation Direction",
+                area: "Movement Area Geometry",
+                effect: "Visual Effects",
+                speed: "Animation Speed",
+                playing: "Slideshow Active (Drag to rotate space)",
+                noImages: "No images loaded.",
+                loaded: " images successfully loaded.",
+                start: "START",
+                dark: "Dark",
+                light: "Light"
+            },
+            de: {
+                title: "Einstellungen",
+                lang: "Sprache",
+                mode: "Aussehen",
+                color: "Farbschema",
+                source: "Bilder laden (Ordner / Dateien)",
+                chooseBtn: "Dateien auswählen",
+                movement: "Bildsequenz-Bewegung",
+                direction: "Bilddrehrichtung",
+                area: "Bewegungsbereich",
+                effect: "Bildeffekte",
+                speed: "Animationsgeschwindigkeit",
+                playing: "Diashow aktiv (Ziehen zum Drehen)",
+                noImages: "Keine Bilder geladen.",
+                loaded: " Bilder erfolgreich geladen.",
+                start: "START",
+                dark: "Dunkel",
+                light: "Hell"
+            }
+        };
+
+        // DOM elemek
+        const langSelect = document.getElementById('lang-select');
+        const modeSelect = document.getElementById('mode-select');
+        const themeSelect = document.getElementById('theme-select');
+        const imageInput = document.getElementById('image-input');
+        const statusMessage = document.getElementById('status-message');
+        const startBtn = document.getElementById('start-btn');
+        const infoOverlay = document.getElementById('info-overlay');
+
+        // Nyelvváltás kezelése
+        function updateLanguage(lang) {
+            const t = translations[lang];
+            document.getElementById('t-title').textContent = t.title;
+            document.getElementById('t-lang').textContent = t.lang;
+            document.getElementById('t-mode').textContent = t.mode;
+            document.getElementById('t-color').textContent = t.color;
+            document.getElementById('t-source').textContent = t.source;
+            document.getElementById('t-choose-btn').textContent = t.chooseBtn;
+            document.getElementById('t-movement').textContent = t.movement;
+            document.getElementById('t-direction').textContent = t.direction;
+            document.getElementById('t-area').textContent = t.area;
+            document.getElementById('t-effect').textContent = t.effect;
+            document.getElementById('t-speed').textContent = t.speed;
+            document.getElementById('t-playing').textContent = t.playing;
+            startBtn.textContent = t.start;
+
+            // Opciók frissítése a módválasztónál
+            modeSelect.options[0].text = t.dark;
+            modeSelect.options[1].text = t.light;
+
+            updateStatus();
+        }
+
+        langSelect.addEventListener('change', (e) => updateLanguage(e.target.value));
+
+        // Téma és Mód kezelése
+        modeSelect.addEventListener('change', (e) => {
+            document.body.setAttribute('data-mode', e.target.value);
+        });
+
+        themeSelect.addEventListener('change', (e) => {
+            document.body.setAttribute('data-theme', e.target.value);
+        });
+
+        // Fájlkezelés
+        let loadedImages = [];
+        imageInput.addEventListener('change', (e) => {
+            loadedImages = [];
+            const files = e.target.files;
+            if (files.length === 0) {
+                updateStatus();
+                return;
+            }
+
+            let loadedCount = 0;
+            for (let i = 0; i < files.length; i++) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    loadedImages.push(event.target.result);
+                    loadedCount++;
+                    if (loadedCount === files.length) {
+                        updateStatus();
+                    }
+                };
+                reader.readAsDataURL(files[i]);
+            }
+        });
+
+        function updateStatus() {
+            const lang = langSelect.value;
+            if (loadedImages.length === 0) {
+                statusMessage.textContent = translations[lang].noImages;
+                statusMessage.style.color = 'inherit';
+            } else {
+                statusMessage.textContent = loadedImages.length + translations[lang].loaded;
+                statusMessage.style.color = 'var(--accent-color)';
+            }
+        }
+
+        // 3D Grafikai Motor (Three.js alapok)
+        let scene, camera, renderer, imageMeshes = [], animationFrameId;
+        const container = document.getElementById('canvas-container');
+
+        // Egér interakció követése a háttér forgatásához
+        let mouseX = 0, mouseY = 0;
+        window.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX - window.innerWidth / 2) * 0.0005;
+            mouseY = (e.clientY - window.innerHeight / 2) * 0.0005;
+        });
+
+        function init3D() {
+            // Előző jelenet takarítása ha létezik
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            container.innerHTML = '';
+            imageMeshes = [];
+
+            scene = new THREE.Scene();
+            
+            // Köd effekt a mélységérzethez
+            scene.fog = new THREE.FogExp2(0x121212, 0.015);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 15;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Fények
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0xffffff, 0.5, 100);
+            pointLight.position.set(0, 10, 20);
+            scene.add(pointLight);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Diavetítés indítása
+        startBtn.addEventListener('click', () => {
+            if (loadedImages.length === 0) {
+                alert(langSelect.value === 'hu' ? 'Kérlek, előbb tölts be képeket!' : 'Please load images first!');
+                return;
+            }
+
+            infoOverlay.style.display = 'block';
+            init3D();
+            buildGallery();
+            animate();
+        });
+
+        function buildGallery() {
+            const area = document.getElementById('param-area').value;
+            const textureLoader = new THREE.TextureLoader();
+
+            const count = loadedImages.length;
+            const geometry = new THREE.PlaneGeometry(3.2, 1.8); // 16:9 arányú képsíkok
+
+            loadedImages.forEach((imgSrc, index) => {
+                const texture = textureLoader.load(imgSrc);
+                const material = new THREE.MeshBasicMaterial({ 
+                    map: texture, 
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.95
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+
+                // Kezdeti elrendezés geometriák szerint
+                if (area === 'plane') {
+                    // Sík elrendezés sorban
+                    mesh.position.set((index - (count - 1) / 2) * 4.5, 0, 0);
+                } 
+                else if (area === 'cylinder') {
+                    // Henger palástjára rendezés
+                    const angle = (index / count) * Math.PI * 2;
+                    const radius = Math.max(8, count * 0.8);
+                    mesh.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+                    mesh.rotation.y = -angle + Math.PI / 2;
+                } 
+                else if (area === 'sphere') {
+                    // Gömb felületére osztás (Fibonacci spirál alapján a szép eloszlásért)
+                    const phi = Math.acos(-1 + (2 * index) / count);
+                    const theta = Math.sqrt(count * Math.PI) * phi;
+                    const radius = Math.max(8, count * 0.6);
+
+                    mesh.position.set(
+                        radius * Math.sin(phi) * Math.cos(theta),
+                        radius * Math.cos(phi),
+                        radius * Math.sin(phi) * Math.sin(theta)
+                    );
+                    mesh.lookAt(0, 0, 0); // Beelé néznek a gömb középpontja felé
+                }
+
+                // Egyedi adatok mentése az animációs fázisokhoz
+                mesh.userData = {
+                    initialPosition: mesh.position.clone(),
+                    initialRotation: mesh.rotation.clone(),
+                    angleOffset: (index / count) * Math.PI * 2,
+                    seed: Math.random() * 100
+                };
+
+                scene.add(mesh);
+                imageMeshes.push(mesh);
+            });
+        }
+
+        // Animációs ciklus
+        let globalTime = 0;
+        function animate() {
+            animationFrameId = requestAnimationFrame(animate);
+
+            // Beállítások kinyerése futásidőben
+            const movement = document.getElementById('param-movement').value;
+            const direction = document.getElementById('param-direction').value;
+            const effect = document.getElementById('param-effect').value;
+            const speedVal = document.getElementById('param-speed').value;
+            const area = document.getElementById('param-area').value;
+
+            // Sebesség szorzó
+            let speedMultiplier = 0.005;
+            if (speedVal === 'slow') speedMultiplier = 0.002;
+            if (speedVal === 'fast') speedMultiplier = 0.015;
+
+            const dirSign = direction === 'right' ? 1 : -1;
+            globalTime += speedMultiplier * dirSign;
+
+            // Kamera finom mozgatása az egérpozíció alapján (térbeli mélység érzet)
+            camera.position.x += (mouseX * 15 - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY * 15 - camera.position.y) * 0.05;
+            camera.lookAt(0, 0, 0);
+
+            // Köd színének szinkronizálása a világos/sötét móddal
+            const isLight = document.body.getAttribute('data-mode') === 'light';
+            const targetFogColor = isLight ? 0xf5f5f7 : 0x121212;
+            scene.fog.color.setHex(targetFogColor);
+
+            imageMeshes.forEach((mesh, index) => {
+                // 1. Alapmozgások és Pályák
+                if (area === 'plane') {
+                    if (movement === 'horizontal') {
+                        mesh.position.x = mesh.userData.initialPosition.x + (globalTime * 15);
+                        // Végtelenített ciklikus képernyő-újrapozicionálás
+                        const boundary = (imageMeshes.length * 4.5) / 2;
+                        if (mesh.position.x > boundary) mesh.position.x -= boundary * 2;
+                        if (mesh.position.x < -boundary) mesh.position.x += boundary * 2;
+                    } 
+                    else if (movement === 'vertical') {
+                        mesh.position.y = mesh.userData.initialPosition.y + (globalTime * 15);
+                        const boundary = (imageMeshes.length * 3.0) / 2;
+                        if (mesh.position.y > boundary) mesh.position.y -= boundary * 2;
+                        if (mesh.position.y < -boundary) mesh.position.y += boundary * 2;
+                    }
+                    else if (movement === 'diagonal') {
+                        mesh.position.x = mesh.userData.initialPosition.x + (globalTime * 10);
+                        mesh.position.y = mesh.userData.initialPosition.y + (globalTime * 5);
+                        const boundaryX = (imageMeshes.length * 4.5) / 2;
+                        if (mesh.position.x > boundaryX) {
+                            mesh.position.x -= boundaryX * 2;
+                            mesh.position.y -= (boundaryX * 2) * 0.5;
+                        }
+                        if (mesh.position.x < -boundaryX) {
+                            mesh.position.x += boundaryX * 2;
+                            mesh.position.y += (boundaryX * 2) * 0.5;
+                        }
+                    }
+                } 
+                else if (area === 'cylinder') {
+                    // Henger forgatása a középpont körül
+                    const currentAngle = mesh.userData.angleOffset + globalTime;
+                    const radius = Math.max(8, imageMeshes.length * 0.8);
+                    mesh.position.x = Math.cos(currentAngle) * radius;
+                    mesh.position.z = Math.sin(currentAngle) * radius;
+                    mesh.rotation.y = -currentAngle + Math.PI / 2;
+
+                    if (movement === 'vertical') {
+                        mesh.position.y = Math.sin(globalTime * 2 + index) * 2;
+                    } else if (movement === 'diagonal') {
+                        mesh.position.y = Math.sin(currentAngle) * 3;
+                    } else {
+                        mesh.position.y = 0;
+                    }
+                } 
+                else if (area === 'sphere') {
+                    // Gömb lassú forgatása
+                    mesh.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), speedMultiplier * dirSign);
+                    if (movement === 'vertical') {
+                        mesh.position.applyAxisAngle(new THREE.Vector3(1, 0, 0), speedMultiplier * 0.3 * dirSign);
+                    } else if (movement === 'diagonal') {
+                        mesh.position.applyAxisAngle(new THREE.Vector3(1, 1, 0).normalize(), speedMultiplier * 0.5 * dirSign);
+                    }
+                    mesh.lookAt(0, 0, 0);
+                }
+
+                // 2. Képi Effektek (Tengely, Középpont, Lapozás)
+                if (effect === 'axis') {
+                    // Saját tengely körüli finom billegés / pörgés
+                    mesh.rotation.y += 0.01;
+                } 
+                else if (effect === 'center') {
+                    // Jelenet középpontja felé néző egyedi bólogatás
+                    const pulse = Math.sin(globalTime * 5 + mesh.userData.seed) * 0.15;
+                    mesh.rotation.z = pulse;
+                } 
+                else if (effect === 'flip') {
+                    // 3D-s lapozó / pördülő effekt
+                    const flipCycle = (globalTime * 3 + index) % (Math.PI * 2);
+                    mesh.rotation.x = flipCycle;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // Init
+        updateLanguage('hu');
+    </script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Newton Bölcsője - Javított Fizika</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            overflow: hidden;
+            touch-action: none;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+            background: radial-gradient(circle, #ffffff 0%, #f1f5f9 100%);
+        }
+        .ui-header {
+            position: absolute;
+            top: 30px;
+            text-align: center;
+            width: 100%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ui-header">
+        <h1 class="text-3xl font-black text-slate-800 tracking-tighter uppercase">Newton Bölcsője</h1>
+        <p class="text-slate-500 font-medium">Húzd el a szélső golyót a kezdéshez</p>
+    </div>
+
+    <canvas id="physicsCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('physicsCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        const ballCount = 5;
+        const ballRadius = 25;
+        const stringLength = 300;
+        const gravity = 0.5;
+        const friction = 0.995; 
+        const restitution = 0.98; // Energiaveszteség ütközéskor
+
+        let balls = [];
+        let draggedBall = null;
+
+        class Ball {
+            constructor(index, x) {
+                this.index = index;
+                this.radius = ballRadius;
+                this.pivotX = x;
+                this.pivotY = 150;
+                this.angle = 0;
+                this.angularVelocity = 0;
+                this.isDragged = false;
+            }
+
+            update() {
+                if (this.isDragged) return;
+
+                // Pendulum fizika
+                let accel = -(gravity / stringLength) * Math.sin(this.angle);
+                this.angularVelocity += accel;
+                this.angularVelocity *= friction;
+                this.angle += this.angularVelocity;
+
+                // Stabilizáció: ha nagyon lassú, álljon meg függőlegesen
+                if (Math.abs(this.angle) < 0.0001 && Math.abs(this.angularVelocity) < 0.0001) {
+                    this.angle = 0;
+                    this.angularVelocity = 0;
+                }
+            }
+
+            getPos() {
+                return {
+                    x: this.pivotX + Math.sin(this.angle) * stringLength,
+                    y: this.pivotY + Math.cos(this.angle) * stringLength
+                };
+            }
+
+            draw() {
+                const pos = this.getPos();
+
+                // Felfüggesztés
+                ctx.strokeStyle = "#94a3b8";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(this.pivotX - 10, this.pivotY);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.moveTo(this.pivotX + 10, this.pivotY);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+
+                // Golyó (fémes hatás)
+                const grad = ctx.createRadialGradient(
+                    pos.x - 8, pos.y - 8, 2,
+                    pos.x, pos.y, this.radius
+                );
+                grad.addColorStop(0, "#ffffff");
+                grad.addColorStop(0.3, "#cbd5e1");
+                grad.addColorStop(1, "#334155");
+
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = grad;
+                ctx.fill();
+                ctx.strokeStyle = "#1e293b";
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            }
+        }
+
+        function init() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            balls = [];
+            const spacing = ballRadius * 2;
+            const startX = width / 2 - ((ballCount - 1) * spacing) / 2;
+            
+            for (let i = 0; i < ballCount; i++) {
+                // Kezdetben minden golyó 0 fokban áll (tökéletesen függőlegesen)
+                balls.push(new Ball(i, startX + i * spacing));
+            }
+        }
+
+        function resolveCollisions() {
+            // Mivel a pivotok távolsága = 2 * sugár, a golyók akkor érnek össze, ha szögeik egyenlőek.
+            // Ütközés történik, ha egy bal oldali golyó szöge nagyobb, mint a tőle jobbra lévőé.
+            for (let k = 0; k < 10; k++) {
+                for (let i = 0; i < balls.length - 1; i++) {
+                    let b1 = balls[i];
+                    let b2 = balls[i+1];
+
+                    if (b1.angle > b2.angle) {
+                        // Sebességcsere (azonos tömegek ütközése)
+                        if (b1.angularVelocity > b2.angularVelocity) {
+                            let v1 = b1.angularVelocity;
+                            let v2 = b2.angularVelocity;
+                            
+                            b1.angularVelocity = v2 * restitution;
+                            b2.angularVelocity = v1 * restitution;
+                        }
+                        
+                        // Átfedés korrekciója: állítsuk őket azonos szögbe (egymás mellé)
+                        let avg = (b1.angle + b2.angle) / 2;
+                        b1.angle = avg;
+                        b2.angle = avg;
+                    }
+                }
+            }
+        }
+
+        function drawFrame() {
+            const b1 = balls[0];
+            const bL = balls[balls.length - 1];
+
+            // Állvány felső része
+            ctx.fillStyle = "#451a03";
+            ctx.beginPath();
+            ctx.roundRect(b1.pivotX - 60, b1.pivotY - 25, (bL.pivotX - b1.pivotX) + 120, 35, 4);
+            ctx.fill();
+
+            // Oszlopok
+            ctx.strokeStyle = "#1e293b";
+            ctx.lineWidth = 15;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(b1.pivotX - 50, b1.pivotY);
+            ctx.lineTo(b1.pivotX - 50, height - 100);
+            ctx.moveTo(bL.pivotX + 50, b1.pivotY);
+            ctx.lineTo(bL.pivotX + 50, height - 100);
+            ctx.stroke();
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            drawFrame();
+            resolveCollisions();
+            balls.forEach(ball => {
+                ball.update();
+                ball.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const targets = [balls[0], balls[balls.length - 1]];
+            targets.forEach(ball => {
+                const pos = ball.getPos();
+                if (Math.hypot(pos.x - e.clientX, pos.y - e.clientY) < ball.radius * 2) {
+                    draggedBall = ball;
+                    ball.isDragged = true;
+                }
+            });
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (draggedBall) {
+                const dx = e.clientX - draggedBall.pivotX;
+                const dy = e.clientY - draggedBall.pivotY;
+                let targetAngle = Math.atan2(dx, dy);
+                
+                // Mozgási határok a golyók sorrendjének védelmében
+                if (draggedBall.index === 0) {
+                    draggedBall.angle = Math.max(-1.4, Math.min(0, targetAngle));
+                } else {
+                    draggedBall.angle = Math.max(0, Math.min(1.4, targetAngle));
+                }
+                draggedBall.angularVelocity = 0;
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (draggedBall) {
+                draggedBall.isDragged = false;
+                draggedBall = null;
+            }
+        });
+
+        window.addEventListener('resize', init);
+        window.onload = () => { init(); animate(); };
+    </script>
+</body>
+</html>

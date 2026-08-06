@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kecskeméti Lajos — Automatizálás · Adat · AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0B0E14;
+    --bg-soft: #10141D;
+    --card: #161B26;
+    --card-border: #232A38;
+    --text: #E7ECF3;
+    --text-dim: #A8B3C4;
+    --text-faint: #5C6B80;
+    --cyan: #5EEAD4;
+    --cyan-dim: #2E7D74;
+    --amber: #F2C14E;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  html{ scroll-behavior: smooth; }
+
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  body::before{
+    content:"";
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(94,234,212,0.07), transparent 45%),
+      radial-gradient(circle at 85% 30%, rgba(242,193,78,0.05), transparent 40%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  a{ color: inherit; text-decoration: none; }
+
+  .wrap{
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 28px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ---------- NAV ---------- */
+  nav{
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+    background: rgba(11,14,20,0.85);
+    border-bottom: 1px solid var(--card-border);
+  }
+  .nav-inner{
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+  }
+  .logo span{ color: var(--cyan); }
+  .nav-links{
+    display: flex;
+    gap: 28px;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--text-dim);
+  }
+  .nav-links a:hover{ color: var(--cyan); }
+  .nav-cta{
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    border: 1px solid var(--cyan-dim);
+    color: var(--cyan);
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: all .2s ease;
+  }
+  .nav-cta:hover{ background: var(--cyan); color: #06201C; }
+  .nav-mobile-hide{ display:flex; }
+
+  /* ---------- HERO ---------- */
+  header.hero{
+    padding: 96px 0 80px;
+    position: relative;
+  }
+  .hero-grid{
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 56px;
+    align-items: center;
+  }
+  .eyebrow{
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--cyan);
+    letter-spacing: 0.08em;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before{
+    content:"";
+    width: 8px; height: 8px;
+    background: var(--cyan);
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(94,234,212,0.5);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%{ box-shadow: 0 0 0 0 rgba(94,234,212,0.45); }
+    70%{ box-shadow: 0 0 0 7px rgba(94,234,212,0); }
+    100%{ box-shadow: 0 0 0 0 rgba(94,234,212,0); }
+  }
+  h1{
+    font-family: var(--mono);
+    font-weight: 800;
+    font-size: clamp(2.1rem, 4.2vw, 3.4rem);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin-bottom: 22px;
+  }
+  h1 .accent{ color: var(--cyan); }
+  .hero p.lead{
+    font-size: 1.08rem;
+    color: var(--text-dim);
+    max-width: 540px;
+    margin-bottom: 34px;
+  }
+  .hero-actions{
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .btn-primary{
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    font-weight: 600;
+    background: var(--cyan);
+    color: #06201C;
+    padding: 13px 24px;
+    border-radius: 7px;
+    transition: transform .15s ease, box-shadow .15s ease;
+    box-shadow: 0 0 0 0 rgba(94,234,212,0.4);
+  }
+  .btn-primary:hover{ transform: translateY(-2px); box-shadow: 0 8px 20px -4px rgba(94,234,212,0.35); }
+  .btn-ghost{
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    padding: 13px 24px;
+    border-radius: 7px;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .btn-ghost:hover{ border-color: var(--cyan-dim); color: var(--cyan); }
+
+  /* terminal mock */
+  .terminal{
+    background: var(--bg-soft);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,0.6);
+  }
+  .terminal-bar{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #11151F;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .dot{ width: 10px; height: 10px; border-radius: 50%; }
+  .dot.red{ background: #FF5F56; }
+  .dot.yellow{ background: #FFBD2E; }
+  .dot.green{ background: #27C93F; }
+  .terminal-title{
+    margin-left: 8px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-faint);
+  }
+  .terminal-body{
+    padding: 22px 20px 26px;
+    font-family: var(--mono);
+    font-size: 0.84rem;
+    color: var(--text-dim);
+  }
+  .terminal-body .line{ margin-bottom: 10px; }
+  .terminal-body .prompt{ color: var(--cyan); }
+  .terminal-body .out{ color: var(--text); padding-left: 18px; display:block; margin-top: 2px;}
+  .terminal-body .comment{ color: var(--text-faint); }
+  .cursor{
+    display:inline-block; width: 7px; height: 14px; background: var(--cyan);
+    animation: blink 1s steps(1) infinite; vertical-align: -2px;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  /* ---------- SECTION LABELS ---------- */
+  .section{ padding: 72px 0; }
+  .section-head{ margin-bottom: 44px; max-width: 620px; }
+  .section-tag{
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--amber);
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+  .section h2{
+    font-family: var(--mono);
+    font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .section p.sub{ color: var(--text-dim); font-size: 1rem; }
+
+  /* ---------- SERVICES ---------- */
+  .services-grid{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  .service-card{
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 26px 24px;
+    transition: border-color .2s ease, transform .2s ease;
+  }
+  .service-card:hover{
+    border-color: var(--cyan-dim);
+    transform: translateY(-3px);
+  }
+  .service-tag{
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--cyan);
+    background: rgba(94,234,212,0.08);
+    border: 1px solid rgba(94,234,212,0.25);
+    padding: 3px 9px;
+    border-radius: 5px;
+    margin-bottom: 16px;
+  }
+  .service-card h3{
+    font-family: var(--mono);
+    font-size: 1.02rem;
+    margin-bottom: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .service-card p{
+    color: var(--text-dim);
+    font-size: 0.92rem;
+    margin-bottom: 16px;
+  }
+  .service-link{
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--text-faint);
+    border-bottom: 1px solid transparent;
+    transition: color .2s ease, border-color .2s ease;
+  }
+  .service-link:hover{ color: var(--cyan); border-color: var(--cyan); }
+
+  /* ---------- PROOF / LEARNING STRIP ---------- */
+  .proof{
+    background: var(--bg-soft);
+    border-top: 1px solid var(--card-border);
+    border-bottom: 1px solid var(--card-border);
+  }
+  .proof-grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 16px;
+  }
+  .proof-item{
+    text-align: center;
+    padding: 22px 10px;
+    border-right: 1px solid var(--card-border);
+  }
+  .proof-item:last-child{ border-right: none; }
+  .proof-item .num{
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--cyan);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .proof-item .label{
+    font-size: 0.78rem;
+    color: var(--text-faint);
+    font-family: var(--mono);
+  }
+
+  /* ---------- PLATFORMS / LEARNING ---------- */
+  .chip-row{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .chip{
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    border: 1px solid var(--card-border);
+    padding: 8px 14px;
+    border-radius: 999px;
+    transition: border-color .2s ease, color .2s ease;
+  }
+  .chip:hover{ border-color: var(--cyan-dim); color: var(--cyan); }
+
+  /* ---------- LINKS / NETWORK ---------- */
+  .link-grid{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .link-card{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    padding: 16px 20px;
+    border-radius: 10px;
+    transition: border-color .2s ease;
+  }
+  .link-card:hover{ border-color: var(--cyan-dim); }
+  .link-card .name{ font-family: var(--mono); font-size: 0.9rem; }
+  .link-card .arrow{ color: var(--text-faint); font-family: var(--mono); }
+  .link-card:hover .arrow{ color: var(--cyan); }
+
+  /* ---------- FOOTER / CONTACT ---------- */
+  .cta-block{
+    text-align: center;
+    padding: 90px 0 70px;
+  }
+  .cta-block h2{
+    font-family: var(--mono);
+    font-size: clamp(1.7rem, 3.4vw, 2.6rem);
+    margin-bottom: 18px;
+    font-weight: 800;
+  }
+  .cta-block p{
+    color: var(--text-dim);
+    max-width: 480px;
+    margin: 0 auto 32px;
+  }
+  footer{
+    border-top: 1px solid var(--card-border);
+    padding: 32px 0;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text-faint);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  footer a:hover{ color: var(--cyan); }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width: 880px){
+    .hero-grid{ grid-template-columns: 1fr; }
+    .services-grid{ grid-template-columns: 1fr 1fr; }
+    .link-grid{ grid-template-columns: 1fr; }
+    .nav-mobile-hide{ display: none; }
+    .proof-item{ border-right: none; border-bottom: 1px solid var(--card-border); }
+  }
+  @media (max-width: 560px){
+    .services-grid{ grid-template-columns: 1fr; }
+    .proof-grid{ grid-template-columns: 1fr 1fr; }
+    footer{ flex-direction: column; text-align: center; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation: none !important; transition: none !important; }
+  }
+
+  :focus-visible{
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="logo">klajos<span>w</span>.dev</div>
+    <div class="nav-links nav-mobile-hide">
+      <a href="#szolgaltatasok">Szolgáltatások</a>
+      <a href="#tanulas">Tanulás</a>
+      <a href="#linkek">Linkek</a>
+    </div>
+    <a class="nav-cta" href="#kapcsolat">Kapcsolat</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">elérhető új projektekre</div>
+        <h1>Automatizálás, adat<br>és <span class="accent">AI</span> — valós<br>problémákra.</h1>
+        <p class="lead">Kecskeméti Lajos vagyok. Üzleti folyamatok automatizálásában, adattisztításban,
+        big data / AI megoldásokban és IT biztonságban segítek — gyakorlatorientáltan,
+        nem csak elméletben.</p>
+        <div class="hero-actions">
+          <a class="btn-primary" href="#kapcsolat">Vegyük fel a kapcsolatot →</a>
+          <a class="btn-ghost" href="#szolgaltatasok">Mivel tudok segíteni?</a>
+        </div>
+      </div>
+
+      <div class="terminal">
+        <div class="terminal-bar">
+          <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+          <span class="terminal-title">~/klajosw — zsh</span>
+        </div>
+        <div class="terminal-body">
+          <div class="line"><span class="prompt">$</span> whoami</div>
+          <div class="line out">Kecskeméti Lajos — automatizálás · adat · AI</div>
+          <div class="line"><span class="prompt">$</span> ls szolgaltatasok/</div>
+          <div class="line out">folyamat-automatizalas.sh<br>adatbazis-tisztitas.py<br>bigdata-ai.ipynb<br>it-biztonsag.conf<br>mentoralas.md</div>
+          <div class="line"><span class="prompt">$</span> cat elerhetoseg.txt</div>
+          <div class="line out comment"># LinkedIn · GitHub · GitLab elérhető lent ↓</div>
+          <div class="line"><span class="prompt">$</span> <span class="cursor"></span></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="section" id="szolgaltatasok">
+    <div class="section-head">
+      <div class="section-tag">// mi érdekel</div>
+      <h2>Ezekben a témákban tudok segíteni</h2>
+      <p class="sub">Ezeket a területeket fontosnak és hasznosnak tartom — de nem kell velük egyedül megküzdeni.</p>
+    </div>
+
+    <div class="services-grid">
+      <div class="service-card">
+        <span class="service-tag">automatizálás</span>
+        <h3>Folyamat- és tevékenység-automatizálás</h3>
+        <p>Üzleti folyamatok és ismétlődő tevékenységek automatizálásának megvalósításában segítek, a tervezéstől a kivitelezésig.</p>
+        <a class="service-link" href="https://klajosw.blogspot.com/2025/03/folyamat-es-tevekenyseg-automatizalas.html" target="_blank" rel="noopener">Részletek →</a>
+      </div>
+
+      <div class="service-card">
+        <span class="service-tag">adat</span>
+        <h3>Adatbázis-tisztítás és elemzés</h3>
+        <p>Az adatvezérelt döntéshozatal a siker kulcsa. Segítek a nyers forrásadatokból valódi értéket teremteni.</p>
+        <a class="service-link" href="https://klajosw.blogspot.com/2025/03/adatbazis-es-adat-elemzesi.html" target="_blank" rel="noopener">Részletek →</a>
+      </div>
+
+      <div class="service-card">
+        <span class="service-tag">big data / AI</span>
+        <h3>Nagy adatállományok és AI megoldások</h3>
+        <p>A nagy adatmennyiségek elemzésében és a mesterséges intelligencia lehetőségeinek kiaknázásában nyújtok támogatást.</p>
+        <a class="service-link" href="https://klajosw.blogspot.com/2025/03/a-nagy-adatallomanyok-elemzese-es.html" target="_blank" rel="noopener">Részletek →</a>
+      </div>
+
+      <div class="service-card">
+        <span class="service-tag">biztonság</span>
+        <h3>Adat- és IT rendszerbiztonság</h3>
+        <p>Az adataid védelme kiemelten fontos. Segítek eligazodni a legújabb biztonsági megoldások között.</p>
+        <a class="service-link" href="https://klajosw.blogspot.com/2025/01/it-biztonsag-cyber-biztonsag.html" target="_blank" rel="noopener">Részletek →</a>
+      </div>
+
+      <div class="service-card">
+        <span class="service-tag">mentorálás</span>
+        <h3>Oktatás, mentorálás, szakértői tanácsadás</h3>
+        <p>Oktatás után a legfontosabb a tudás gyakorlatba ültetése — valós problémák megoldásában tudok segíteni.</p>
+        <a class="service-link" href="https://klajosw.blogspot.com/2025/03/mentorallasszakertes-tanacsado.html" target="_blank" rel="noopener">Részletek →</a>
+      </div>
+
+      <div class="service-card">
+        <span class="service-tag">tartalom</span>
+        <h3>Blogok, térképek, AI-vizualizáció</h3>
+        <p>Saját blogokon és projekteken keresztül dolgozom AI-képgenerálással, térinformatikával és technológiai tartalmakkal.</p>
+        <a class="service-link" href="https://klajosw.blogspot.com" target="_blank" rel="noopener">Blog megnyitása →</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="tanulas">
+    <div class="section-head">
+      <div class="section-tag">// folyamatos fejlődés</div>
+      <h2>Jelenleg is aktívan képzem magam</h2>
+      <p class="sub">A gyakorlati tapasztalat mellett folyamatosan friss tudást építek be — ezeken a platformokon tanulok.</p>
+    </div>
+    <div class="chip-row">
+      <a class="chip" href="https://www.coursera.org/learner/kecskemeti-lajos" target="_blank" rel="noopener">Coursera</a>
+      <a class="chip" href="https://www.datacamp.com/profile/klajosw" target="_blank" rel="noopener">DataCamp</a>
+      <a class="chip" href="https://www.kaggle.com/klajosw" target="_blank" rel="noopener">Kaggle</a>
+      <a class="chip" href="https://docs.microsoft.com/hu-hu/users/lajoskecskemti-4995/" target="_blank" rel="noopener">Microsoft Learn</a>
+      <a class="chip" href="https://www.sololearn.com/users/login" target="_blank" rel="noopener">SoloLearn</a>
+      <a class="chip" href="https://www.freecodecamp.org/klajosw" target="_blank" rel="noopener">freeCodeCamp</a>
+      <a class="chip" href="https://www.futurelearn.com/profiles/16352571" target="_blank" rel="noopener">FutureLearn</a>
+      <a class="chip" href="https://simpli-web.app.link/e/LMuECWV8Zvb" target="_blank" rel="noopener">Simplilearn</a>
+      <a class="chip" href="https://learn.365datascience.com/profile/lajos-kecskemeti/" target="_blank" rel="noopener">365 Data Science</a>
+      <a class="chip" href="https://alison.com/profile/public/19762137/Lajos%20Kecskem%C3%A9ti" target="_blank" rel="noopener">Alison</a>
+    </div>
+  </section>
+
+</div>
+
+<div class="proof">
+  <div class="wrap">
+    <div class="proof-grid">
+      <div class="proof-item"><span class="num">5+</span><span class="label">szakterület</span></div>
+      <div class="proof-item"><span class="num">10+</span><span class="label">tanulási platform</span></div>
+      <div class="proof-item"><span class="num">3</span><span class="label">aktív blog</span></div>
+      <div class="proof-item"><span class="num">2</span><span class="label">kódtár (GitHub/GitLab)</span></div>
+      <div class="proof-item"><span class="num">∞</span><span class="label">érdeklődés AI iránt</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <section class="section" id="linkek">
+    <div class="section-head">
+      <div class="section-tag">// elérhetőségek</div>
+      <h2>Hol találsz meg</h2>
+      <p class="sub">Szakmai profilok, kódtárak és saját projektek egy helyen.</p>
+    </div>
+    <div class="link-grid">
+      <a class="link-card" href="https://www.linkedin.com/in/klajosw/" target="_blank" rel="noopener">
+        <span class="name">LinkedIn — klajosw</span><span class="arrow">↗</span>
+      </a>
+      <a class="link-card" href="https://github.com/klajosw" target="_blank" rel="noopener">
+        <span class="name">GitHub — klajosw</span><span class="arrow">↗</span>
+      </a>
+      <a class="link-card" href="https://gitlab.com/klajosw" target="_blank" rel="noopener">
+        <span class="name">GitLab — klajosw</span><span class="arrow">↗</span>
+      </a>
+      <a class="link-card" href="https://g.dev/klajosw" target="_blank" rel="noopener">
+        <span class="name">Google Developer Profile</span><span class="arrow">↗</span>
+      </a>
+      <a class="link-card" href="https://klajosw.blogspot.com" target="_blank" rel="noopener">
+        <span class="name">Mierdekel.hu — fő blog</span><span class="arrow">↗</span>
+      </a>
+      <a class="link-card" href="https://terkepeim.blogspot.com" target="_blank" rel="noopener">
+        <span class="name">Térképeim — térinformatikai blog</span><span class="arrow">↗</span>
+      </a>
+      <a class="link-card" href="https://napelemem.blogspot.com" target="_blank" rel="noopener">
+        <span class="name">Napelemem — napelem blog</span><span class="arrow">↗</span>
+      </a>
+      <a class="link-card" href="https://www.facebook.com/kecskemeti.lajos" target="_blank" rel="noopener">
+        <span class="name">Facebook profil</span><span class="arrow">↗</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="cta-block" id="kapcsolat">
+    <div class="section-tag" style="text-align:center;">// kezdjünk valamit</div>
+    <h2>Van egy folyamat, amit<br>automatizálnál?</h2>
+    <p>Írj LinkedInen vagy nézd át a GitHub repókat — szívesen átbeszélem a problémádat, és megnézzük, hol tudok segíteni.</p>
+    <div class="hero-actions" style="justify-content:center;">
+      <a class="btn-primary" href="https://www.linkedin.com/in/klajosw/" target="_blank" rel="noopener">Írj LinkedInen →</a>
+      <a class="btn-ghost" href="https://github.com/klajosw" target="_blank" rel="noopener">Nézd meg a GitHub-ot</a>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+    <span>© 2026 Kecskeméti Lajos — Mierdekel.hu</span>
+    <span><a href="https://klajosw.blogspot.com" target="_blank" rel="noopener">blog</a> · <a href="https://github.com/klajosw" target="_blank" rel="noopener">github</a> · <a href="https://www.linkedin.com/in/klajosw/" target="_blank" rel="noopener">linkedin</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

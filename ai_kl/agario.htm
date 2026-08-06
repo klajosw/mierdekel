@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saját Agar.io (helyi)</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a; /* Sötét háttér */
+            font-family: "Inter", sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #eee;
+        }
+        #gameCanvas {
+            border: 2px solid #555;
+            background-color: #333; /* Kicsit világosabb háttér a játéktérnek */
+            border-radius: 15px; /* Lekerekített sarkok a vászonnak */
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4); /* Neon ragyogás */
+            display: block;
+        }
+        /* Az info-box most már nem HTML elemként létezik, hanem a vászonra van rajzolva.
+           Ezt a CSS szabályt meghagytuk egy esetleges jövőbeli felhasználáshoz,
+           de jelenleg nincs rá közvetlen szükség. */
+        .info-box {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #00ffff; /* Neon szövegszín */
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            border: 1px solid #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            text-align: center;
+            z-index: 10; /* Biztosítja, hogy felül legyen */
+            display: none; /* Rejtve, mivel már nem használjuk */
+        }
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none; /* Alapértelmezetten rejtett */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 2em;
+            text-align: center;
+            z-index: 20;
+        }
+        #restartButton {
+            padding: 15px 30px;
+            margin-top: 20px;
+            font-size: 1.2em;
+            background-color: #00ffff;
+            color: #1a1a1a;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3);
+        }
+        #restartButton:hover {
+            background-color: #00e0e0;
+            transform: translateY(-2px);
+        }
+        #restartButton:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <!-- Az info-box HTML elem eltávolítva, mivel a vászonra rajzolódik ki a méret -->
+    <!-- <div class="info-box" id="playerInfo"> Méret: 20 </div> -->
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="gameOverScreen">
+        <h1>GAME OVER!</h1>
+        <p id="gameOverMessage"></p>
+        <button id="restartButton">Újraindítás</button>
+    </div>
+
+    <script>
+        // Canvas beállítása
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        // const playerInfoDiv = document.getElementById('playerInfo'); // Eltávolítva
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const gameOverMessage = document.getElementById('gameOverMessage');
+        const restartButton = document.getElementById('restartButton');
+
+        // Játékállapot változók
+        let player;
+        let opponent;
+        let foods = [];
+        let isGameOver = false;
+
+        // Játékvilág méretei (állítható)
+        const WORLD_WIDTH = 2000;
+        const WORLD_HEIGHT = 2000;
+        const INITIAL_FOOD_COUNT = 150;
+        const FOOD_RADIUS = 5;
+
+        // Játékos és ellenfél alapvető tulajdonságai
+        const INITIAL_PLAYER_RADIUS = 20;
+        const INITIAL_OPPONENT_RADIUS = 25; // Kicsit nagyobb, mint a játékos
+
+        // Egér pozíció tárolása a játékos mozgásához
+        let mouseX = 0;
+        let mouseY = 0;
+
+        // --- Segédfüggvények ---
+
+        // Véletlen szín generálása
+        function getRandomColor() {
+            const hue = Math.floor(Math.random() * 360);
+            return `hsl(${hue}, 80%, 60%)`;
+        }
+
+        // Kör rajzolása
+        function drawCircle(x, y, radius, color, strokeColor, strokeWidth, text = '') {
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = strokeWidth;
+            ctx.stroke();
+
+            if (text) {
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                // A font méretét a kör sugarához viszonyítjuk, hogy dinamikus legyen
+                ctx.font = `${Math.max(10, radius / 3)}px "Inter", sans-serif`;
+                ctx.fillText(text, x, y + radius / 4);
+            }
+        }
+
+        // Kör-kör ütközés detektálás
+        function checkCollision(circle1, circle2) {
+            const dx = circle1.x - circle2.x;
+            const dy = circle1.y - circle2.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < circle1.radius + circle2.radius;
+        }
+
+        // Vászon méretének beállítása
+        function resizeCanvas() {
+            canvas.width = window.innerWidth * 0.8;
+            canvas.height = window.innerHeight * 0.8;
+            // A kamera újraközpontozásához nincs szükség a játékos pozíciójának módosítására,
+            // mivel a kamera offset fogja kezelni.
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // --- Játék inicializálása ---
+        function initGame() {
+            isGameOver = false;
+            gameOverScreen.style.display = 'none';
+
+            // Játékos inicializálása
+            player = {
+                x: WORLD_WIDTH / 2,
+                y: WORLD_HEIGHT / 2,
+                radius: INITIAL_PLAYER_RADIUS,
+                color: getRandomColor()
+            };
+
+            // Ellenfél inicializálása
+            opponent = {
+                x: WORLD_WIDTH / 2 + 300, // Kezdő pozíció távolabb
+                y: WORLD_HEIGHT / 2 - 200,
+                radius: INITIAL_OPPONENT_RADIUS,
+                color: getRandomColor()
+            };
+
+            // Ételek generálása
+            foods = [];
+            for (let i = 0; i < INITIAL_FOOD_COUNT; i++) {
+                foods.push({
+                    x: Math.random() * WORLD_WIDTH,
+                    y: Math.random() * WORLD_HEIGHT,
+                    radius: FOOD_RADIUS,
+                    color: getRandomColor()
+                });
+            }
+
+            resizeCanvas(); // Első vászon méret beállítás
+            requestAnimationFrame(gameLoop); // Játék ciklus indítása
+        }
+
+        // --- Játék frissítési logika ---
+        function update() {
+            if (isGameOver) return;
+
+            // --- Játékos mozgása ---
+            const dxPlayer = mouseX - player.x;
+            const dyPlayer = mouseY - player.y;
+            const distancePlayer = Math.sqrt(dxPlayer * dxPlayer + dyPlayer * dyPlayer);
+
+            if (distancePlayer > player.radius / 4) { // Mozog, ha az egér nem túl közel van
+                const playerSpeed = Math.max(1, 8 / (player.radius / 10)); // Lassabb a nagyobb játékosoknak
+                player.x += (dxPlayer / distancePlayer) * playerSpeed;
+                player.y += (dyPlayer / distancePlayer) * playerSpeed;
+
+                // Játékos a világ határain belül tartása
+                player.x = Math.max(player.radius, Math.min(WORLD_WIDTH - player.radius, player.x));
+                player.y = Math.max(player.radius, Math.min(WORLD_HEIGHT - player.radius, player.y));
+            }
+
+            // --- Ellenfél mozgása (egyszerű AI) ---
+            const opponentSpeed = Math.max(1, 7 / (opponent.radius / 10)); // Lassabb a nagyobb ellenfeleknek
+
+            // Az ellenfél a legközelebbi étel felé megy
+            let closestFood = null;
+            let minFoodDistance = Infinity;
+
+            foods.forEach(food => {
+                const dist = Math.sqrt(
+                    (opponent.x - food.x) ** 2 + (opponent.y - food.y) ** 2
+                );
+                if (dist < minFoodDistance) {
+                    minFoodDistance = dist;
+                    closestFood = food;
+                }
+            });
+
+            if (closestFood) {
+                const dxOpponent = closestFood.x - opponent.x;
+                const dyOpponent = closestFood.y - opponent.y;
+                const distanceOpponent = Math.sqrt(dxOpponent * dxOpponent + dyOpponent * dyOpponent);
+
+                if (distanceOpponent > opponent.radius / 4) {
+                    opponent.x += (dxOpponent / distanceOpponent) * opponentSpeed;
+                    opponent.y += (dyOpponent / distanceOpponent) * opponentSpeed;
+                }
+            } else { // Ha nincs étel, csak mozog véletlenszerűen (opcionális)
+                opponent.x += (Math.random() - 0.5) * opponentSpeed;
+                opponent.y += (Math.random() - 0.5) * opponentSpeed;
+            }
+
+            // Ellenfél a világ határain belül tartása
+            opponent.x = Math.max(opponent.radius, Math.min(WORLD_WIDTH - opponent.radius, opponent.x));
+            opponent.y = Math.max(opponent.radius, Math.min(WORLD_HEIGHT - opponent.radius, opponent.y));
+
+
+            // --- Ütközések kezelése ---
+
+            // Játékos-étel ütközések
+            foods = foods.filter(food => {
+                if (checkCollision(player, food) && player.radius > food.radius) {
+                    player.radius += Math.sqrt(food.radius) / 2;
+                    return false; // Étel eltűnik
+                }
+                return true; // Étel marad
+            });
+
+            // Ellenfél-étel ütközések
+            foods = foods.filter(food => {
+                if (checkCollision(opponent, food) && opponent.radius > food.radius) {
+                    opponent.radius += Math.sqrt(food.radius) / 2;
+                    return false; // Étel eltűnik
+                }
+                return true; // Étel marad
+            });
+
+            // Ételek újragenerálása, ha kevés van
+            while (foods.length < INITIAL_FOOD_COUNT) {
+                foods.push({
+                    x: Math.random() * WORLD_WIDTH,
+                    y: Math.random() * WORLD_HEIGHT,
+                    radius: FOOD_RADIUS,
+                    color: getRandomColor()
+                });
+            }
+
+            // Játékos-ellenfél ütközés
+            const minEatRatio = 1.1; // Annak kell ennie, aki 10%-kal nagyobb
+
+            if (checkCollision(player, opponent)) {
+                if (player.radius > opponent.radius * minEatRatio) {
+                    player.radius += Math.sqrt(opponent.radius);
+                    gameOver('Nyertél! Megetted az ellenfelet!');
+                } else if (opponent.radius > player.radius * minEatRatio) {
+                    opponent.radius += Math.sqrt(player.radius);
+                    gameOver('Vesztettél! Az ellenfél megevett téged!');
+                }
+                // Ha a méretek közel azonosak, akkor semmi nem történik
+            }
+
+            // playerInfoDiv.textContent = `Méret: ${Math.floor(player.radius)}`; // Eltávolítva
+        }
+
+        // --- Rajzolási logika ---
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Kamera offset számítása (a játékos középre helyezéséhez)
+            const offsetX = canvas.width / 2 - player.x;
+            const offsetY = canvas.height / 2 - player.y;
+
+            // Rács rajzolása
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 1;
+            const gridSize = 50;
+
+            for (let x = offsetX % gridSize; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = offsetY % gridSize; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Ételek rajzolása
+            foods.forEach(food => {
+                drawCircle(food.x + offsetX, food.y + offsetY, food.radius, food.color, 'rgba(0,0,0,0.2)', 1);
+            });
+
+            // Ellenfél rajzolása
+            drawCircle(opponent.x + offsetX, opponent.y + offsetY, opponent.radius, opponent.color, 'black', 2, `Gép (${Math.floor(opponent.radius)})`);
+
+            // Játékos rajzolása
+            drawCircle(player.x + offsetX, player.y + offsetY, player.radius, player.color, 'black', 3, 'Te');
+
+            // --- Méret kijelzése a vászon keretén ---
+            ctx.fillStyle = '#00ffff'; // Neon kék szöveg
+            ctx.font = '20px "Inter", sans-serif'; // "Inter" betűtípus használata, ha elérhető
+
+            // Játékos mérete (bal felül)
+            ctx.textAlign = 'left';
+            ctx.fillText(`Méreted: ${Math.floor(player.radius)}`, 20, 30);
+
+            // Ellenfél mérete (jobb felül)
+            ctx.textAlign = 'right';
+            ctx.fillText(`Gép mérete: ${Math.floor(opponent.radius)}`, canvas.width - 20, 30);
+
+            // --- Iránymutató nyíl az ellenfélhez ---
+            const playerScreenX = canvas.width / 2;
+            const playerScreenY = canvas.height / 2;
+            const opponentScreenX = opponent.x + offsetX;
+            const opponentScreenY = opponent.y + offsetY;
+
+            // Ellenőrizzük, hogy az ellenfél a képernyőn kívül van-e
+            const isOpponentOffScreen = (
+                opponentScreenX < 0 || opponentScreenX > canvas.width ||
+                opponentScreenY < 0 || opponentScreenY > canvas.height
+            );
+
+            if (isOpponentOffScreen) {
+                const arrowSize = 15; // Nyíl mérete
+                const arrowPadding = 40; // Távolság a vászon szélétől
+
+                // Vektor a játékos (képernyő középpontja) és az ellenfél képernyőpozíciója között
+                const vecX = opponentScreenX - playerScreenX;
+                const vecY = opponentScreenY - playerScreenY;
+                const angle = Math.atan2(vecY, vecX); // Szög radiánban
+
+                // Számítsuk ki a téglalap méreteit, amelyen belül a nyíl mozoghat
+                // (a vászon méretei mínusz a padding)
+                const boundedWidth = canvas.width - 2 * arrowPadding;
+                const boundedHeight = canvas.height - 2 * arrowPadding;
+
+                let t = 1; // Paraméteres érték a metszéspont számára
+
+                // Keresse meg a metszéspontot a téglalappal
+                // Ez a legkisebb 't' értéket találja meg, ahol a sugár (vecX*t, vecY*t) metszi a téglalapot.
+                // Egyszerűsített logika a középpontból induló sugárra.
+                if (Math.abs(vecX) > 1e-6) { // Elkerüljük a nulla osztást
+                    t = Math.min(t, Math.abs(boundedWidth / (2 * vecX)));
+                }
+                if (Math.abs(vecY) > 1e-6) { // Elkerüljük a nulla osztást
+                    t = Math.min(t, Math.abs(boundedHeight / (2 * vecY)));
+                }
+
+                const arrowX = playerScreenX + vecX * t;
+                const arrowY = playerScreenY + vecY * t;
+
+                ctx.save(); // Mentse az aktuális vászon állapotot
+                ctx.translate(arrowX, arrowY); // Mozgassa az origót a nyíl pozíciójába
+                ctx.rotate(angle); // Forgassa el a kontextust
+                ctx.fillStyle = '#ff0000'; // Piros nyíl
+                ctx.strokeStyle = '#ff8888';
+                ctx.lineWidth = 2;
+
+                // Egy egyszerű háromszög rajzolása, jobbra mutató (majd elforgatott)
+                ctx.beginPath();
+                ctx.moveTo(arrowSize, 0);             // Nyíl hegye
+                ctx.lineTo(-arrowSize * 0.5, -arrowSize * 0.5); // Bal alsó pont
+                ctx.lineTo(-arrowSize * 0.5, arrowSize * 0.5);  // Bal felső pont
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.restore(); // Visszaállítja az előző vászon állapotot
+            }
+        }
+
+        // --- Játékciklus ---
+        function gameLoop() {
+            update();
+            draw();
+            if (!isGameOver) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // --- Játék vége ---
+        function gameOver(message) {
+            isGameOver = true;
+            gameOverMessage.textContent = message;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        // --- Eseményfigyelők ---
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            // Az egér pozíciója a játéktér koordinátarendszerében
+            mouseX = (e.clientX - rect.left) + (player.x - canvas.width / 2);
+            mouseY = (e.clientY - rect.top) + (player.y - canvas.height / 2);
+        });
+
+        restartButton.addEventListener('click', initGame);
+
+        // Játék indítása
+        initGame();
+    </script>
+</body>
+</html>

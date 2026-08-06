@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Code Skill Rendszer — Bemutató</title>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/TextPlugin.min.js"></script>
+
+  <style>
+    /* ─── reset & base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0b0f;
+      --surface:   #12141a;
+      --surface2:  #1a1d26;
+      --border:    rgba(255,255,255,.07);
+      --accent:    #7c6fff;
+      --accent2:   #ff6b9d;
+      --accent3:   #00d4b4;
+      --text:      #e8eaf0;
+      --muted:     #6b7080;
+      --r:         14px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ─── noise overlay ────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: .4;
+    }
+
+    /* ─── nav ──────────────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: .75rem 1rem;
+      background: rgba(10,11,15,.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-size: .9rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: .85rem;
+      transition: color .2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    /* ─── sections ─────────────────────────────────────────────── */
+    section {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 8rem 2rem 4rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* ─── hero ─────────────────────────────────────────────────── */
+    #hero {
+      position: relative;
+      min-height: 100vh;
+      max-width: 100%;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .hero-inner {
+      position: relative;
+      z-index: 2;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .hero-eyebrow {
+      font-size: .8rem;
+      font-weight: 600;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1.5rem;
+      opacity: 0;
+    }
+
+    .hero-title {
+      font-size: clamp(2.4rem, 6vw, 5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+      opacity: 0;
+    }
+
+    .hero-title .line { display: block; overflow: hidden; }
+    .hero-title .word { display: inline-block; }
+
+    .hero-title .grad {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 560px;
+      margin-bottom: 2.5rem;
+      opacity: 0;
+    }
+
+    .hero-cta {
+      display: inline-flex;
+      align-items: center;
+      align-self: flex-start;
+      gap: .6rem;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      font-size: .95rem;
+      padding: .8rem 1.8rem;
+      border-radius: 100px;
+      text-decoration: none;
+      opacity: 0;
+      transition: transform .2s, box-shadow .2s;
+    }
+
+    .hero-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(124,111,255,.4);
+    }
+
+    /* canvas particles */
+    #hero-canvas {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    /* ─── section labels ───────────────────────────────────────── */
+    .section-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+    }
+
+    .section-lead {
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 620px;
+      margin-bottom: 3rem;
+    }
+
+    /* ─── what-is section ──────────────────────────────────────── */
+    .what-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .what-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.8rem;
+      opacity: 0;
+      transform: translateY(30px);
+      transition: border-color .3s;
+    }
+
+    .what-card:hover { border-color: rgba(124,111,255,.4); }
+
+    .what-card .icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 1rem;
+    }
+
+    .icon-purple { background: rgba(124,111,255,.15); }
+    .icon-pink   { background: rgba(255,107,157,.15); }
+    .icon-teal   { background: rgba(0,212,180,.15); }
+
+    .what-card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: .5rem;
+    }
+
+    .what-card p {
+      font-size: .9rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ─── how it works ─────────────────────────────────────────── */
+    #how { background: linear-gradient(180deg, var(--bg) 0%, var(--surface) 50%, var(--bg) 100%); max-width: 100%; padding-left: 0; padding-right: 0; }
+
+    .how-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    .flow-diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 2rem;
+      position: relative;
+    }
+
+    .flow-step {
+      display: grid;
+      grid-template-columns: 60px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+
+    .flow-step + .flow-step { margin-top: 0; }
+
+    .flow-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .flow-num {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: .9rem;
+      color: var(--accent);
+      flex-shrink: 0;
+      z-index: 1;
+    }
+
+    .flow-line {
+      width: 2px;
+      flex: 1;
+      min-height: 48px;
+      background: linear-gradient(to bottom, var(--accent), transparent);
+      margin-top: 4px;
+      opacity: .3;
+    }
+
+    .flow-body {
+      padding-bottom: 2.5rem;
+    }
+
+    .flow-body h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: .4rem;
+      padding-top: .6rem;
+    }
+
+    .flow-body p {
+      font-size: .9rem;
+      color: var(--muted);
+    }
+
+    .flow-tag {
+      display: inline-block;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: .2rem .6rem;
+      border-radius: 4px;
+      margin-bottom: .5rem;
+    }
+
+    .tag-skill  { background: rgba(124,111,255,.15); color: var(--accent); }
+    .tag-mcp    { background: rgba(0,212,180,.15);   color: var(--accent3); }
+    .tag-claude { background: rgba(255,107,157,.15); color: var(--accent2); }
+
+    /* ─── MCP section ──────────────────────────────────────────── */
+    .mcp-visual {
+      margin-top: 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mcp-visual::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,212,180,.08), transparent 70%);
+      pointer-events: none;
+    }
+
+    .mcp-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .mcp-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.2rem 1rem;
+      text-align: center;
+      opacity: 0;
+    }
+
+    .mcp-box .mcp-icon { font-size: 1.8rem; margin-bottom: .5rem; }
+    .mcp-box .mcp-name { font-size: .8rem; font-weight: 700; margin-bottom: .2rem; }
+    .mcp-box .mcp-desc { font-size: .72rem; color: var(--muted); }
+
+    .mcp-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+    }
+
+    .mcp-arrow svg {
+      width: 28px;
+      height: 28px;
+      color: var(--accent3);
+    }
+
+    .pulse-line {
+      height: 2px;
+      width: 100%;
+      background: linear-gradient(90deg, transparent, var(--accent3), transparent);
+      background-size: 200% 100%;
+      animation: pulse-move 2s linear infinite;
+      border-radius: 1px;
+    }
+
+    @keyframes pulse-move {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .mcp-caption {
+      text-align: center;
+      font-size: .82rem;
+      color: var(--muted);
+      margin-top: 1.5rem;
+      line-height: 1.6;
+    }
+
+    /* ─── skill demo ───────────────────────────────────────────── */
+    .skill-demo {
+      margin-top: 2rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 640px) {
+      .skill-demo { grid-template-columns: 1fr; }
+      .mcp-row { grid-template-columns: 1fr; }
+      .mcp-arrow { transform: rotate(90deg); }
+    }
+
+    .skill-file {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+
+    .skill-file-header {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: .8rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      font-size: .8rem;
+      color: var(--muted);
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+    }
+
+    .skill-file-header .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-red    { background: #ff5f57; }
+    .dot-yellow { background: #febc2e; }
+    .dot-green  { background: #28c840; }
+
+    .skill-file pre {
+      padding: 1.2rem;
+      font-size: .78rem;
+      line-height: 1.7;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      color: #c9d1d9;
+      overflow-x: auto;
+    }
+
+    .code-key   { color: #79c0ff; }
+    .code-val   { color: #a5d6ff; }
+    .code-str   { color: #a8ff78; }
+    .code-comment { color: #6b7080; font-style: italic; }
+    .code-tag   { color: #ff9800; }
+    .code-head  { color: var(--accent2); font-weight: 700; }
+
+    .skill-explain {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .explain-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      opacity: 0;
+      transform: translateX(20px);
+    }
+
+    .explain-item .num {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: rgba(124,111,255,.15);
+      color: var(--accent);
+      font-size: .8rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .explain-item h4 { font-size: .85rem; font-weight: 700; margin-bottom: .2rem; }
+    .explain-item p  { font-size: .8rem; color: var(--muted); }
+
+    /* ─── live demo terminal ───────────────────────────────────── */
+    .terminal {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      margin-top: 2rem;
+      opacity: 0;
+    }
+
+    .terminal-bar {
+      background: #161b22;
+      border-bottom: 1px solid var(--border);
+      padding: .7rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    .terminal-bar .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    .terminal-title {
+      margin-left: auto;
+      font-size: .72rem;
+      color: var(--muted);
+      font-family: monospace;
+    }
+
+    .terminal-body {
+      padding: 1.4rem;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: .82rem;
+      line-height: 1.8;
+    }
+
+    .t-prompt { color: var(--accent3); }
+    .t-cmd    { color: #e6edf3; }
+    .t-out    { color: var(--muted); }
+    .t-ok     { color: var(--accent3); }
+    .t-err    { color: var(--accent2); }
+    .t-hi     { color: var(--accent); font-weight: 600; }
+    .t-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 1em;
+      background: var(--accent);
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    /* ─── comparison ───────────────────────────────────────────── */
+    .compare-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    @media (max-width: 640px) { .compare-wrap { grid-template-columns: 1fr; } }
+
+    .compare-box {
+      border-radius: var(--r);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      opacity: 0;
+    }
+
+    .compare-box-head {
+      padding: .8rem 1.2rem;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .compare-box-head.before { background: rgba(255,107,157,.08); color: var(--accent2); border-bottom: 1px solid rgba(255,107,157,.2); }
+    .compare-box-head.after  { background: rgba(0,212,180,.08);   color: var(--accent3); border-bottom: 1px solid rgba(0,212,180,.2); }
+
+    .compare-box-body {
+      padding: 1.2rem;
+      font-size: .88rem;
+      line-height: 1.7;
+      background: var(--surface);
+    }
+
+    .strikethrough { text-decoration: line-through; opacity: .5; }
+    .highlight-add { background: rgba(0,212,180,.12); border-radius: 3px; padding: 0 2px; }
+
+    /* ─── skills gallery ───────────────────────────────────────── */
+    .skills-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .skill-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.2rem;
+      cursor: pointer;
+      transition: border-color .25s, transform .2s;
+      opacity: 0;
+    }
+
+    .skill-chip:hover {
+      border-color: rgba(124,111,255,.5);
+      transform: translateY(-3px);
+    }
+
+    .skill-chip.active {
+      border-color: var(--accent);
+      background: rgba(124,111,255,.07);
+    }
+
+    .skill-chip .chip-icon { font-size: 1.6rem; margin-bottom: .6rem; }
+    .skill-chip .chip-name { font-size: .85rem; font-weight: 700; margin-bottom: .3rem; }
+    .skill-chip .chip-desc { font-size: .75rem; color: var(--muted); }
+
+    .skill-detail {
+      margin-top: 1.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.5rem;
+      display: none;
+    }
+
+    .skill-detail.visible { display: block; }
+    .skill-detail h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
+    .skill-detail p  { font-size: .88rem; color: var(--muted); margin-bottom: 1rem; }
+
+    .trigger-example {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: .8rem 1rem;
+      font-size: .8rem;
+      font-family: monospace;
+      color: var(--accent3);
+      margin-top: .5rem;
+    }
+
+    /* ─── bundled scripts section ──────────────────────────────── */
+    .scripts-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 2rem;
+      align-items: start;
+    }
+
+    @media (max-width: 800px) { .scripts-layout { grid-template-columns: 1fr; } }
+
+    .file-tree-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+
+    .file-tree-panel .ft-head {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: .75rem 1rem;
+      font-size: .78rem;
+      font-family: monospace;
+      color: var(--muted);
+    }
+
+    .file-tree-panel pre {
+      padding: 1.2rem;
+      font-size: .74rem;
+      line-height: 1.65;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      color: #c9d1d9;
+      margin: 0;
+      overflow-x: auto;
+    }
+
+    .ft-dir { color: #d2a8ff; }
+    .ft-file { color: #79c0ff; }
+    .ft-script { color: var(--accent3); }
+
+    .lang-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin: 1rem 0 1.2rem;
+    }
+
+    .lang-badge {
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: .35rem .65rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .lang-badge.py { border-color: rgba(0,212,180,.35); color: var(--accent3); }
+    .lang-badge.js { border-color: rgba(255,193,7,.35); color: #ffc107; }
+    .lang-badge.sh { border-color: rgba(124,111,255,.4); color: var(--accent); }
+
+    .scripts-copy p {
+      font-size: .92rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      line-height: 1.65;
+    }
+
+    .scripts-copy strong { color: var(--text); }
+
+    /* ─── research section ─────────────────────────────────────── */
+    .research-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .research-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.25rem 1.35rem;
+      transition: border-color .25s;
+    }
+
+    .research-card:hover { border-color: rgba(124,111,255,.35); }
+
+    .research-card h3 {
+      font-size: .88rem;
+      font-weight: 700;
+      margin-bottom: .5rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    .research-card p, .research-card li {
+      font-size: .8rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .research-card ul { margin: .4rem 0 0 1rem; padding: 0; }
+    .research-card li { margin-bottom: .35rem; }
+
+    .research-note {
+      margin-top: 2rem;
+      padding: 1rem 1.2rem;
+      background: rgba(124,111,255,.06);
+      border: 1px solid rgba(124,111,255,.2);
+      border-radius: var(--r);
+      font-size: .82rem;
+      color: var(--muted);
+    }
+
+    .research-note a { color: var(--accent); }
+
+    /* ─── footer ───────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 3rem 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    footer strong { color: var(--text); }
+
+    /* ─── scroll reveal utility ────────────────────────────────── */
+    .reveal { opacity: 0; transform: translateY(24px); }
+  </style>
+</head>
+
+<body>
+
+<!-- ── NAV ──────────────────────────────────────────────────── -->
+<nav id="main-nav">
+  <div class="nav-logo">Claude Code · Skill Rendszer</div>
+  <ul class="nav-links">
+    <li><a href="#what">Mi az a Skill?</a></li>
+    <li><a href="#mcp">MCP</a></li>
+    <li><a href="#demo">Demo</a></li>
+    <li><a href="#scripts">Scriptek</a></li>
+    <li><a href="#research">Kutatás</a></li>
+    <li><a href="#gallery">Skill-ek</a></li>
+  </ul>
+</nav>
+
+<!-- ── HERO ─────────────────────────────────────────────────── -->
+<section id="hero">
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-inner">
+    <p class="hero-eyebrow" id="he">Kezdőknek · Interaktív bemutató</p>
+
+    <h1 class="hero-title" id="ht">
+      <span class="line"><span class="word">A Claude Code</span></span>
+      <span class="line"><span class="word grad">Skill Rendszere</span></span>
+    </h1>
+
+    <p class="hero-sub" id="hs">
+      Hogyan taníthatod meg a mesterséges intelligenciát egy teljesen új képességre
+      — egyetlen fájllal, tíz perc alatt.
+    </p>
+
+    <a href="#what" class="hero-cta" id="hc">
+      Kezdjük el
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+</section>
+
+<!-- ── WHAT IS A SKILL ───────────────────────────────────────── -->
+<section id="what">
+  <p class="section-label reveal">01 — Alapok</p>
+  <h2 class="section-title reveal">Mi az a Skill?</h2>
+  <p class="section-lead reveal">
+    Képzeld el, hogy minden egyes projektnél elmagyarázod az AI-nak, hogyan dolgozz.
+    A skill ennek a fordítottja: egyszer leírod, és többé nem kell.
+  </p>
+
+  <div class="what-grid">
+    <div class="what-card">
+      <div class="icon icon-purple">📋</div>
+      <h3>Egy Markdown fájl</h3>
+      <p>A skill lényegében egy <code>SKILL.md</code> — utasítások, kontextus és példák, amit Claude minden aktiváláskor olvas.</p>
+    </div>
+    <div class="what-card">
+      <div class="icon icon-pink">🎯</div>
+      <h3>Trigger feltétel</h3>
+      <p>Meghatározod, mikor fusson le — parancsszóra (<code>/ace-step</code>), témára, vagy automatikusan, ha a kontextus megfelel.</p>
+    </div>
+      <div class="what-card">
+      <div class="icon icon-teal">⚡</div>
+      <h3>Újrafelhasználható tudás</h3>
+      <p>Egy skill-t bármely projektben, bármikor bevetethetsz. Nem kell újra elmagyarázni. Mások skilljeit is telepítheted.</p>
+    </div>
+    <div class="what-card">
+      <div class="icon icon-purple">🧩</div>
+      <h3>Mappa + scriptek</h3>
+      <p>A skill nem csak egy fájl: lehet alatta <code>scripts/</code> (Python, Node, shell), sablonok és példák. A Claude Code ügynök ezeket írja és futtatja a <code>SKILL.md</code> utasítása szerint — a Cursor ügynök ugyanígy.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ──────────────────────────────────────────── -->
+<section id="how">
+  <div class="how-inner">
+    <p class="section-label reveal">02 — Hogyan működik</p>
+    <h2 class="section-title reveal">A kérés útja</h2>
+    <p class="section-lead reveal">
+      Amikor beírsz egy kérést, Claude nem vakon válaszol. Ellenőrzi, hogy van-e skill, ami releváns — és ha igen, először azt olvassa el.
+    </p>
+
+    <div class="flow-diagram">
+
+      <div class="flow-step" id="fs1">
+        <div class="flow-left">
+          <div class="flow-num">1</div>
+          <div class="flow-line"></div>
+        </div>
+        <div class="flow-body">
+          <span class="flow-tag tag-claude">Te</span>
+          <h3>Beírsz egy kérést</h3>
+          <p>„Írj nekem egy Substack cikket a produktivitásról" — vagy csak elindítasz egy projektet.</p>
+        </div>
+      </div>
+
+      <div class="flow-step" id="fs2">
+        <div class="flow-left">
+          <div class="flow-num">2</div>
+          <div class="flow-line"></div>
+        </div>
+        <div class="flow-body">
+          <span class="flow-tag tag-skill">Skill rendszer</span>
+          <h3>Claude ellenőrzi az elérhető skill-eket</h3>
+          <p>A rendszer megnézi, hogy a kérésed illeszkedik-e valamelyik telepített skill trigger feltételéhez.</p>
+        </div>
+      </div>
+
+      <div class="flow-step" id="fs3">
+        <div class="flow-left">
+          <div class="flow-num">3</div>
+          <div class="flow-line"></div>
+        </div>
+        <div class="flow-body">
+          <span class="flow-tag tag-skill">Skill</span>
+          <h3>Beolvassa a SKILL.md-t</h3>
+          <p>Ha talál egyező skill-t, elolvassa az instrukciókat, a kontextust és a példákat — ez lesz az „agymenete".</p>
+        </div>
+      </div>
+
+      <div class="flow-step" id="fs4">
+        <div class="flow-left">
+          <div class="flow-num">4</div>
+          <div class="flow-line"></div>
+        </div>
+        <div class="flow-body">
+          <span class="flow-tag tag-mcp">MCP</span>
+          <h3>Szükség esetén külső eszközt hív</h3>
+          <p>Ha a skill MCP-t használ (pl. Substack API, Suno), Claude közvetlenül kommunikál ezzel a szolgáltatással — te nem csinálsz semmit.</p>
+        </div>
+      </div>
+
+      <div class="flow-step" id="fs5">
+        <div class="flow-left">
+          <div class="flow-num">5</div>
+          <div class="flow-line" style="opacity:0"></div>
+        </div>
+        <div class="flow-body">
+          <span class="flow-tag tag-claude">Eredmény</span>
+          <h3>Szakértői szintű kimenet</h3>
+          <p>A skill tudásával felvértezve Claude pontosan azt csinálja, amit egy tapasztalt szakember csinálna — első körben.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── MCP ───────────────────────────────────────────────────── -->
+<section id="mcp">
+  <p class="section-label reveal">03 — MCP</p>
+  <h2 class="section-title reveal">Model Context Protocol</h2>
+  <p class="section-lead reveal">
+    Az MCP olyan, mint egy standardizált dugaszoló rendszer. Claude-nak nem kell tudnia, hogyan működik a Substack API — elég, hogy egy MCP szerver lefordítja számára.
+  </p>
+
+  <div class="mcp-visual">
+    <div class="mcp-row">
+      <div class="mcp-box" id="mb1">
+        <div class="mcp-icon">🤖</div>
+        <div class="mcp-name">Claude</div>
+        <div class="mcp-desc">Kiad egy feladatot természetes nyelven</div>
+      </div>
+      <div class="mcp-arrow" id="ma1">
+        <div style="width:60px">
+          <div class="pulse-line"></div>
+          <div style="text-align:right;font-size:.6rem;color:var(--accent3);margin-top:2px;">MCP →</div>
+        </div>
+      </div>
+      <div class="mcp-box" id="mb2">
+        <div class="mcp-icon">🔌</div>
+        <div class="mcp-name">MCP Server</div>
+        <div class="mcp-desc">Lefordítja API-hívásokra</div>
+      </div>
+      <div class="mcp-arrow" id="ma2">
+        <div style="width:60px">
+          <div class="pulse-line"></div>
+          <div style="text-align:right;font-size:.6rem;color:var(--accent3);margin-top:2px;">API →</div>
+        </div>
+      </div>
+      <div class="mcp-box" id="mb3">
+        <div class="mcp-icon">🌐</div>
+        <div class="mcp-name">Külső Szolgáltatás</div>
+        <div class="mcp-desc">Substack, Suno, GitHub, Gmail…</div>
+      </div>
+    </div>
+    <p class="mcp-caption">
+      Skill + MCP együtt = Claude önállóan elvégez feladatokat, amihez korábban kézi munkára volt szükséged.<br>
+      Te csak leírod, mit akarsz. A többit intézi.
+    </p>
+  </div>
+
+  <div class="terminal" id="term1">
+    <div class="terminal-bar">
+      <div class="dot dot-red"></div>
+      <div class="dot dot-yellow"></div>
+      <div class="dot dot-green"></div>
+      <div class="terminal-title">claude · cursor</div>
+    </div>
+    <div class="terminal-body" id="term1-body"></div>
+  </div>
+</section>
+
+<!-- ── SKILL DEMO ────────────────────────────────────────────── -->
+<section id="demo">
+  <p class="section-label reveal">04 — Skill felépítése</p>
+  <h2 class="section-title reveal">Így néz ki egy SKILL.md</h2>
+  <p class="section-lead reveal">
+    A Magyar Humanizer skill valódi kódja — egy fájl, ami megtanítja Claude-ot arra, hogyan tegyen emberibbé egy AI-szöveget.
+  </p>
+
+  <div class="skill-demo">
+    <div class="skill-file">
+      <div class="skill-file-header">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+        <span style="margin-left:.5rem">SKILL.md</span>
+      </div>
+      <pre><span class="code-comment">---</span>
+<span class="code-key">name:</span> <span class="code-str">magyar-humanizer</span>
+<span class="code-key">version:</span> <span class="code-str">1.4.1</span>
+<span class="code-key">description:</span> <span class="code-str">&gt;</span>
+  <span class="code-val">AI-szag eltávolítása</span>
+  <span class="code-val">magyar szövegekből.</span>
+<span class="code-comment">---</span>
+
+<span class="code-head"># Magyar Humanizer</span>
+
+<span class="code-tag">## A feladatod</span>
+
+Amikor szöveget kapsz:
+
+1. <span class="code-str">Azonosítsd</span> az AI-mintákat
+2. <span class="code-str">Írd át</span> természetesen
+3. <span class="code-str">Adj lelket</span> — nem csak
+   tisztítsd, hanem töltsd fel
+
+<span class="code-tag">## Minták</span>
+
+❌ <span class="code-comment">"kulcsfontosságú tényező"</span>
+✅ <span class="code-str">mondd el konkrétan</span>
+
+❌ <span class="code-comment">"Fontos megjegyezni, hogy"</span>
+✅ <span class="code-str">töröld — kezdj rögtön</span>
+
+<span class="code-tag">## Ritmus</span>
+
+Rövid mondat.
+Aztán hosszabb, ami elvisz valahova.
+Megint rövid — ez az ütés.</pre>
+    </div>
+
+    <div class="skill-explain">
+      <div class="explain-item">
+        <div class="num">1</div>
+        <div>
+          <h4>Frontmatter (YAML fejléc)</h4>
+          <p>Név, verzió, leírás — ez jelenik meg az elérhető skill-ek listájában.</p>
+        </div>
+      </div>
+      <div class="explain-item">
+        <div class="num">2</div>
+        <div>
+          <h4>Szerep meghatározása</h4>
+          <p>„Te egy szövegszerkesztő vagy…" — a skill azonnal szerepet ad Claude-nak.</p>
+        </div>
+      </div>
+      <div class="explain-item">
+        <div class="num">3</div>
+        <div>
+          <h4>Lépésről lépésre feladat</h4>
+          <p>Minden skill tartalmaz egy számozott folyamatot. Claude pontosan ezt követi.</p>
+        </div>
+      </div>
+      <div class="explain-item">
+        <div class="num">4</div>
+        <div>
+          <h4>Előtte / Utána példák</h4>
+          <p>A legjobb skillek konkrét példákkal tanítanak — nem elvont szabályokkal.</p>
+        </div>
+      </div>
+      <div class="explain-item">
+        <div class="num">5</div>
+        <div>
+          <h4>Eszközök (opcionális)</h4>
+          <p>MCP, külső API, helyi CLI — és a skill mappában lévő saját scriptek, amiket az ügynök a terminálon futtat (pl. validálás, HTML-jelentés, adatfeldolgozás).</p>
+        </div>
+      </div>
+      <div class="explain-item">
+        <div class="num">6</div>
+        <div>
+          <h4>Csomagolt scriptek (.py, .js, .sh)</h4>
+          <p>Claude Code és Cursor képes a skill könyvtárban <strong>új vagy meglévő</strong> segédfájlokat szerkeszteni. A <code>SKILL.md</code> leírja, mikor melyik scriptet hívja. Claude Code-ban a <code>${CLAUDE_SKILL_DIR}</code> változó mindig a skill mappa útvonalára mutat.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comparison -->
+  <h3 class="section-title reveal" style="margin-top:3rem;font-size:1.6rem">A humanizer skill hatása</h3>
+  <div class="compare-wrap">
+    <div class="compare-box">
+      <div class="compare-box-head before">❌ Skill nélkül (AI-szöveg)</div>
+      <div class="compare-box-body">
+        <p>A mesterséges intelligencia egyre nagyobb szerepet játszik a modern vállalatok működésében. <span class="strikethrough">Fontos megjegyezni, hogy</span> a technológia alkalmazása <span class="strikethrough">kulcsfontosságú tényező</span> a versenyképesség szempontjából. <span class="strikethrough">Szakértők szerint</span> az átállás folyamata komplex feladatot jelent.</p>
+      </div>
+    </div>
+    <div class="compare-box">
+      <div class="compare-box-head after">✅ Magyar Humanizer skill után</div>
+      <div class="compare-box-body">
+        <p><span class="highlight-add">Az AI nélkül ma már nehéz versenyezni</span> — ez nem kérdés. A valódi kérdés az, hogy a bevezetés hogyan történik. <span class="highlight-add">A Gartner 2023-as felmérése szerint</span> a munkavállalók 60%-a soha nem kapott rendszeres AI-oktatást. Aki erre nem költ, az pár éven belül megérzi.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── BUNDLED SCRIPTS ───────────────────────────────────────── -->
+<section id="scripts">
+  <p class="section-label reveal">05 — Scriptek a skillben</p>
+  <h2 class="section-title reveal">Saját kód a skill mappában</h2>
+  <p class="section-lead reveal">
+    A <code>SKILL.md</code> csak a „recept”. A hozzá tartozó <strong>Python-, JavaScript- vagy shell-scripteket</strong>
+    maga a Claude Code vagy Cursor ügynök készítheti el és tarthatja karban — te vagy a create-skill workflow irányítja.
+    Így a skill nemcsak szöveget ad az AI-nak, hanem <em>konkrét futtatható lépéseket</em> is.
+  </p>
+
+  <div class="lang-badges reveal">
+    <span class="lang-badge py">Python</span>
+    <span class="lang-badge js">Node.js</span>
+    <span class="lang-badge sh">Bash / shell</span>
+    <span class="lang-badge">bármilyen CLI</span>
+  </div>
+
+  <div class="scripts-layout">
+    <div class="file-tree-panel reveal" id="script-tree-panel">
+      <div class="ft-head">my-skill/ · könyvtárstruktúra</div>
+      <pre><span class="ft-dir">my-skill/</span>
+├── <span class="ft-file">SKILL.md</span>          <span class="code-comment"># kötelező — fő utasítások</span>
+├── <span class="ft-file">reference.md</span>     <span class="code-comment"># részletes docs (igény szerint betöltve)</span>
+├── <span class="ft-dir">examples/</span>
+│   └── <span class="ft-file">sample.md</span>
+└── <span class="ft-dir">scripts/</span>
+    ├── <span class="ft-script">validate.py</span>   <span class="code-comment"># ellenőrzés / ETL</span>
+    ├── <span class="ft-script">build_report.js</span>
+    └── <span class="ft-script">deploy.sh</span></pre>
+    </div>
+
+    <div class="scripts-copy reveal">
+      <p>
+        <strong>Claude Code</strong> hivatalos példája: egy skill <code>allowed-tools: Bash(python *)</code> frontmatterrel
+        engedélyezi, hogy futás közben meghívja a csomagolt <code>scripts/visualize.py</code>-t — például interaktív HTML jelentést generáljon a kódbázisról.
+      </p>
+      <p>
+        <strong>Cursor</strong> a create-skill útmutató szerint ugyanezt a mappa-elrendezést javasolja
+        (<code>~/.cursor/skills/</code> személyi, <code>.cursor/skills/</code> projekt szinten). Az ügynök a fájlokat szerkeszti és a megfelelő eszközzel futtatja — nem kell külön MCP minden apró segédfüggvényhez.
+      </p>
+      <div class="skill-file" style="margin-top:1rem">
+        <div class="skill-file-header">
+          <div class="dot dot-red"></div>
+          <div class="dot dot-yellow"></div>
+          <div class="dot dot-green"></div>
+          <span style="margin-left:.5rem">SKILL.md · részlet (Claude Code stílus)</span>
+        </div>
+        <pre style="margin:0;padding:1rem;font-size:.72rem"><span class="code-comment">---</span>
+<span class="code-key">name:</span> <span class="code-str">data-pipeline</span>
+<span class="code-key">description:</span> <span class="code-str">CSV tisztítás és riport</span>
+<span class="code-key">allowed-tools:</span> <span class="code-str">Bash(python3 *)</span>
+<span class="code-comment">---</span>
+
+Futtasd a skill scriptet a repo gyökeréből:
+
+<span class="code-tag">```bash</span>
+python3 <span class="code-str">${CLAUDE_SKILL_DIR}</span>/scripts/clean_csv.py <span class="code-val">$ARGUMENTS</span>
+<span class="code-tag">```</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── RESEARCH ──────────────────────────────────────────────── -->
+<section id="research">
+  <p class="section-label reveal">06 — Kutatás</p>
+  <h2 class="section-title reveal">Mit tud még a skill rendszer?</h2>
+  <p class="section-lead reveal">
+    Összefoglaló a <strong>Claude Code</strong> hivatalos dokumentációjából és a <strong>Cursor</strong> skill-útmutatójából (2026 eleje).
+    Részletes linkek és források: lásd a repóban a <code>RESEARCH.md</code> fájlt.
+  </p>
+
+  <div class="research-grid">
+    <div class="research-card reveal">
+      <h3>📜 Nyílt szabvány</h3>
+      <p>A Claude Code skillek az <strong>Agent Skills</strong> szabványt követik — több eszköz között is hordozható formátum.</p>
+    </div>
+    <div class="research-card reveal">
+      <h3>📂 Támogató fájlok</h3>
+      <p>Sablonok, <code>reference.md</code>, példagyűjtemények: a <code>SKILL.md</code> rövid marad (&lt;500 sor ajánlott), a részletek külön fájlban.</p>
+    </div>
+    <div class="research-card reveal">
+      <h3>⚡ Dinamikus kontextus</h3>
+      <p>Claude Code: <code>!`parancs`</code> szintaxis — shell kimenet beillesztése a skill szövegébe <em>mielőtt</em> az AI látná (pl. <code>gh pr diff</code>).</p>
+    </div>
+    <div class="research-card reveal">
+      <h3>🔀 Subagent</h3>
+      <p><code>context: fork</code> + <code>agent: Explore</code> (vagy más): a skill izolált ügynökben fut, más eszközkészlettel.</p>
+    </div>
+    <div class="research-card reveal">
+      <h3>🎛️ Frontmatter vezérlés</h3>
+      <ul>
+        <li><code>disable-model-invocation</code> — csak te hívod <code>/skill</code>-lel</li>
+        <li><code>user-invocable: false</code> — csak a modell tölti be</li>
+        <li><code>allowed-tools</code> — engedélyezett eszközök szűrése</li>
+        <li><code>model</code>, <code>effort</code> — modell és „erőfeszítés”</li>
+      </ul>
+    </div>
+    <div class="research-card reveal">
+      <h3>📥 Argumentumok</h3>
+      <p><code>$ARGUMENTS</code>, <code>$0</code>, <code>$1</code>… — slash parancs mögé írt szöveg beépül a skillbe.</p>
+    </div>
+    <div class="research-card reveal">
+      <h3>🏢 Monorepo</h3>
+      <p>Beágyazott <code>packages/foo/.claude/skills/</code> automatikus felfedezése — csomagonként saját skillek.</p>
+    </div>
+    <div class="research-card reveal">
+      <h3>🎁 Beépített skillek</h3>
+      <p>Claude Code: pl. <code>/batch</code> (párhuzamos worktree PR-k), <code>/loop</code>, <code>/simplify</code>, <code>/claude-api</code> — playbook + eszközök.</p>
+    </div>
+    <div class="research-card reveal">
+      <h3>🔌 Terjesztés</h3>
+      <p>Projekt skill (git), plugin skill, enterprise managed settings; <code>--add-dir</code> extra könyvtárakból is betöltés.</p>
+    </div>
+    <div class="research-card reveal">
+      <h3>🪝 Hooks</h3>
+      <p>Skill- és agent-életciklushoz kötött hookok (Claude Code hooks dokumentáció).</p>
+    </div>
+    <div class="research-card reveal">
+      <h3>🖱️ Cursor</h3>
+      <p>Személyi <code>~/.cursor/skills/</code> vs projekt <code>.cursor/skills/</code>. A <code>~/.cursor/skills-cursor/</code> a beépített skill-eknek van fenntartva.</p>
+    </div>
+  </div>
+
+  <div class="research-note reveal">
+    Források: <a href="https://docs.claude.com/en/docs/claude-code/skills" target="_blank" rel="noopener">Claude Code — Skills</a>
+    · <a href="https://agentskills.io/" target="_blank" rel="noopener">agentskills.io</a>
+    · Cursor: beépített create-skill útmutató (<code>SKILL.md</code> + <code>scripts/</code> mappa).
+  </div>
+</section>
+
+<!-- ── SKILLS GALLERY ────────────────────────────────────────── -->
+<section id="gallery">
+  <p class="section-label reveal">07 — Valós skill-ek</p>
+  <h2 class="section-title reveal">Telepített skill-ek ebben a rendszerben</h2>
+  <p class="section-lead reveal">
+    Kattints bármelyikre, hogy lásd, mire képes és mikor aktiválódik.
+  </p>
+
+  <div class="skills-gallery">
+    <div class="skill-chip" data-skill="humanizer">
+      <div class="chip-icon">🇭🇺</div>
+      <div class="chip-name">Magyar Humanizer</div>
+      <div class="chip-desc">AI-szöveg emberibbé tétele</div>
+    </div>
+    <div class="skill-chip" data-skill="ace">
+      <div class="chip-icon">🎵</div>
+      <div class="chip-name">ACE-Step</div>
+      <div class="chip-desc">Zenegenerálás Colab-ból</div>
+    </div>
+    <div class="skill-chip" data-skill="substack">
+      <div class="chip-icon">📰</div>
+      <div class="chip-name">Substack Publish</div>
+      <div class="chip-desc">Cikk írás + publikálás</div>
+    </div>
+    <div class="skill-chip" data-skill="cv">
+      <div class="chip-icon">📄</div>
+      <div class="chip-name">CV Writer</div>
+      <div class="chip-desc">Gyártóipari önéletrajz</div>
+    </div>
+    <div class="skill-chip" data-skill="gog">
+      <div class="chip-icon">📧</div>
+      <div class="chip-name">GOG (Google)</div>
+      <div class="chip-desc">Gmail, Drive, Calendar</div>
+    </div>
+    <div class="skill-chip" data-skill="create">
+      <div class="chip-icon">⚙️</div>
+      <div class="chip-name">Skill Creator</div>
+      <div class="chip-desc">Új skill-ek létrehozása</div>
+    </div>
+  </div>
+
+  <div class="skill-detail" id="skill-detail-panel">
+    <h3 id="sd-title"></h3>
+    <p id="sd-desc"></p>
+    <div style="font-size:.8rem;color:var(--muted);margin-bottom:.4rem;font-weight:600">Trigger — mikor aktiválódik:</div>
+    <div class="trigger-example" id="sd-trigger"></div>
+  </div>
+</section>
+
+<!-- ── FOOTER ────────────────────────────────────────────────── -->
+<footer>
+  <p>Készült <strong>GSAP</strong> + pure HTML/CSS/JS · A Magyar Humanizer skill alapján</p>
+  <p style="margin-top:.5rem">Saját skillek: <code>~/.cursor/skills/</code> vagy <code>.cursor/skills/</code> (Cursor) · <code>~/.claude/skills/</code> vagy <code>.claude/skills/</code> (Claude Code). A <code>~/.cursor/skills-cursor/</code> a Cursor beépített skilljeinek van fenntartva.</p>
+</footer>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<script>
+gsap.registerPlugin(ScrollTrigger, TextPlugin);
+
+/* ── PARTICLES ─────────────────────────────────────────────── */
+(function() {
+  const canvas = document.getElementById('hero-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', () => { resize(); init(); });
+
+  function init() {
+    particles = [];
+    const n = Math.min(60, Math.floor(W * H / 18000));
+    for (let i = 0; i < n; i++) {
+      particles.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - .5) * .3,
+        vy: (Math.random() - .5) * .3,
+        r: Math.random() * 1.5 + .5,
+        a: Math.random() * .5 + .1
+      });
+    }
+  }
+  init();
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W;
+      if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H;
+      if (p.y > H) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(124,111,255,${p.a})`;
+      ctx.fill();
+    });
+
+    // lines
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const d  = Math.sqrt(dx * dx + dy * dy);
+        if (d < 120) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(124,111,255,${.08 * (1 - d / 120)})`;
+          ctx.lineWidth = .5;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ── HERO ENTRANCE ─────────────────────────────────────────── */
+const heroTl = gsap.timeline({ delay: .2 });
+heroTl
+  .to('#he', { opacity: 1, y: 0, duration: .6, ease: 'power2.out' })
+  .to('#ht', { opacity: 1, duration: .1 }, '+=.1')
+  .from('#ht .word', {
+    y: 60, opacity: 0, duration: .7, stagger: .12, ease: 'power3.out'
+  }, '<')
+  .to('#hs', { opacity: 1, y: 0, duration: .6, ease: 'power2.out' }, '-=.3')
+  .to('#hc', { opacity: 1, y: 0, duration: .5, ease: 'power2.out' }, '-=.2');
+
+/* ── SCROLL REVEALS ────────────────────────────────────────── */
+gsap.utils.toArray('.reveal').forEach(el => {
+  gsap.fromTo(el,
+    { opacity: 0, y: 24 },
+    {
+      opacity: 1, y: 0, duration: .7, ease: 'power2.out',
+      scrollTrigger: { trigger: el, start: 'top 85%', toggleActions: 'play none none none' }
+    }
+  );
+});
+
+/* ── WHAT CARDS ────────────────────────────────────────────── */
+gsap.utils.toArray('.what-card').forEach((card, i) => {
+  gsap.to(card, {
+    opacity: 1, y: 0, duration: .6, ease: 'power2.out', delay: i * .12,
+    scrollTrigger: { trigger: card, start: 'top 85%', toggleActions: 'play none none none' }
+  });
+});
+
+/* ── FLOW STEPS ────────────────────────────────────────────── */
+['fs1','fs2','fs3','fs4','fs5'].forEach((id, i) => {
+  gsap.to(`#${id}`, {
+    opacity: 1, x: 0, duration: .6, ease: 'power2.out',
+    scrollTrigger: {
+      trigger: `#${id}`, start: 'top 80%',
+      toggleActions: 'play none none none'
+    },
+    delay: i * .08
+  });
+});
+
+/* ── MCP BOXES ─────────────────────────────────────────────── */
+['mb1','mb2','mb3'].forEach((id, i) => {
+  gsap.to(`#${id}`, {
+    opacity: 1, scale: 1, duration: .5, ease: 'back.out(1.4)',
+    scrollTrigger: { trigger: '#mcp', start: 'top 60%', toggleActions: 'play none none none' },
+    delay: i * .15
+  });
+});
+['ma1','ma2'].forEach((id, i) => {
+  gsap.to(`#${id}`, {
+    opacity: 1, duration: .4, ease: 'power2.out',
+    scrollTrigger: { trigger: '#mcp', start: 'top 60%', toggleActions: 'play none none none' },
+    delay: .3 + i * .15
+  });
+});
+
+/* ── TERMINAL TYPE EFFECT ──────────────────────────────────── */
+const termLines = [
+  { type: 'prompt', text: '~ cursor' },
+  { type: 'cmd',    text: 'Írj egy Substack cikket a produktivitásról', delay: 60 },
+  { type: 'out',    text: '' },
+  { type: 'ok',     text: '▶ Substack skill aktiválva' },
+  { type: 'out',    text: '  → Tervezés...' },
+  { type: 'out',    text: '  → Kutatás (MCP: web search)...' },
+  { type: 'ok',     text: '  → Draft megírva (1240 szó)' },
+  { type: 'out',    text: '  → Magyar Humanizer futtatása...' },
+  { type: 'ok',     text: '  → Humanizálás kész (26 minta javítva)' },
+  { type: 'out',    text: '  → Feltöltés Substackre (MCP: substack-api)...' },
+  { type: 'ok',     text: '✓ Draft elküldve → suno.substack.com/drafts' },
+];
+
+let termTriggered = false;
+ScrollTrigger.create({
+  trigger: '#term1',
+  start: 'top 80%',
+  onEnter: () => {
+    if (termTriggered) return;
+    termTriggered = true;
+    gsap.to('#term1', { opacity: 1, y: 0, duration: .5 });
+
+    const body = document.getElementById('term1-body');
+    let lineIdx = 0;
+
+    function nextLine() {
+      if (lineIdx >= termLines.length) return;
+      const l = termLines[lineIdx++];
+      const div = document.createElement('div');
+
+      if (l.type === 'prompt') {
+        div.innerHTML = `<span class="t-prompt">❯ </span><span class="t-hi">${l.text}</span> <span class="t-cursor"></span>`;
+      } else if (l.type === 'cmd') {
+        div.innerHTML = `<span class="t-out">  "</span><span class="t-cmd"></span><span class="t-out">"</span>`;
+        body.appendChild(div);
+        const span = div.querySelector('.t-cmd');
+        let ci = 0;
+        function typeChar() {
+          if (ci <= l.text.length) {
+            span.textContent = l.text.slice(0, ci++);
+            setTimeout(typeChar, 30);
+          } else {
+            setTimeout(nextLine, 300);
+          }
+        }
+        typeChar();
+        return;
+      } else if (l.type === 'ok') {
+        div.innerHTML = `<span class="t-ok">${l.text}</span>`;
+      } else {
+        div.innerHTML = `<span class="t-out">${l.text}</span>`;
+      }
+      body.appendChild(div);
+      const delay = l.delay || (l.type === 'out' ? 180 : 350);
+      setTimeout(nextLine, delay);
+    }
+    setTimeout(nextLine, 500);
+  }
+});
+
+/* ── EXPLAIN ITEMS ─────────────────────────────────────────── */
+gsap.utils.toArray('.explain-item').forEach((el, i) => {
+  gsap.to(el, {
+    opacity: 1, x: 0, duration: .55, ease: 'power2.out',
+    scrollTrigger: { trigger: el, start: 'top 85%', toggleActions: 'play none none none' },
+    delay: i * .1
+  });
+});
+
+/* ── COMPARE BOXES ─────────────────────────────────────────── */
+gsap.utils.toArray('.compare-box').forEach((el, i) => {
+  gsap.to(el, {
+    opacity: 1, duration: .6, ease: 'power2.out',
+    scrollTrigger: { trigger: el, start: 'top 85%', toggleActions: 'play none none none' },
+    delay: i * .15
+  });
+});
+
+/* ── SKILL CHIPS ───────────────────────────────────────────── */
+gsap.utils.toArray('.skill-chip').forEach((el, i) => {
+  gsap.to(el, {
+    opacity: 1, duration: .5, ease: 'power2.out',
+    scrollTrigger: { trigger: '.skills-gallery', start: 'top 80%', toggleActions: 'play none none none' },
+    delay: i * .08
+  });
+});
+
+/* ── SKILL DATA ────────────────────────────────────────────── */
+const skillData = {
+  humanizer: {
+    title: '🇭🇺 Magyar Humanizer',
+    desc: 'AI-generált magyar szövegek emberibbé tétele. 26 mintát azonosít és javít — szórendtől a gondolatjel-sűrűségig. Alapja egy valódi magyar szövegkorpusz (Index, HVG, Jelenkor, 2017–2021).',
+    trigger: '/humanizer · "humanizáld" · "emberibbé" · "AI-szag" · bármely szöveg-review kérés'
+  },
+  ace: {
+    title: '🎵 ACE-Step Zenegenerátor',
+    desc: 'ACE-Step 1.5 AI zenegenerátor vezérlése Google Colab notebookból. Dal szöveg + stílus leírásából teljes zeneszámot generál — közvetlenül a terminálból.',
+    trigger: '/ace-step · "generálj dalt" · "írj dalt" · dalleírás magyarul vagy angolul'
+  },
+  substack: {
+    title: '📰 Substack Publish',
+    desc: '5 lépéses munkafolyamat: tervezés → kutatás → draft írás → humanizálás → publikálás. A skill a substack-api MCP-n keresztül közvetlenül elküldi a draftot.',
+    trigger: '"Substack-re" · "cikket" · "posztolni" · "draftot küldeni" · "publikálni"'
+  },
+  cv: {
+    title: '📄 CV Writer',
+    desc: 'ATS-optimalizált, KPI-vezérelt önéletrajz-írás gyártóipari és termelésvezetői pozíciókhoz. Production Team Leader, Shift Leader, Manufacturing Supervisor szerepkörökre specializálva.',
+    trigger: '/cv-writer · "Írj CV-t" · "önéletrajz" + gyártóipari pozíció megnevezése'
+  },
+  gog: {
+    title: '📧 GOG — Google Workspace',
+    desc: 'A gog CLI-n keresztül teljes Google Workspace hozzáférés: Gmail küldés/olvasás, Calendar események, Drive feltöltés, Docs/Sheets/Slides kezelés, Tasks, Contacts.',
+    trigger: 'Gmail · Calendar · Drive · "Google" + valamilyen akció'
+  },
+  create: {
+    title: '⚙️ Skill Creator',
+    desc: 'Végigvezet egy teljesen új skill létrehozásán: struktúra, trigger feltételek, dokumentáció, példák. Ha van egy visszatérő feladatod — ez a skill segít skill-lé alakítani.',
+    trigger: '"új skill-t" · "skill-t csinálni" · "megtanítani Claude-ot" · skill struktúra kérdések'
+  }
+};
+
+document.querySelectorAll('.skill-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const key = chip.dataset.skill;
+    const data = skillData[key];
+    if (!data) return;
+
+    document.querySelectorAll('.skill-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+
+    const panel = document.getElementById('skill-detail-panel');
+    document.getElementById('sd-title').textContent = data.title;
+    document.getElementById('sd-desc').textContent  = data.desc;
+    document.getElementById('sd-trigger').textContent = data.trigger;
+
+    panel.classList.add('visible');
+    gsap.fromTo(panel,
+      { opacity: 0, y: 10 },
+      { opacity: 1, y: 0, duration: .3, ease: 'power2.out' }
+    );
+  });
+});
+
+/* ── NAV SCROLL EFFECT ─────────────────────────────────────── */
+ScrollTrigger.create({
+  start: 'top -80',
+  onUpdate(self) {
+    const nav = document.getElementById('main-nav');
+    if (self.progress > 0) {
+      nav.style.borderBottomColor = 'rgba(255,255,255,.1)';
+    } else {
+      nav.style.borderBottomColor = 'rgba(255,255,255,.07)';
+    }
+  }
+});
+</script>
+</body>
+</html>

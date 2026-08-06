@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="hu" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E.ON Villamos Fogyasztás Elemző & Excel Összefűző</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fff7ed',
+                            500: '#ea580c',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- SheetJS (Excel processing) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+        }
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-300 font-sans">
+
+    <!-- TOP NAVBAR -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 py-3 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-tr from-amber-500 to-orange-600 p-2.5 rounded-xl shadow-lg text-white">
+                <i class="fa-solid fa-bolt text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg md:text-xl leading-tight tracking-tight bg-gradient-to-r from-orange-600 to-amber-500 bg-clip-text text-transparent">
+                    E.ON Fogyasztás Analytics
+                </h1>
+                <p class="text-xs text-slate-500 dark:text-slate-400" id="txt-subtitle">Havi áramfogyasztás & Excel összefűző dashboard</p>
+            </div>
+        </div>
+
+        <!-- CONTROLS: Language & Theme -->
+        <div class="flex items-center gap-3">
+            <!-- Language Selector -->
+            <div class="relative">
+                <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-orange-500 outline-none cursor-pointer">
+                    <option value="hu" selected>🇭🇺 Magyar</option>
+                    <option value="en">🇬🇧 English</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                </select>
+            </div>
+
+            <!-- Theme Toggle Button -->
+            <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors" title="Sötét / Világos mód">
+                <i id="themeIcon" class="fa-solid fa-moon text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- FILE UPLOAD & EXPORT CARD -->
+        <section class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-md border border-slate-200 dark:border-slate-700/60">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                <div>
+                    <h2 class="text-lg font-semibold flex items-center gap-2" id="txt-upload-title">
+                        <i class="fa-solid fa-file-excel text-emerald-600 dark:text-emerald-400"></i> Excel Állományok Feltöltése & Összefűzése
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" id="txt-upload-desc">
+                        Tölts fel egy vagy több E.ON formátumú Excel fájlt (.xlsx, .xls, .csv). Az alkalmazás automatikusan összefűzi és szűri a duplikátumokat.
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="exportMergedExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition-all">
+                        <i class="fa-solid fa-download"></i> <span id="btn-export-excel">Összefűzött Excel Mentése</span>
+                    </button>
+                    <button onclick="loadDemoData()" class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium text-sm px-4 py-2.5 rounded-xl transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-left"></i> <span id="btn-demo-data">Mintaadatok Töltése</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Drag and drop zone -->
+            <div id="dropZone" onclick="document.getElementById('fileInput').click()" class="border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-orange-500 dark:hover:border-orange-500 rounded-xl p-8 text-center cursor-pointer transition-colors bg-slate-50/50 dark:bg-slate-900/30">
+                <input type="file" id="fileInput" multiple accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileSelect(event)">
+                <div class="flex flex-col items-center justify-center gap-2">
+                    <i class="fa-solid fa-cloud-arrow-up text-4xl text-orange-500"></i>
+                    <p class="font-medium text-sm" id="txt-drag-drop">Húzd ide az E.ON Excel (pl. adatok1.xlsx) fájlokat, vagy kattints a tallózáshoz</p>
+                    <p class="text-xs text-slate-400">Támogatott formátumok: .XLSX, .XLS, .CSV (Automatikus több munkalapos és fejléc felismerés)</p>
+                </div>
+            </div>
+            
+            <div id="fileListNotification" class="mt-3 text-xs font-medium text-slate-600 dark:text-slate-400 hidden"></div>
+        </section>
+
+        <!-- KPI SUMMARY CARDS -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Total Consumption -->
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700/60 flex justify-between items-start">
+                <div>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider" id="kpi-total-kwh-title">Összes Fogyasztás</span>
+                    <div class="text-2xl font-bold mt-1 text-slate-900 dark:text-white" id="kpiTotalKwh">0 kWh</div>
+                    <span class="text-xs text-emerald-500 font-medium inline-flex items-center gap-1 mt-1">
+                        <i class="fa-solid fa-arrow-up-right"></i> <span id="kpiTotalPeriod">-</span>
+                    </span>
+                </div>
+                <div class="p-3 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl">
+                    <i class="fa-solid fa-bolt text-xl"></i>
+                </div>
+            </div>
+
+            <!-- Total Cost -->
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700/60 flex justify-between items-start">
+                <div>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider" id="kpi-total-cost-title">Összes Költség</span>
+                    <div class="text-2xl font-bold mt-1 text-slate-900 dark:text-white" id="kpiTotalCost">0 Ft</div>
+                    <span class="text-xs text-slate-500 font-medium mt-1 block" id="txt-gross-cost">Bruttó kiszámlázott</span>
+                </div>
+                <div class="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                    <i class="fa-solid fa-coins text-xl"></i>
+                </div>
+            </div>
+
+            <!-- Average Monthly Consumption -->
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700/60 flex justify-between items-start">
+                <div>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider" id="kpi-avg-kwh-title">Havi Átlag</span>
+                    <div class="text-2xl font-bold mt-1 text-slate-900 dark:text-white" id="kpiAvgKwh">0 kWh</div>
+                    <span class="text-xs text-slate-500 font-medium mt-1 block" id="kpiAvgCost">0 Ft / hó</span>
+                </div>
+                <div class="p-3 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl">
+                    <i class="fa-solid fa-chart-line text-xl"></i>
+                </div>
+            </div>
+
+            <!-- Peak Month -->
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700/60 flex justify-between items-start">
+                <div>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider" id="kpi-peak-month-title">Csúcs Hónap</span>
+                    <div class="text-2xl font-bold mt-1 text-slate-900 dark:text-white" id="kpiPeakMonth">-</div>
+                    <span class="text-xs text-rose-500 font-medium mt-1 block" id="kpiPeakVal">0 kWh</span>
+                </div>
+                <div class="p-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl">
+                    <i class="fa-solid fa-fire text-xl"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- CHARTS SECTION -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Line Chart: Monthly Trend -->
+            <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700/60 flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2" id="txt-chart-trend-title">
+                        <i class="fa-solid fa-chart-area text-orange-500"></i> Havi Fogyasztási Trend (kWh)
+                    </h3>
+                </div>
+                <div class="relative h-72 w-full">
+                    <canvas id="lineChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Donut Chart: Tariff Distribution -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700/60 flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2" id="txt-chart-tariff-title">
+                        <i class="fa-solid fa-chart-pie text-amber-500"></i> Tarifa Megoszlás
+                    </h3>
+                </div>
+                <div class="relative h-72 w-full flex items-center justify-center">
+                    <canvas id="donutChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Bar Chart: Cost vs Consumption Comparison -->
+            <div class="lg:col-span-3 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700/60">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2" id="txt-chart-bar-title">
+                        <i class="fa-solid fa-chart-column text-indigo-500"></i> Havi Költség vs Fogyasztás Összehasonlítás
+                    </h3>
+                </div>
+                <div class="relative h-80 w-full">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- DATA GRID & FILTERS SECTION -->
+        <section class="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700/60 overflow-hidden">
+            <!-- Filter toolbar -->
+            <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <h3 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2" id="txt-table-title">
+                        <i class="fa-solid fa-table-cells text-blue-500"></i> Részletes Adatrács
+                    </h3>
+                    <span id="recordCount" class="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs px-2.5 py-1 rounded-full font-medium">
+                        0 rekord
+                    </span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Search input -->
+                    <div class="relative flex-1 sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input type="text" id="searchInput" oninput="applyFilters()" placeholder="Keresés..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-sm rounded-xl pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-orange-500 transition-all">
+                    </div>
+
+                    <!-- Year filter -->
+                    <select id="yearFilter" onchange="applyFilters()" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-sm rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer">
+                        <option value="ALL">Összes év</option>
+                    </select>
+
+                    <!-- Tariff filter -->
+                    <select id="tariffFilter" onchange="applyFilters()" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-sm rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer">
+                        <option value="ALL">Összes tarifa</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs uppercase bg-slate-100 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                        <tr>
+                            <th class="py-3.5 px-4 cursor-pointer hover:text-orange-500" onclick="sortTable('pod')">
+                                <span id="th-pod">Mérési pont (POD)</span> <i class="fa-solid fa-sort text-xs ml-1"></i>
+                            </th>
+                            <th class="py-3.5 px-4 cursor-pointer hover:text-orange-500" onclick="sortTable('date')">
+                                <span id="th-date">Időszak / Dátum</span> <i class="fa-solid fa-sort text-xs ml-1"></i>
+                            </th>
+                            <th class="py-3.5 px-4 text-right cursor-pointer hover:text-orange-500" onclick="sortTable('kwh')">
+                                <span id="th-kwh">Fogyasztás (kWh)</span> <i class="fa-solid fa-sort text-xs ml-1"></i>
+                            </th>
+                            <th class="py-3.5 px-4 text-right cursor-pointer hover:text-orange-500" onclick="sortTable('cost')">
+                                <span id="th-cost">Bruttó Összeg (Ft)</span> <i class="fa-solid fa-sort text-xs ml-1"></i>
+                            </th>
+                            <th class="py-3.5 px-4 cursor-pointer hover:text-orange-500" onclick="sortTable('tariff')">
+                                <span id="th-tariff">Díjszabás / Tarifa</span> <i class="fa-solid fa-sort text-xs ml-1"></i>
+                            </th>
+                            <th class="py-3.5 px-4" id="th-meter">Mérőóra Gyári Szám</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody" class="divide-y divide-slate-200 dark:divide-slate-700">
+                        <!-- Rows rendered via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination footer -->
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center text-xs text-slate-500">
+                <div id="paginationInfo">0 / 0 bejegyzés</div>
+                <div class="flex gap-2" id="paginationControls">
+                    <!-- Buttons rendered via JS -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // -------------------------------------------------------------
+        // I18N DICTIONARIES (HU, EN, DE)
+        // -------------------------------------------------------------
+        const translations = {
+            hu: {
+                subtitle: "Havi áramfogyasztás & Excel összefűző dashboard",
+                uploadTitle: "Excel Állományok Feltöltése & Összefűzése",
+                uploadDesc: "Tölts fel egy vagy több E.ON formátumú Excel fájlt (.xlsx, .xls, .csv). Az alkalmazás automatikusan összefűzi és szűri a duplikátumokat.",
+                btnExport: "Összefűzött Excel Mentése",
+                btnDemo: "Mintaadatok Töltése",
+                dragDrop: "Húzd ide az Excel fájlokat, vagy kattints a tallózáshoz",
+                totalKwhTitle: "Összes Fogyasztás",
+                totalCostTitle: "Összes Költség",
+                avgKwhTitle: "Havi Átlag",
+                peakMonthTitle: "Csúcs Hónap",
+                grossCost: "Bruttó kiszámlázott",
+                chartTrendTitle: "Havi Fogyasztási Trend (kWh)",
+                chartTariffTitle: "Tarifa Megoszlás",
+                chartBarTitle: "Havi Költség vs Fogyasztás Összehasonlítás",
+                tableTitle: "Részletes Adatrács",
+                thPod: "Mérési pont (POD)",
+                thDate: "Időszak / Dátum",
+                thKwh: "Fogyasztás (kWh)",
+                thCost: "Bruttó Összeg (Ft)",
+                thTariff: "Díjszabás / Tarifa",
+                thMeter: "Mérőóra Gyári Szám",
+                allYears: "Összes év",
+                allTariffs: "Összes tarifa",
+                searchPlaceholder: "Keresés..."
+            },
+            en: {
+                subtitle: "Monthly Electricity Consumption & Excel Merger Dashboard",
+                uploadTitle: "Upload & Merge Excel Files",
+                uploadDesc: "Upload one or multiple E.ON format Excel files (.xlsx, .xls, .csv). The app automatically merges datasets and removes duplicates.",
+                btnExport: "Save Merged Excel",
+                btnDemo: "Load Demo Data",
+                dragDrop: "Drag & drop Excel files here, or click to browse",
+                totalKwhTitle: "Total Consumption",
+                totalCostTitle: "Total Cost",
+                avgKwhTitle: "Monthly Avg",
+                peakMonthTitle: "Peak Month",
+                grossCost: "Gross billed amount",
+                chartTrendTitle: "Monthly Consumption Trend (kWh)",
+                chartTariffTitle: "Tariff Breakdown",
+                chartBarTitle: "Monthly Cost vs Consumption Comparison",
+                tableTitle: "Detailed Data Grid",
+                thPod: "Metering Point (POD)",
+                thDate: "Period / Date",
+                thKwh: "Consumption (kWh)",
+                thCost: "Gross Amount (HUF)",
+                thTariff: "Tariff Category",
+                thMeter: "Meter Serial No.",
+                allYears: "All Years",
+                allTariffs: "All Tariffs",
+                searchPlaceholder: "Search..."
+            },
+            de: {
+                subtitle: "Monatlicher Stromverbrauch & Excel-Zusammenführung Dashboard",
+                uploadTitle: "Excel-Dateien hochladen & zusammenführen",
+                uploadDesc: "Laden Sie eine oder mehrere E.ON-Excel-Dateien (.xlsx, .xls, .csv) hoch. Die App führt die Daten zusammen und entfernt Duplikate.",
+                btnExport: "Zusammengeführte Excel speichern",
+                btnDemo: "Demodaten laden",
+                dragDrop: "Excel-Dateien hierher ziehen oder zum Durchsuchen klicken",
+                totalKwhTitle: "Gesamtverbrauch",
+                totalCostTitle: "Gesamtkosten",
+                avgKwhTitle: "Monatsdurchschnitt",
+                peakMonthTitle: "Spitzenmonat",
+                grossCost: "Abrechnungsbetrag brutto",
+                chartTrendTitle: "Monatlicher Verbrauchstrend (kWh)",
+                chartTariffTitle: "Tarifverteilung",
+                chartBarTitle: "Monatlicher Vergleich: Kosten vs. Verbrauch",
+                tableTitle: "Detaillierte Datentabelle",
+                thPod: "Zählpunkt-ID (POD)",
+                thDate: "Zeitraum / Datum",
+                thKwh: "Verbrauch (kWh)",
+                thCost: "Bruttobetrag (HUF)",
+                thTariff: "Tarif",
+                thMeter: "Zählernummer",
+                allYears: "Alle Jahre",
+                allTariffs: "Alle Tarife",
+                searchPlaceholder: "Suchen..."
+            }
+        };
+
+        let currentLang = 'hu';
+        let rawData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const rowsPerPage = 10;
+        let sortColumn = 'date';
+        let sortAsc = false;
+
+        // Chart instances
+        let lineChartInstance = null;
+        let donutChartInstance = null;
+        let barChartInstance = null;
+
+        // -------------------------------------------------------------
+        // DEMO DATASET GENERATOR
+        // -------------------------------------------------------------
+        function generateDemoData() {
+            const samplePods = ["HU000210-A101-V01", "HU000210-B202-V02"];
+            const tariffs = ["A1 Nappali", "B Éjszakai", "H-Tarifa"];
+            const baseData = [];
+
+            const startYear = 2024;
+            for (let yr = startYear; yr <= 2025; yr++) {
+                const maxMonth = yr === 2025 ? 7 : 12;
+                for (let m = 1; m <= maxMonth; m++) {
+                    const monthStr = `${yr}.${m.toString().padStart(2, '0')}`;
+                    
+                    // Seasonal fluctuation simulation (higher in winter/summer)
+                    const seasonFactor = Math.sin((m / 12) * Math.PI) * 120 + 220;
+                    
+                    const kwhA1 = Math.round(seasonFactor + Math.random() * 50);
+                    const kwhB = Math.round(seasonFactor * 0.4 + Math.random() * 20);
+                    
+                    const pricePerKwh = 36.5; // HUF / kWh baseline
+
+                    baseData.push({
+                        pod: samplePods[0],
+                        meterNo: "98421045",
+                        date: monthStr,
+                        kwh: kwhA1,
+                        cost: Math.round(kwhA1 * pricePerKwh * 1.27),
+                        tariff: "A1 Nappali"
+                    });
+
+                    baseData.push({
+                        pod: samplePods[0],
+                        meterNo: "98421046",
+                        date: monthStr,
+                        kwh: kwhB,
+                        cost: Math.round(kwhB * 23.1 * 1.27),
+                        tariff: "B Éjszakai"
+                    });
+                }
+            }
+            return baseData;
+        }
+
+        window.onload = function() {
+            loadDemoData();
+            initDragAndDrop();
+        };
+
+        function loadDemoData() {
+            rawData = generateDemoData();
+            updateYearAndTariffFilters();
+            applyFilters();
+            showNotification("Mintaadatok sikeresen betöltve!", "success");
+        }
+
+        // -------------------------------------------------------------
+        // DARK MODE TOGGLE
+        // -------------------------------------------------------------
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.className = 'fa-solid fa-sun text-lg text-amber-500';
+            } else {
+                html.classList.add('dark');
+                icon.className = 'fa-solid fa-moon text-lg text-slate-200';
+            }
+            // Re-render charts for appropriate grid colors
+            renderCharts();
+        }
+
+        // -------------------------------------------------------------
+        // LANGUAGE SWITCHER
+        // -------------------------------------------------------------
+        function changeLanguage(lang) {
+            currentLang = lang;
+            const t = translations[lang];
+
+            document.getElementById('txt-subtitle').innerText = t.subtitle;
+            document.getElementById('txt-upload-title').innerHTML = `<i class="fa-solid fa-file-excel text-emerald-600 dark:text-emerald-400"></i> ${t.uploadTitle}`;
+            document.getElementById('txt-upload-desc').innerText = t.uploadDesc;
+            document.getElementById('btn-export-excel').innerText = t.btnExport;
+            document.getElementById('btn-demo-data').innerText = t.btnDemo;
+            document.getElementById('txt-drag-drop').innerText = t.dragDrop;
+
+            document.getElementById('kpi-total-kwh-title').innerText = t.totalKwhTitle;
+            document.getElementById('kpi-total-cost-title').innerText = t.totalCostTitle;
+            document.getElementById('kpi-avg-kwh-title').innerText = t.avgKwhTitle;
+            document.getElementById('kpi-peak-month-title').innerText = t.peakMonthTitle;
+            document.getElementById('txt-gross-cost').innerText = t.grossCost;
+
+            document.getElementById('txt-chart-trend-title').innerHTML = `<i class="fa-solid fa-chart-area text-orange-500"></i> ${t.chartTrendTitle}`;
+            document.getElementById('txt-chart-tariff-title').innerHTML = `<i class="fa-solid fa-chart-pie text-amber-500"></i> ${t.chartTariffTitle}`;
+            document.getElementById('txt-chart-bar-title').innerHTML = `<i class="fa-solid fa-chart-column text-indigo-500"></i> ${t.chartBarTitle}`;
+            document.getElementById('txt-table-title').innerHTML = `<i class="fa-solid fa-table-cells text-blue-500"></i> ${t.tableTitle}`;
+
+            document.getElementById('th-pod').innerText = t.thPod;
+            document.getElementById('th-date').innerText = t.thDate;
+            document.getElementById('th-kwh').innerText = t.thKwh;
+            document.getElementById('th-cost').innerText = t.thCost;
+            document.getElementById('th-tariff').innerText = t.thTariff;
+            document.getElementById('th-meter').innerText = t.thMeter;
+
+            document.getElementById('searchInput').placeholder = t.searchPlaceholder;
+
+            // Re-render UI components
+            renderTable();
+            renderCharts();
+        }
+
+        // -------------------------------------------------------------
+        // EXCEL PARSING & MERGING
+        // -------------------------------------------------------------
+        function initDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('border-orange-500', 'bg-orange-50/20'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('border-orange-500', 'bg-orange-50/20'), false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFiles(files);
+            });
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            handleFiles(files);
+        }
+
+        // Utility: Parse Hungarian / Excel numbers safely
+        function parseHungarianNumber(val) {
+            if (val === null || val === undefined || val === '') return 0;
+            if (typeof val === 'number') return isNaN(val) ? 0 : val;
+            let str = String(val).trim();
+            // Remove currency strings or units
+            str = str.replace(/Ft|HUF|kWh|kwh|\s/gi, '');
+            // Convert Hungarian number format (1.234,56 -> 1234.56 or 1 234,56 -> 1234.56)
+            if (str.includes(',') && str.includes('.')) {
+                if (str.indexOf('.') < str.indexOf(',')) {
+                    str = str.replace(/\./g, '').replace(',', '.');
+                } else {
+                    str = str.replace(/,/g, '');
+                }
+            } else if (str.includes(',')) {
+                str = str.replace(',', '.');
+            }
+            const parsed = parseFloat(str);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
+        // Utility: Parse Excel Date / Date string to normalized YYYY.MM format
+        function parseExcelDate(val) {
+            if (!val) return '2024.01';
+            // Excel serial number format
+            if (typeof val === 'number' && val > 20000 && val < 60000) {
+                const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                return `${y}.${m}`;
+            }
+            let str = String(val).trim();
+            // Handle date ranges like "2024.01.01 - 2024.01.31"
+            if (str.includes('-') && str.length > 12) {
+                str = str.split('-')[0].trim();
+            }
+            str = str.replace(/\//g, '.').replace(/-/g, '.');
+            const match = str.match(/(\d{4})[.\s](\d{1,2})/);
+            if (match) {
+                const y = match[1];
+                const m = String(match[2]).padStart(2, '0');
+                return `${y}.${m}`;
+            }
+            return str.substring(0, 7) || '2024.01';
+        }
+
+        async function handleFiles(files) {
+            if (!files || files.length === 0) return;
+
+            let newRecords = [];
+            let filesProcessed = 0;
+            let fileNames = [];
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                try {
+                    const parsed = await parseExcelFile(file);
+                    newRecords = newRecords.concat(parsed);
+                    filesProcessed++;
+                    fileNames.push(file.name);
+                } catch (err) {
+                    console.error("Hiba a fájl feldolgozásakor:", file.name, err);
+                }
+            }
+
+            if (newRecords.length > 0) {
+                // Merge and deduplicate by (POD + Date + Tariff)
+                const mergedMap = new Map();
+                
+                // Keep track of existing data
+                rawData.forEach(item => {
+                    const key = `${item.pod}_${item.date}_${item.tariff}_${item.kwh}`;
+                    mergedMap.set(key, item);
+                });
+
+                // Add newly uploaded data
+                newRecords.forEach(item => {
+                    const key = `${item.pod}_${item.date}_${item.tariff}_${item.kwh}`;
+                    mergedMap.set(key, item);
+                });
+
+                rawData = Array.from(mergedMap.values());
+                updateYearAndTariffFilters();
+                applyFilters();
+
+                showNotification(`${fileNames.join(', ')} sikeresen beolvasva! Összesen ${rawData.length} elem összefűzve.`, "success");
+            } else {
+                showNotification("Nem sikerült érvényes E.ON adatokat beolvasni az Excelből.", "error");
+            }
+        }
+
+        function parseExcelFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const allExtractedRecords = [];
+
+                        // Iterate through ALL sheets in the workbook (e.g., Nappali, Éjszakai, etc.)
+                        workbook.SheetNames.forEach(sheetName => {
+                            const worksheet = workbook.Sheets[sheetName];
+                            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                            if (!json || json.length === 0) return;
+
+                            // 1. Find Header Row automatically (Scan first 15 rows)
+                            let headerRowIdx = -1;
+                            let idxPod = -1, idxDate = -1, idxKwh = -1, idxCost = -1, idxTariff = -1, idxMeter = -1;
+
+                            for (let r = 0; r < Math.min(json.length, 15); r++) {
+                                const rowValues = (json[r] || []).map(cell => String(cell || '').trim().toLowerCase());
+                                
+                                const p = rowValues.findIndex(h => h.includes('pod') || h.includes('mérési pont') || h.includes('fogyasztási hely') || h.includes('azonosító'));
+                                const d = rowValues.findIndex(h => h.includes('időszak') || h.includes('dátum') || h.includes('hónap') || h.includes('date') || h.includes('leolvasás'));
+                                const k = rowValues.findIndex(h => h.includes('kwh') || h.includes('fogyasztás') || h.includes('mennyiség') || h.includes('elmozdulás'));
+                                const c = rowValues.findIndex(h => h.includes('összeg') || h.includes('díj') || h.includes('ft') || h.includes('költség') || h.includes('bruttó') || h.includes('nettó'));
+                                const t = rowValues.findIndex(h => h.includes('tarifa') || h.includes('díjszabás') || h.includes('napszak') || h.includes('árszabás'));
+                                const m = rowValues.findIndex(h => h.includes('gyári') || h.includes('mérő') || h.includes('óra') || h.includes('meter'));
+
+                                // If at least consumption/date/pod found, this is our header row
+                                if (k !== -1 || d !== -1 || p !== -1) {
+                                    headerRowIdx = r;
+                                    idxPod = p;
+                                    idxDate = d;
+                                    idxKwh = k;
+                                    idxCost = c;
+                                    idxTariff = t;
+                                    idxMeter = m;
+                                    break;
+                                }
+                            }
+
+                            // Fallbacks if no header detected
+                            if (headerRowIdx === -1) {
+                                headerRowIdx = 0;
+                                idxPod = 0; idxDate = 1; idxKwh = 2; idxCost = 3; idxTariff = 4; idxMeter = 5;
+                            }
+
+                            // Default index fallbacks for missing columns
+                            if (idxPod === -1) idxPod = 0;
+                            if (idxDate === -1) idxDate = 1;
+                            if (idxKwh === -1) idxKwh = 2;
+
+                            // 2. Parse data rows starting after header
+                            for (let r = headerRowIdx + 1; r < json.length; r++) {
+                                const row = json[r];
+                                if (!row || row.length === 0) continue;
+
+                                const rawKwh = idxKwh !== -1 ? row[idxKwh] : 0;
+                                const rawCost = idxCost !== -1 ? row[idxCost] : 0;
+                                const rawDate = idxDate !== -1 ? row[idxDate] : '';
+                                const rawPod = idxPod !== -1 ? row[idxPod] : '';
+                                const rawTariff = idxTariff !== -1 ? row[idxTariff] : '';
+                                const rawMeter = idxMeter !== -1 ? row[idxMeter] : '';
+
+                                const kwhVal = parseHungarianNumber(rawKwh);
+                                const costVal = parseHungarianNumber(rawCost);
+                                const dateVal = parseExcelDate(rawDate);
+
+                                // Determine tariff name (if column empty, use sheet name or fallback)
+                                let tariffVal = String(rawTariff || '').trim();
+                                if (!tariffVal) {
+                                    if (sheetName.toLowerCase().includes('b') || sheetName.toLowerCase().includes('éjszakai')) {
+                                        tariffVal = 'B Éjszakai';
+                                    } else if (sheetName.toLowerCase().includes('h')) {
+                                        tariffVal = 'H-Tarifa';
+                                    } else {
+                                        tariffVal = 'A1 Nappali';
+                                    }
+                                }
+
+                                if (kwhVal > 0 || costVal > 0 || rawDate) {
+                                    allExtractedRecords.push({
+                                        pod: String(rawPod || 'HU000210-EON-01').trim(),
+                                        date: dateVal,
+                                        kwh: Math.round(kwhVal),
+                                        cost: Math.round(costVal > 0 ? costVal : kwhVal * 36.5 * 1.27), // Calculated standard rate if cost omitted
+                                        tariff: tariffVal,
+                                        meterNo: String(rawMeter || '98421045').trim()
+                                    });
+                                }
+                            }
+                        });
+
+                        resolve(allExtractedRecords);
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                reader.onerror = (err) => reject(err);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // -------------------------------------------------------------
+        // EXPORT MERGED EXCEL
+        // -------------------------------------------------------------
+        function exportMergedExcel() {
+            if (rawData.length === 0) {
+                showNotification("Nincs exportálható adat!", "error");
+                return;
+            }
+
+            const exportData = rawData.map(item => ({
+                "Mérési pont (POD)": item.pod,
+                "Időszak / Dátum": item.date,
+                "Fogyasztás (kWh)": item.kwh,
+                "Bruttó Összeg (Ft)": item.cost,
+                "Díjszabás / Tarifa": item.tariff,
+                "Mérőóra Gyári Szám": item.meterNo
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Összefűzött_Fogyasztás");
+
+            // Auto-width columns
+            const max_width = exportData.reduce((w, r) => Math.max(w, r["Mérési pont (POD)"].length), 10);
+            worksheet['!cols'] = [
+                { wch: max_width + 4 },
+                { wch: 15 },
+                { wch: 18 },
+                { wch: 18 },
+                { wch: 18 },
+                { wch: 20 }
+            ];
+
+            XLSX.writeFile(workbook, `EON_Osszefuzott_Fogyasztas_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showNotification("Összefűzött Excel sikeresen letöltve!", "success");
+        }
+
+        // -------------------------------------------------------------
+        // FILTERING & SEARCH
+        // -------------------------------------------------------------
+        function updateYearAndTariffFilters() {
+            const yearSelect = document.getElementById('yearFilter');
+            const tariffSelect = document.getElementById('tariffFilter');
+
+            const currentYearVal = yearSelect.value;
+            const currentTariffVal = tariffSelect.value;
+
+            // Extract unique years and tariffs
+            const years = new Set();
+            const tariffs = new Set();
+
+            rawData.forEach(item => {
+                const yr = item.date.split('.')[0];
+                if (yr) years.add(yr);
+                if (item.tariff) tariffs.add(item.tariff);
+            });
+
+            const t = translations[currentLang];
+
+            // Rebuild Year options
+            yearSelect.innerHTML = `<option value="ALL">${t.allYears}</option>`;
+            Array.from(years).sort().reverse().forEach(y => {
+                yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+            });
+
+            // Rebuild Tariff options
+            tariffSelect.innerHTML = `<option value="ALL">${t.allTariffs}</option>`;
+            Array.from(tariffs).sort().forEach(tr => {
+                tariffSelect.innerHTML += `<option value="${tr}">${tr}</option>`;
+            });
+
+            if (Array.from(years).includes(currentYearVal)) yearSelect.value = currentYearVal;
+            if (Array.from(tariffs).includes(currentTariffVal)) tariffSelect.value = currentTariffVal;
+        }
+
+        function applyFilters() {
+            const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+            const yearVal = document.getElementById('yearFilter').value;
+            const tariffVal = document.getElementById('tariffFilter').value;
+
+            filteredData = rawData.filter(item => {
+                const matchSearch = item.pod.toLowerCase().includes(searchVal) ||
+                                    item.date.toLowerCase().includes(searchVal) ||
+                                    item.tariff.toLowerCase().includes(searchVal) ||
+                                    item.meterNo.toLowerCase().includes(searchVal);
+                
+                const matchYear = yearVal === 'ALL' || item.date.startsWith(yearVal);
+                const matchTariff = tariffVal === 'ALL' || item.tariff === tariffVal;
+
+                return matchSearch && matchYear && matchTariff;
+            });
+
+            // Sort
+            filteredData.sort((a, b) => {
+                let valA = a[sortColumn];
+                let valB = b[sortColumn];
+                
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                if (valA < valB) return sortAsc ? -1 : 1;
+                if (valA > valB) return sortAsc ? 1 : -1;
+                return 0;
+            });
+
+            currentPage = 1;
+            updateKPIs();
+            renderTable();
+            renderCharts();
+        }
+
+        function sortTable(col) {
+            if (sortColumn === col) {
+                sortAsc = !sortAsc;
+            } else {
+                sortColumn = col;
+                sortAsc = true;
+            }
+            applyFilters();
+        }
+
+        // -------------------------------------------------------------
+        // KPI UPDATES
+        // -------------------------------------------------------------
+        function updateKPIs() {
+            if (filteredData.length === 0) {
+                document.getElementById('kpiTotalKwh').innerText = '0 kWh';
+                document.getElementById('kpiTotalCost').innerText = '0 Ft';
+                document.getElementById('kpiAvgKwh').innerText = '0 kWh';
+                document.getElementById('kpiAvgCost').innerText = '0 Ft / hó';
+                document.getElementById('kpiPeakMonth').innerText = '-';
+                document.getElementById('kpiPeakVal').innerText = '0 kWh';
+                document.getElementById('kpiTotalPeriod').innerText = '-';
+                return;
+            }
+
+            const totalKwh = filteredData.reduce((sum, d) => sum + d.kwh, 0);
+            const totalCost = filteredData.reduce((sum, d) => sum + d.cost, 0);
+
+            // Group by date to find unique months count and peak month
+            const monthMap = new Map();
+            filteredData.forEach(d => {
+                const prev = monthMap.get(d.date) || 0;
+                monthMap.set(d.date, prev + d.kwh);
+            });
+
+            const uniqueMonthsCount = monthMap.size || 1;
+            const avgKwh = Math.round(totalKwh / uniqueMonthsCount);
+            const avgCost = Math.round(totalCost / uniqueMonthsCount);
+
+            // Peak month
+            let peakMonth = '-';
+            let peakVal = 0;
+            monthMap.forEach((val, dateKey) => {
+                if (val > peakVal) {
+                    peakVal = val;
+                    peakMonth = dateKey;
+                }
+            });
+
+            document.getElementById('kpiTotalKwh').innerText = `${totalKwh.toLocaleString('hu-HU')} kWh`;
+            document.getElementById('kpiTotalCost').innerText = `${totalCost.toLocaleString('hu-HU')} Ft`;
+            document.getElementById('kpiAvgKwh').innerText = `${avgKwh.toLocaleString('hu-HU')} kWh`;
+            document.getElementById('kpiAvgCost').innerText = `${avgCost.toLocaleString('hu-HU')} Ft / hó`;
+            document.getElementById('kpiPeakMonth').innerText = peakMonth;
+            document.getElementById('kpiPeakVal').innerText = `${peakVal.toLocaleString('hu-HU')} kWh`;
+            document.getElementById('kpiTotalPeriod').innerText = `${uniqueMonthsCount} hónap`;
+        }
+
+        // -------------------------------------------------------------
+        // TABLE RENDERING
+        // -------------------------------------------------------------
+        function renderTable() {
+            const tbody = document.getElementById('dataTableBody');
+            document.getElementById('recordCount').innerText = `${filteredData.length} rekord`;
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-slate-400">
+                            <i class="fa-solid fa-folder-open text-3xl mb-2 block"></i>
+                            Nincs a szűrésnek megfelelő adat.
+                        </td>
+                    </tr>`;
+                document.getElementById('paginationInfo').innerText = '0 / 0 bejegyzés';
+                document.getElementById('paginationControls').innerHTML = '';
+                return;
+            }
+
+            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, filteredData.length);
+            const pageData = filteredData.slice(startIndex, endIndex);
+
+            tbody.innerHTML = pageData.map(row => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td class="py-3 px-4 font-mono text-xs font-semibold text-orange-600 dark:text-orange-400">${row.pod}</td>
+                    <td class="py-3 px-4 font-medium">${row.date}</td>
+                    <td class="py-3 px-4 text-right font-semibold text-slate-900 dark:text-slate-100">${row.kwh.toLocaleString('hu-HU')} kWh</td>
+                    <td class="py-3 px-4 text-right font-semibold text-emerald-600 dark:text-emerald-400">${row.cost.toLocaleString('hu-HU')} Ft</td>
+                    <td class="py-3 px-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            row.tariff.includes('A1') ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300' :
+                            row.tariff.includes('B') ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-300' :
+                            'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'
+                        }">
+                            ${row.tariff}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-slate-500 font-mono text-xs">${row.meterNo}</td>
+                </tr>
+            `).join('');
+
+            // Pagination Controls
+            document.getElementById('paginationInfo').innerText = `${startIndex + 1} - ${endIndex} / ${filteredData.length} bejegyzés`;
+
+            let paginationHTML = `
+                <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <span class="px-3 py-1 font-semibold">${currentPage} / ${totalPages}</span>
+                <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} class="px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            `;
+            document.getElementById('paginationControls').innerHTML = paginationHTML;
+        }
+
+        function changePage(page) {
+            currentPage = page;
+            renderTable();
+        }
+
+        // -------------------------------------------------------------
+        // CHART RENDERING (Chart.js)
+        // -------------------------------------------------------------
+        function renderCharts() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
+
+            // Prepare Aggregations
+            const dateAgg = new Map();
+            const tariffAgg = new Map();
+
+            filteredData.forEach(d => {
+                // By Date
+                const prevDate = dateAgg.get(d.date) || { kwh: 0, cost: 0 };
+                dateAgg.set(d.date, {
+                    kwh: prevDate.kwh + d.kwh,
+                    cost: prevDate.cost + d.cost
+                });
+
+                // By Tariff
+                const prevTariff = tariffAgg.get(d.tariff) || 0;
+                tariffAgg.set(d.tariff, prevTariff + d.kwh);
+            });
+
+            const sortedDates = Array.from(dateAgg.keys()).sort();
+            const lineDataKwh = sortedDates.map(d => dateAgg.get(d).kwh);
+            const barDataCost = sortedDates.map(d => dateAgg.get(d).cost);
+
+            // 1. LINE CHART (Monthly Trend)
+            if (lineChartInstance) lineChartInstance.destroy();
+            const ctxLine = document.getElementById('lineChart').getContext('2d');
+            
+            const gradient = ctxLine.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(234, 88, 12, 0.4)');
+            gradient.addColorStop(1, 'rgba(234, 88, 12, 0.0)');
+
+            lineChartInstance = new Chart(ctxLine, {
+                type: 'line',
+                data: {
+                    labels: sortedDates,
+                    datasets: [{
+                        label: 'Fogyasztás (kWh)',
+                        data: lineDataKwh,
+                        borderColor: '#ea580c',
+                        borderWidth: 3,
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.35,
+                        pointBackgroundColor: '#ea580c',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+                        y: { ticks: { color: textColor }, grid: { color: gridColor } }
+                    }
+                }
+            });
+
+            // 2. DONUT CHART (Tariff Megoszlás)
+            if (donutChartInstance) donutChartInstance.destroy();
+            const ctxDonut = document.getElementById('donutChart').getContext('2d');
+            
+            const tariffLabels = Array.from(tariffAgg.keys());
+            const tariffValues = Array.from(tariffAgg.values());
+
+            donutChartInstance = new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: {
+                    labels: tariffLabels,
+                    datasets: [{
+                        data: tariffValues,
+                        backgroundColor: ['#f59e0b', '#6366f1', '#10b981', '#ec4899'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: textColor, font: { size: 12 } }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+
+            // 3. BAR CHART (Költség vs Fogyasztás)
+            if (barChartInstance) barChartInstance.destroy();
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+
+            barChartInstance = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: sortedDates,
+                    datasets: [
+                        {
+                            label: 'Költség (Ft)',
+                            data: barDataCost,
+                            backgroundColor: '#6366f1',
+                            borderRadius: 6,
+                            yAxisID: 'yCost'
+                        },
+                        {
+                            label: 'Fogyasztás (kWh)',
+                            data: lineDataKwh,
+                            backgroundColor: '#f59e0b',
+                            borderRadius: 6,
+                            yAxisID: 'yKwh'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: textColor }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+                        yCost: {
+                            type: 'linear',
+                            position: 'left',
+                            ticks: { color: textColor },
+                            grid: { color: gridColor }
+                        },
+                        yKwh: {
+                            type: 'linear',
+                            position: 'right',
+                            ticks: { color: textColor },
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // -------------------------------------------------------------
+        // TOAST NOTIFICATIONS
+        // -------------------------------------------------------------
+        function showNotification(msg, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl text-white font-medium text-sm flex items-center gap-3 transition-all transform translate-y-10 opacity-0 ${
+                type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-rose-600' : 'bg-slate-800'
+            }`;
+            toast.innerHTML = `
+                <i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation'} text-lg"></i>
+                <span>${msg}</span>
+            `;
+
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+    </script>
+</body>
+</html>

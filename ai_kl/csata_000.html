@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magyar Történeti Csaták Interaktív Térképe</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            height: 100vh;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 400px;
+            background-color: #242424;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #333;
+            z-index: 1000;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+        }
+
+        .header {
+            padding: 20px;
+            background-color: #1f1f1f;
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            font-size: 1.15rem;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .select-box {
+            width: 100%;
+            padding: 10px;
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .tabs-nav {
+            display: flex;
+            background-color: #1c1c1c;
+            border-bottom: 1px solid #333;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 10px;
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+            background-color: #222;
+        }
+
+        .tab-btn.active {
+            color: #ffca28;
+            border-bottom-color: #ffca28;
+            background-color: #242424;
+        }
+
+        .tab-content {
+            display: none;
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .battle-title {
+            font-size: 1.1rem;
+            color: #ffca28;
+            margin-bottom: 5px;
+        }
+
+        .battle-date {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 15px;
+        }
+
+        .faction-card {
+            background: #2d2d2d;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 4px solid #ccc;
+        }
+
+        .faction-card.attacker { border-left-color: #e53935; }
+        .faction-card.defender { border-left-color: #1e88e5; }
+
+        .faction-name {
+            font-weight: bold;
+            font-size: 0.95rem;
+            margin-bottom: 5px;
+        }
+
+        .army-stats {
+            font-size: 0.85rem;
+            color: #bbb;
+        }
+
+        .army-stats li {
+            list-style: none;
+            margin-top: 3px;
+        }
+
+        .log-step-box {
+            background: #2d2d2d;
+            border-left: 4px solid #444;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .log-step-date {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #ffca28;
+            margin-bottom: 4px;
+        }
+
+        .log-step-title {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .log-step-desc {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #ccc;
+        }
+
+        #map-container {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background-color: #0f0f0f;
+        }
+
+        #controls-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 30, 30, 0.92);
+            padding: 15px 25px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
+            border: 1px solid #444;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            min-width: 680px;
+        }
+
+        .btn {
+            background: #ffca28;
+            border: none;
+            color: #111;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn:hover { background: #ffd54f; }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-grow: 1;
+        }
+
+        .timeline-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #555;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .timeline-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ffca28;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+        }
+
+        .timeline-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+
+        .speed-control select {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 4px 8px;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        #time-display {
+            font-family: monospace;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #ffca28;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .animated-arrow {
+            stroke-dasharray: 8, 4;
+            animation: dash 0.8s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -12;
+            }
+        }
+
+        .military-icon {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0,0,0,0.8), inset 0 0 4px rgba(255,255,255,0.3);
+            border: 2px solid #ffffff;
+            transition: transform 0.1s ease;
+        }
+
+        .military-icon:hover {
+            transform: scale(1.15);
+            z-index: 1000 !important;
+        }
+
+        .military-icon svg {
+            width: 60%;
+            height: 60%;
+            fill: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="header">
+            <h1>Magyar Hadtörténeti Szimuláció</h1>
+            <select id="battle-select" class="select-box" onchange="loadBattle(this.value)">
+                <option value="pozsony907">Pozsonyi csata (907)</option>
+                <option value="tatari1241">Muhi csata (1241)</option>
+                <option value="rozgony1312">Rozgonyi csata (1312)</option>
+                <option value="nandorfehervar1456">Nándorfehérvári diadal (1456)</option>
+                <option value="kenyermezo1479">Kenyérmezei csata (1479)</option>
+                <option value="mohacs1526">Mohácsi csata (1526)</option>
+                <option value="egervar1552">Eger ostroma (1552)</option>
+                <option value="szigetvar1566">Szigetvári csata (1566)</option>
+                <option value="majtény1711">Majtényi fegyverletétel (1711)</option>
+                <option value="pacozo1848">Pákozdi csata (1848)</option>
+                <option value="isaszeg1849">Isaszegi csata (1849)</option>
+                <option value="doniatttores1943">Doni katasztrófa (1943)</option>
+                <option value="budapest1944">Budapest ostroma (1944–1945)</option>
+            </select>
+        </div>
+
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('overview', this)">Áttekintés</button>
+            <button class="tab-btn" onclick="switchTab('log', this)">Hadműveleti Napló</button>
+        </div>
+
+        <div id="tab-overview" class="tab-content active"></div>
+        <div id="tab-log" class="tab-content">
+            <div id="log-steps-container"></div>
+        </div>
+    </div>
+
+    <div id="map-container">
+        <div id="map"></div>
+        
+        <div id="controls-panel">
+            <button id="play-btn" class="btn" onclick="togglePlay()">Indítás</button>
+            <button class="btn" style="background:#555; color:#fff;" onclick="resetAnimation()">Visszaállítás</button>
+            
+            <div class="slider-container">
+                <input type="range" id="time-slider" class="timeline-slider" min="0" max="100" value="0" step="0.05" oninput="onSliderInput(this.value)">
+            </div>
+
+            <div id="time-display">--</div>
+
+            <div class="speed-control">
+                <select id="speed-select" onchange="changeSpeed(this.value)">
+                    <option value="0.015">Lassú</option>
+                    <option value="0.035" selected>Közepes</option>
+                    <option value="0.080">Gyors</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Külső függőségek -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Csaták adatai (külső állomány) -->
+    <script src="csatak_lista.js"></script>
+
+    <!-- Alkalmazás logika -->
+    <script>
+        let map;
+        let currentBattleKey = "pozsony907";
+        let progress = 0;
+        let isPlaying = false;
+        let animationFrameId = null;
+        let animSpeed = 0.035;
+        let drawnElements = [];
+
+        function createMilitaryIcon(unitType, color) {
+            const svgContent = SVG_ICONS[unitType] || SVG_ICONS.infantry;
+            return L.divIcon({
+                className: 'custom-leaflet-marker',
+                html: `<div class="military-icon" style="background-color: ${color}; width: 34px; height: 34px;">${svgContent}</div>`,
+                iconSize: [34, 34],
+                iconAnchor: [17, 17]
+            });
+        }
+
+        function switchTab(tabName, btnElement) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            if (btnElement) {
+                btnElement.classList.add('active');
+            }
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: true,
+                attributionControl: false
+            });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19,
+                subdomains: 'abcd'
+            }).addTo(map);
+
+            loadBattle("pozsony907");
+        }
+
+        function loadBattle(key) {
+            stopAnimation();
+            currentBattleKey = key;
+            progress = 0;
+            const battle = BATTLE_DATA[key];
+
+            if (!battle) return;
+
+            map.setView(battle.center, battle.zoom);
+
+            const slider = document.getElementById('time-slider');
+            slider.value = 0;
+
+            const overviewDiv = document.getElementById('tab-overview');
+            overviewDiv.innerHTML = `
+                <div class="battle-title">${battle.title}</div>
+                <div class="battle-date">Időszak: ${battle.dates[0]} - ${battle.dates[battle.dates.length - 1]}</div>
+                
+                <div class="faction-card attacker">
+                    <div class="faction-name" style="color:${battle.attacker.color}">${battle.attacker.name}</div>
+                    <ul class="army-stats">
+                        ${battle.attacker.stats.map(s => `<li>• ${s}</li>`).join('')}
+                    </ul>
+                </div>
+
+                <div class="faction-card defender">
+                    <div class="faction-name" style="color:${battle.defender.color}">${battle.defender.name}</div>
+                    <ul class="army-stats">
+                        ${battle.defender.stats.map(s => `<li>• ${s}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+
+            const logContainer = document.getElementById('log-steps-container');
+            logContainer.innerHTML = battle.timeline.map((step, index) => `
+                <div class="log-step-box" id="log-step-${index}" onclick="jumpToStepIndex(${index})" style="opacity: 0.6;">
+                    <div class="log-step-date">${step.date}</div>
+                    <div class="log-step-title">${step.title}</div>
+                    <div class="log-step-desc">${step.desc}</div>
+                </div>
+            `).join('');
+
+            document.getElementById('time-display').innerText = battle.dates[0];
+            renderContinuousProgress(0);
+        }
+
+        function clearMapElements() {
+            drawnElements.forEach(el => map.removeLayer(el));
+            drawnElements = [];
+        }
+
+  function renderContinuousProgress(p) {
+    clearMapElements();
+    const battle = BATTLE_DATA[currentBattleKey];
+    if (!battle) return;
+    
+    const stepsCount = battle.timeline.length;
+    if (stepsCount === 0) return;
+
+    // Ha csak 1 lépés van
+    if (stepsCount === 1) {
+        const stepData = battle.timeline[0];
+        document.getElementById('time-display').innerText = stepData.date;
+        document.getElementById('time-slider').value = p;
+        highlightLogStep(0);
+        drawStepArrows(stepData, p / 100);
+        return;
+    }
+
+    // Több lépés esetén kiszámítjuk a pontos szakaszt
+    const segmentLength = 100 / stepsCount;
+    let currentStepIdx = Math.floor(p / segmentLength);
+    
+    if (currentStepIdx >= stepsCount) {
+        currentStepIdx = stepsCount - 1;
+    }
+
+    // Helyi előrehaladási tényező az adott lépésen belül (0.0 és 1.0 között)
+    const localFactor = (p - (currentStepIdx * segmentLength)) / segmentLength;
+
+    const stepData = battle.timeline[currentStepIdx];
+    document.getElementById('time-display').innerText = stepData.date;
+    document.getElementById('time-slider').value = p;
+
+    highlightLogStep(currentStepIdx);
+    drawStepArrows(stepData, Math.min(Math.max(localFactor, 0), 1));
+}
+
+// Naplóbejegyzés kiemelése
+function highlightLogStep(activeIdx) {
+    const battle = BATTLE_DATA[currentBattleKey];
+    battle.timeline.forEach((_, idx) => {
+        const box = document.getElementById(`log-step-${idx}`);
+        if (box) {
+            if (idx === activeIdx) {
+                box.style.opacity = "1";
+                box.style.borderColor = "#ffca28";
+                box.style.transform = "scale(1.02)";
+            } else {
+                box.style.opacity = "0.5";
+                box.style.borderColor = "transparent";
+                box.style.transform = "scale(1)";
+            }
+        }
+    });
+}
+
+// Nyilak és ikonok kirajzolása az adott lépésre
+function drawStepArrows(stepData, factor) {
+    stepData.arrows.forEach(arrow => {
+        const startLat = arrow.from[0];
+        const startLng = arrow.from[1];
+        const endLat = arrow.to[0];
+        const endLng = arrow.to[1];
+
+        // Az aktuális pozíció kiszámítása a helyi tényező alapján
+        const currentLat = startLat + (endLat - startLat) * factor;
+        const currentLng = startLng + (endLng - startLng) * factor;
+        const currentPos = [currentLat, currentLng];
+
+        // Animált mozgási vonal
+        const polyline = L.polyline([arrow.from, currentPos], {
+            color: arrow.color,
+            weight: 5,
+            opacity: 0.85,
+            className: 'animated-arrow'
+        }).addTo(map);
+
+        // Nyomvonal háttér
+        const pathBackground = L.polyline([arrow.from, arrow.to], {
+            color: arrow.color,
+            weight: 2,
+            opacity: 0.25,
+            dashArray: '4, 4'
+        }).addTo(map);
+
+        // Mozgó SVG ikon
+        const movingMarker = L.marker(currentPos, {
+            icon: createMilitaryIcon(arrow.unit, arrow.color)
+        }).addTo(map);
+
+        // Végpont jelölő
+        const targetMarker = L.circleMarker(arrow.to, {
+            radius: 4,
+            fillColor: arrow.color,
+            color: '#fff',
+            weight: 1,
+            fillOpacity: 0.6
+        }).addTo(map);
+
+        polyline.bindTooltip(arrow.label, { permanent: false, direction: 'top' });
+        movingMarker.bindTooltip(arrow.label, { permanent: false, direction: 'top' });
+
+        drawnElements.push(polyline, pathBackground, movingMarker, targetMarker);
+    });
+}
+
+        function animationLoop() {
+            if (!isPlaying) return;
+
+            progress += animSpeed * 10;
+            if (progress >= 100) {
+                progress = 0;
+            }
+
+            renderContinuousProgress(progress);
+            animationFrameId = requestAnimationFrame(animationLoop);
+        }
+
+        function togglePlay() {
+            const btn = document.getElementById('play-btn');
+            if (isPlaying) {
+                stopAnimation();
+            } else {
+                isPlaying = true;
+                btn.innerText = "Szünet";
+                animationLoop();
+            }
+        }
+
+        function stopAnimation() {
+            isPlaying = false;
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            document.getElementById('play-btn').innerText = "Indítás";
+        }
+
+        function resetAnimation() {
+            stopAnimation();
+            progress = 0;
+            renderContinuousProgress(0);
+        }
+
+        function onSliderInput(val) {
+            stopAnimation();
+            progress = parseFloat(val);
+            renderContinuousProgress(progress);
+        }
+
+        function jumpToStepIndex(stepIndex) {
+            stopAnimation();
+            const battle = BATTLE_DATA[currentBattleKey];
+            const stepsCount = battle.timeline.length;
+
+            if (stepsCount > 1) {
+                progress = (stepIndex / (stepsCount - 1)) * 100;
+            } else {
+                progress = 0;
+            }
+
+            renderContinuousProgress(progress);
+        }
+
+        function changeSpeed(val) {
+            animSpeed = parseFloat(val);
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>

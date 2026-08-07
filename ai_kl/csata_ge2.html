@@ -1,0 +1,2854 @@
+<!DOCTYPE html>
+<html lang="hu" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magyar Történelmi Csaták Interaktív Térképe (896–1945)</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#C82333',
+                            green: '#28A745',
+                            gold: '#D4AF37',
+                            dark: '#121826',
+                            card: '#1E293B'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-cinzel { font-family: 'Cinzel', serif; }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748B; }
+
+        /* Map styling */
+        #map { width: 100%; height: 100%; z-index: 1; background-color: #0f172a; }
+
+        /* SVG Arrow animation styling */
+        .animated-arrow-line {
+            stroke-dasharray: 8, 8;
+            animation: dash 1.2s linear infinite;
+        }
+        @keyframes dash {
+            to { stroke-dashoffset: -16; }
+        }
+
+        /* NATO SVG Icon Marker container */
+        .military-svg-marker {
+            background: transparent;
+            border: none;
+            transition: transform 0.2s ease-out;
+        }
+        .military-svg-marker:hover {
+            transform: scale(1.15);
+            z-index: 1000 !important;
+        }
+
+        /* National Tricolor Frame for Hungarian Victories */
+        .hungarian-victory-card {
+            border: 3px solid transparent;
+            border-image: linear-gradient(135deg, #ce2939 0%, #ffffff 50%, #477050 100%) 1;
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.35);
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+        }
+
+        .defeat-card {
+            border: 2px solid #ef4444;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+        }
+
+        .draw-card {
+            border: 2px solid #f59e0b;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+        }
+
+        /* Custom Leaflet popup overrides */
+        .leaflet-popup-content-wrapper {
+            background: #1e293b;
+            color: #f8fafc;
+            border: 1px solid #475569;
+            border-radius: 0.75rem;
+            padding: 4px;
+        }
+        .leaflet-popup-tip { background: #1e293b; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-full overflow-hidden flex flex-col select-none">
+
+    <header class="bg-slate-900/90 border-b border-slate-800 px-4 py-2 flex items-center justify-between z-20 backdrop-blur shrink-0">
+        <div class="flex items-center gap-3">
+            <!-- Custom Logo reproduced from logo.png (4-quadrant grid: T, :), ?, !) -->
+            <div class="w-9 h-9 rounded-lg overflow-hidden grid grid-cols-2 grid-rows-2 border border-slate-700 shadow-md shrink-0 font-bold text-[13px] text-black leading-none select-none">
+                <div class="bg-gradient-to-br from-blue-300 to-blue-500 flex items-center justify-center font-sans font-black">T</div>
+                <div class="bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center font-sans font-black">:)</div>
+                <div class="bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center font-sans font-black">?</div>
+                <div class="bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center font-sans font-black">!</div>
+            </div>
+            <div>
+                <h1 class="font-cinzel text-base md:text-lg font-bold tracking-wider text-slate-100 flex items-center gap-2">
+                    <span data-i18n="app_title">MAGYAR HADMŰVELETI CSATATÉR</span>
+                    <span class="text-[10px] font-sans font-normal px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 hidden sm:inline-block">896 – 1945</span>
+                </h1>
+                <p class="text-xs text-slate-400 hidden md:block" data-i18n="app_subtitle">Történeti csaták interaktív hadműveleti térképe és szimulációja</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+            <!-- Total Battles counter -->
+            <div class="hidden lg:flex items-center gap-2 text-xs bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60">
+                <span class="text-slate-400" data-i18n="battles_count_label">Rögzített csaták:</span>
+                <span id="total-battles-count" class="font-bold text-amber-400">0</span>
+            </div>
+
+            <!-- Language Switcher Dropdown -->
+            <div class="relative">
+                <select id="lang-select" onchange="changeLanguage(this.value)" class="bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-semibold rounded-lg px-2.5 py-1.5 border border-slate-700 outline-none cursor-pointer">
+                    <option value="hu">🇭🇺 HU</option>
+                    <option value="en">🇬🇧 EN</option>
+                    <option value="de">🇩🇪 DE</option>
+                </select>
+            </div>
+
+            <!-- Layer Quick Switch Button -->
+            <div class="relative">
+                <button id="layer-menu-btn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-2 transition">
+                    <i class="fa-solid fa-layer-group text-sky-400"></i>
+                    <span class="hidden sm:inline" data-i18n="layer_btn">Térképréteg</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                </button>
+                <!-- Layer selector dropdown -->
+                <div id="layer-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-2 z-50 text-xs space-y-1">
+                    <div class="text-[10px] font-semibold text-slate-400 px-2 py-1 uppercase tracking-wider" data-i18n="map_style_heading">Térkép stílus</div>
+                    <button onclick="setBaseMap('light')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-800 flex items-center justify-between">
+                        <span data-i18n="layer_light">Világos térkép</span> <i class="fa-solid fa-sun text-amber-400"></i>
+                    </button>
+                    <button onclick="setBaseMap('dark')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-800 flex items-center justify-between">
+                        <span data-i18n="layer_dark">Sötét térkép</span> <i class="fa-solid fa-moon text-indigo-400"></i>
+                    </button>
+                    <button onclick="setBaseMap('terrain')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-800 flex items-center justify-between">
+                        <span data-i18n="layer_terrain">Domborzati térkép</span> <i class="fa-solid fa-mountain text-emerald-400"></i>
+                    </button>
+                    <button onclick="setBaseMap('topo')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-800 flex items-center justify-between">
+                        <span data-i18n="layer_topo">Topográfiai térkép</span> <i class="fa-solid fa-map text-amber-600"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- Sidebar Panel (Tabbed UI) -->
+        <aside id="sidebar" class="w-full sm:w-[420px] lg:w-[460px] bg-slate-900/95 border-r border-slate-800 flex flex-col z-10 shrink-0 backdrop-blur shadow-2xl transition-all duration-300">
+            
+            <!-- Tab Navigation Bar (3 Tabs) -->
+            <div class="flex border-b border-slate-800 bg-slate-950/60 p-1 gap-1 text-[11px]">
+                <button id="tab-btn-1" onclick="switchTab(1)" class="flex-1 py-2 px-1.5 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span data-i18n="tab_1_title">1. Csaták & Infó</span>
+                </button>
+                <button id="tab-btn-2" onclick="switchTab(2)" class="flex-1 py-2 px-1.5 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50">
+                    <i class="fa-solid fa-timeline"></i>
+                    <span data-i18n="tab_2_title">2. Napló</span>
+                </button>
+                <button id="tab-btn-3" onclick="switchTab(3)" class="flex-1 py-2 px-1.5 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span data-i18n="tab_3_title">3. Információk</span>
+                </button>
+            </div>
+
+            <div id="tab-content-1" class="flex-1 overflow-y-auto p-4 space-y-4">
+                
+                <!-- Era Filter & Search -->
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-filter text-amber-400"></i>
+                        <span data-i18n="filter_label">Korszak szűrése & Keresés</span>
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <select id="era-filter" onchange="filterBattles()" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-2 text-slate-200 focus:ring-1 focus:ring-amber-400 outline-none">
+                            <option value="ALL" data-i18n="era_all">Minden korszak</option>
+                            <option value="HONFOGLALAS" data-i18n="era_honfoglalas">Honfoglalás & Kalandozások</option>
+                            <option value="ARPAD" data-i18n="era_arpad">Árpád-kor (1000–1301)</option>
+                            <option value="VEGYES" data-i18n="era_vegyes">Vegyesházi királyok</option>
+                            <option value="TOROK" data-i18n="era_torok">Török hódoltság kora</option>
+                            <option value="KURUC" data-i18n="era_kuruc">Rákóczi-szabadságharc</option>
+                            <option value="1848" data-i18n="era_1848">1848–49-es Szabadságharc</option>
+                            <option value="WW1" data-i18n="era_ww1">I. Világháború (1914–1918)</option>
+                            <option value="WW2" data-i18n="era_ww2">II. Világháború (1939–1945)</option>
+                        </select>
+                        <input type="text" id="search-input" onkeyup="filterBattles()" placeholder="Csata vagy helyszín..." data-i18n-ph="search_ph" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-2 text-slate-200 focus:ring-1 focus:ring-amber-400 outline-none">
+                    </div>
+                </div>
+
+                <!-- Battle Selector Dropdown -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                        <span data-i18n="select_battle_label">Válasszon történeti csatát:</span>
+                        <span id="filtered-count" class="text-[10px] text-slate-400"></span>
+                    </label>
+                    <select id="battle-select" onchange="selectBattle(this.value)" class="w-full bg-slate-800 border-2 border-amber-500/40 text-amber-300 font-medium text-sm rounded-xl px-3 py-2.5 focus:border-amber-400 outline-none cursor-pointer">
+                        <!-- Populated dynamically via JS -->
+                    </select>
+                </div>
+
+                <!-- Battle Quick Facts Card -->
+                <div id="battle-overview-card" class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-4 space-y-3">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <span id="battle-era-badge" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-700 text-slate-300">Korszak</span>
+                            <h2 id="battle-title" class="text-lg font-cinzel font-bold text-amber-400 mt-1">Csata neve</h2>
+                            <p id="battle-date-loc" class="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                                <i class="fa-solid fa-calendar-days text-amber-500"></i> <span id="battle-date">1241</span>
+                                <span class="text-slate-600">•</span>
+                                <i class="fa-solid fa-location-dot text-red-400"></i> <span id="battle-location">Helyszín</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <p id="battle-summary" class="text-xs text-slate-300 leading-relaxed border-t border-slate-700/50 pt-2.5">
+                        Válasszon egy csatát a listából a részletes hadi adatok és szimuláció megtekintéséhez.
+                    </p>
+
+                    <!-- Opposing Forces Summary Grid -->
+                    <div class="grid grid-cols-2 gap-2 text-xs pt-1">
+                        <div class="bg-slate-900/80 p-2.5 rounded-lg border border-sky-500/30">
+                            <div class="font-semibold text-sky-400 mb-1 flex items-center gap-1">
+                                <i class="fa-solid fa-shield"></i> <span data-i18n="side_magyar">Magyar / Szövetséges</span>
+                            </div>
+                            <div id="side-1-leader" class="text-[11px] text-slate-300 font-medium truncate">Parancsnok</div>
+                            <div id="side-1-troops" class="text-[10px] text-slate-400 mt-0.5">Létszám: -</div>
+                        </div>
+
+                        <div class="bg-slate-900/80 p-2.5 rounded-lg border border-red-500/30">
+                            <div class="font-semibold text-red-400 mb-1 flex items-center gap-1">
+                                <i class="fa-solid fa-crosshairs"></i> <span data-i18n="side_enemy">Ellenfél</span>
+                            </div>
+                            <div id="side-2-leader" class="text-[11px] text-slate-300 font-medium truncate">Parancsnok</div>
+                            <div id="side-2-troops" class="text-[10px] text-slate-400 mt-0.5">Létszám: -</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Strategic Context Box -->
+                <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                    <h4 class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-landmark text-amber-400"></i> <span data-i18n="strategic_significance">Stratégiai jelentőség</span>
+                    </h4>
+                    <p id="battle-context" class="text-xs text-slate-300 italic leading-relaxed">
+                        -
+                    </p>
+                </div>
+
+                <!-- Legend of NATO/SVG Markers -->
+                <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+                    <div class="font-semibold text-slate-400 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-map-pin text-sky-400"></i> <span data-i18n="symbol_legend_title">Hadnem SVG jelölések jelkulcsa</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                        <div class="flex items-center gap-2">
+                            <div class="w-5 h-5 bg-sky-900/80 border border-sky-400 rounded flex items-center justify-center text-sky-300 text-[10px]"><i class="fa-solid fa-person-rifle"></i></div>
+                            <span data-i18n="type_infantry">Gyalogság</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-5 h-5 bg-amber-900/80 border border-amber-400 rounded flex items-center justify-center text-amber-300 text-[10px]"><i class="fa-solid fa-horse-head"></i></div>
+                            <span data-i18n="type_cavalry">Lovasság</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-5 h-5 bg-red-900/80 border border-red-400 rounded flex items-center justify-center text-red-300 text-[10px]"><i class="fa-solid fa-burst"></i></div>
+                            <span data-i18n="type_artillery">Tüzérség</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-5 h-5 bg-blue-900/80 border border-blue-400 rounded flex items-center justify-center text-blue-300 text-[10px]"><i class="fa-solid fa-anchor"></i></div>
+                            <span data-i18n="type_navy">Flotta / Folyami</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="tab-content-2" class="flex-1 overflow-y-auto p-4 space-y-4 hidden">
+                
+                <!-- Step Header & Controls -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-flag-checkered"></i> <span data-i18n="operational_phase_label">Hadműveleti Fázis</span>
+                        </span>
+                        <span id="step-indicator" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                            1 / 3 fázis
+                        </span>
+                    </div>
+
+                    <!-- Step Title -->
+                    <h3 id="step-title" class="text-base font-cinzel font-bold text-slate-100">
+                        A csata kezdő felállása
+                    </h3>
+
+                    <p id="step-description" class="text-xs text-slate-300 leading-relaxed min-h-[60px]">
+                        A felek felvonulása és a pozíciók elfoglalása a csataterén.
+                    </p>
+                </div>
+
+                <!-- Battle Final Outcome Summary Box (Appears/Styles dynamically) -->
+                <div id="final-summary-card" class="hidden rounded-xl p-4 transition-all duration-500">
+                    <div id="final-outcome-badge" class="inline-block px-3 py-1 rounded-md text-xs font-bold uppercase mb-2">
+                        Eredmény
+                    </div>
+                    <h3 id="final-outcome-title" class="text-base font-cinzel font-bold mb-2">
+                        Csata Végeredménye
+                    </h3>
+                    <p id="final-outcome-text" class="text-xs leading-relaxed text-slate-200">
+                        ...
+                    </p>
+                    <div id="final-casualty-info" class="mt-3 pt-2.5 border-t border-slate-700/60 text-xs space-y-1">
+                        <!-- Casualty details inserted dynamically -->
+                    </div>
+                </div>
+
+                <!-- Operational Unit Status List for Current Phase -->
+                <div class="space-y-2">
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <i class="fa-solid fa-users-rays text-sky-400"></i> <span data-i18n="active_units_label">Aktív csapattestek a fázisban</span>
+                    </div>
+                    <div id="active-units-list" class="space-y-2">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="tab-content-3" class="flex-1 overflow-y-auto p-4 space-y-4 hidden">
+                
+                <div class="space-y-4">
+                    <div class="border-b border-slate-800 pb-2">
+                        <h2 class="text-base font-cinzel font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-book-bookmark"></i> <span data-i18n="info_doc_title">Részletes Felhasználói Kézikönyv & Dokumentáció</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1" data-i18n="info_doc_subtitle">Alkalmazási jellemzők, használati esetek és kérdések-válaszok</p>
+                    </div>
+
+                    <!-- 1. Felhasználói Kézikönyv -->
+                    <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 space-y-2">
+                        <h3 class="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-map-location-dot"></i> <span data-i18n="info_section1_title">1. Felhasználói Kézikönyv</span>
+                        </h3>
+                        <p class="text-xs text-slate-300 leading-relaxed" data-i18n="info_section1_body">
+                            Az interaktív térkép segítségével végigkövethetőek a magyar történelem legmeghatározóbb csatái a honfoglalástól (896) egészen a II. világháború végéig (1945).
+                        </p>
+                        <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside pl-1">
+                            <li data-i18n="info_section1_li1"><b>Csata kiválasztása:</b> Használja az 1. Tabon található korszak szűrőt vagy a keresőmezőt, majd válassza ki a kívánt csatát a gördülőlistából.</li>
+                            <li data-i18n="info_section1_li2"><b>Fokozatmentes Időcsúszka:</b> A csatorna alsó részén található csúszka húzásával vagy a Lejátszás gombbal folyamatosan léptetheti a seregmozgásokat.</li>
+                            <li data-i18n="info_section1_li3"><b>Váltás Hadműveleti Naplóra:</b> A 2. Tabra kattintva leírást kap az aktuális harci fázisról és az aktív csapattestekről.</li>
+                            <li data-i18n="info_section1_li4"><b>Térképréteg váltása:</b> A jobb felső sarokban választható Világos, Sötét, Domborzati és Topográfiai térkép.</li>
+                        </ul>
+                    </div>
+
+                    <!-- 2. Alkalmazás Tulajdonságai & Megvalósított Cél -->
+                    <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 space-y-2">
+                        <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-award"></i> <span data-i18n="info_section2_title">2. Tulajdonságok & Megvalósított Célok</span>
+                        </h3>
+                        <p class="text-xs text-slate-300 leading-relaxed" data-i18n="info_section2_body">
+                            <b>Fő cél:</b> A magyar katonatörténeti örökség és hadtörténet interaktív, vizuális és oktatási célú bemutatása modern térképi és animációs technológiával.
+                        </p>
+                        <div class="grid grid-cols-1 gap-2 text-xs text-slate-300 pt-1">
+                            <div class="bg-slate-900/70 p-2 rounded border border-slate-700/50">
+                                <b class="text-slate-100" data-i18n="info_feat1_title">NATO Hadműveleti SVG ikonok:</b> <span data-i18n="info_feat1_desc">A körök helyett szabványos hadnem szimbólumok (lovasság, gyalogság, tüzérség, flotta) jelölik a seregeket.</span>
+                            </div>
+                            <div class="bg-slate-900/70 p-2 rounded border border-slate-700/50">
+                                <b class="text-slate-100" data-i18n="info_feat2_title">Tricolor Győzelmi Kiemelés:</b> <span data-i18n="info_feat2_desc">A magyar győzelmeknél a zárófázisban nemzeti (piros-fehér-zöld) színű nemzeti keret jelenik meg.</span>
+                            </div>
+                            <div class="bg-slate-900/70 p-2 rounded border border-slate-700/50">
+                                <b class="text-slate-100" data-i18n="info_feat3_title">Kitakarásmentes Nézet:</b> <span data-i18n="info_feat3_desc">A térkép és a vezérlősávok kialakítása biztosítja, hogy a csataterület mindig jól látható maradjon.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Használati Esetek -->
+                    <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 space-y-2">
+                        <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-graduation-cap"></i> <span data-i18n="info_section3_title">3. Használati Esetek (Use Cases)</span>
+                        </h3>
+                        <ul class="text-xs text-slate-300 space-y-1 list-disc list-inside">
+                            <li data-i18n="info_use1"><b>Oktatás & Történelemóra:</b> Interaktív szemléltetés általános és középiskolás diákok számára.</li>
+                            <li data-i18n="info_use2"><b>Katonai Kutatás & Hadtörténet:</b> Taktikai és stratégiai seregmozgások elemzése.</li>
+                            <li data-i18n="info_use3"><b>Múzeumi & Kiállítási Kijelző:</b> Érintőképernyős bemutató eszköz történelmi kiállításokon.</li>
+                        </ul>
+                    </div>
+
+                    <!-- 4. Gyakran Ismételt Kérdések (Q/A) -->
+                    <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 space-y-2.5">
+                        <h3 class="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-question"></i> <span data-i18n="info_qa_title">4. Kérdések & Válaszok (Q/A)</span>
+                        </h3>
+                        
+                        <div class="space-y-2 text-xs">
+                            <div class="border-b border-slate-700/50 pb-1.5">
+                                <p class="font-semibold text-slate-100" data-i18n="qa_q1">K: Milyen csatákat tartalmaz az adatbázis?</p>
+                                <p class="text-slate-300 text-[11px] mt-0.5" data-i18n="qa_a1">V: A magyar történelem legfontosabb ütközeteit tartalmazza a Pozsonyi csatától (907) és Muhitól egészen Isaszegen és Limanován át Budapest 1945-ös ostromáig.</p>
+                            </div>
+
+                            <div class="border-b border-slate-700/50 pb-1.5">
+                                <p class="font-semibold text-slate-100" data-i18n="qa_q2">K: Mit jelentenek az SVG szimbólumok a térképen?</p>
+                                <p class="text-slate-300 text-[11px] mt-0.5" data-i18n="qa_a2">V: A NATO szabványos katonai szimbólumait: átlós vonal = lovasság, X jel = gyalogság, ágyúgolyó = tüzérség, horgony = flotta, csillag = főhadiszállás.</p>
+                            </div>
+
+                            <div>
+                                <p class="font-semibold text-slate-100" data-i18n="qa_q3">K: Hogyan működik a többnyelvű támogatás?</p>
+                                <p class="text-slate-300 text-[11px] mt-0.5" data-i18n="qa_a3">V: A jobb felső gombbal bármikor válthat magyar (HU), angol (EN) és német (DE) nyelvek között.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="border-t border-slate-800 bg-slate-950 p-3 space-y-3 shrink-0">
+                
+                <!-- Time Slider -->
+                <div class="space-y-1">
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                        <span id="time-slider-time" class="text-amber-400 font-bold" data-i18n="phase_initial">Kezdeti fázis</span>
+                        <span id="time-slider-percent" class="text-slate-400">0%</span>
+                    </div>
+                    <input type="range" id="time-slider" min="0" max="100" value="0" step="0.5" oninput="onSliderInput(this.value)" class="w-full accent-amber-500 h-2 bg-slate-800 rounded-lg cursor-pointer">
+                </div>
+
+                <!-- Play / Step Controls & Speed selector -->
+                <div class="flex items-center justify-between gap-2">
+                    <!-- Playback controls -->
+                    <div class="flex items-center gap-1">
+                        <button onclick="prevStep()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition" title="Előző lépés">
+                            <i class="fa-solid fa-backward-step"></i>
+                        </button>
+                        <button id="play-btn" onclick="togglePlay()" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg transition flex items-center gap-1.5 shadow-lg shadow-amber-500/20" title="Animáció Indítása/Megállítása">
+                            <i id="play-icon" class="fa-solid fa-play"></i>
+                            <span id="play-text" class="text-xs" data-i18n="play_btn">Lejátszás</span>
+                        </button>
+                        <button onclick="nextStep()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition" title="Következő lépés">
+                            <i class="fa-solid fa-forward-step"></i>
+                        </button>
+                    </div>
+
+                    <!-- Speed Selector -->
+                    <div class="flex items-center gap-1 text-xs">
+                        <span class="text-slate-400 text-[10px] hidden sm:inline" data-i18n="speed_label">Sebesség:</span>
+                        <select id="speed-select" onchange="changeSpeed(this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1.5 outline-none">
+                            <option value="2000">0.5x</option>
+                            <option value="1000" selected>1.0x</option>
+                            <option value="500">2.0x</option>
+                            <option value="250">4.0x</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+        <main class="flex-1 relative h-full flex flex-col">
+            <div id="map" class="flex-1"></div>
+
+            <!-- Map Floating Legend Overlay -->
+            <div class="absolute bottom-10 right-6 bg-slate-900/90 backdrop-blur border border-slate-800 rounded-xl p-3 z-[400] text-xs shadow-2xl hidden md:block max-w-xs pointer-events-auto">
+                <div class="font-bold text-amber-400 mb-1 flex items-center justify-between">
+                    <span id="map-overlay-title">Csata Helyszín</span>
+                    <i class="fa-solid fa-compass text-slate-400"></i>
+                </div>
+                <div id="map-overlay-coords" class="text-[10px] text-slate-400 font-mono">
+                    N 47.4979°, E 19.0402°
+                </div>
+                <div class="mt-2 text-[11px] text-slate-300 flex items-center gap-3 border-t border-slate-800 pt-1.5">
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span> <span data-i18n="side_magyar">Magyar</span></span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> <span data-i18n="side_enemy">Ellenség</span></span>
+                </div>
+            </div>
+
+            <footer class="bg-slate-950 border-t border-slate-800 text-[11px] text-slate-400 px-4 py-2 flex items-center justify-between shrink-0 z-30">
+                <div class="flex items-center gap-2">
+                    <span class="font-semibold text-slate-300">© <span id="current-year">2026</span> Magyar Hadműveleti Csatatér</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="http://mierdekel.hu" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 transition underline decoration-amber-500/40">http://mierdekel.hu</a>
+                    <span class="text-slate-600">|</span>
+                    <a href="mailto:mierdekel@gmail.com" class="hover:text-slate-200 transition">mierdekel@gmail.com</a>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        const TRANSLATIONS = {
+            hu: {
+                app_title: "MAGYAR HADMŰVELETI CSATATÉR",
+                app_subtitle: "Történeti csaták interaktív hadműveleti térképe és szimulációja",
+                battles_count_label: "Rögzített csaták:",
+                layer_btn: "Térképréteg",
+                map_style_heading: "Térkép stílus",
+                layer_light: "Világos térkép",
+                layer_dark: "Sötét térkép",
+                layer_terrain: "Domborzati térkép",
+                layer_topo: "Topográfiai térkép",
+                tab_1_title: "1. Csaták & Infó",
+                tab_2_title: "2. Napló",
+                tab_3_title: "3. Információk",
+                filter_label: "Korszak szűrése & Keresés",
+                era_all: "Minden korszak",
+                era_honfoglalas: "Honfoglalás & Kalandozások (896–955)",
+                era_arpad: "Árpád-kor (1000–1301)",
+                era_vegyes: "Vegyesházi királyok (1301–1526)",
+                era_torok: "Török hódoltság kora (1526–1699)",
+                era_kuruc: "Rákóczi-szabadságharc (1703–1711)",
+                era_1848: "1848–49-es Szabadságharc",
+                era_ww1: "I. Világháború (1914–1918)",
+                era_ww2: "II. Világháború (1939–1945)",
+                search_ph: "Csata vagy helyszín...",
+                select_battle_label: "Válasszon történeti csatát:",
+                side_magyar: "Magyar / Szövetséges",
+                side_enemy: "Ellenfél",
+                strategic_significance: "Stratégiai jelentőség",
+                symbol_legend_title: "Hadnem SVG jelölések jelkulcsa",
+                type_infantry: "Gyalogság",
+                type_cavalry: "Lovasság",
+                type_artillery: "Tüzérség",
+                type_navy: "Flotta / Folyami",
+                operational_phase_label: "Hadműveleti Fázis",
+                active_units_label: "Aktív csapattestek a fázisban",
+                phase_initial: "Kezdeti fázis",
+                play_btn: "Lejátszás",
+                pause_btn: "Szünet",
+                speed_label: "Sebesség:",
+                info_doc_title: "Részletes Felhasználói Kézikönyv & Dokumentáció",
+                info_doc_subtitle: "Alkalmazási jellemzők, használati esetek és kérdések-válaszok",
+                info_section1_title: "1. Felhasználói Kézikönyv",
+                info_section1_body: "Az interaktív térkép segítségével végigkövethetőek a magyar történelem legmeghatározóbb csatái a honfoglalástól (896) egészen a II. világháború végéig (1945).",
+                info_section1_li1: "<b>Csata kiválasztása:</b> Használja az 1. Tabon található korszak szűrőt vagy a keresőmezőt, majd válassza ki a kívánt csatát a gördülőlistából.",
+                info_section1_li2: "<b>Fokozatmentes Időcsúszka:</b> A csatorna alsó részén található csúszka húzásával vagy a Lejátszás gombbal folyamatosan léptetheti a seregmozgásokat.",
+                info_section1_li3: "<b>Váltás Hadműveleti Naplóra:</b> A 2. Tabra kattintva leírást kap az aktuális harci fázisról és az aktív csapattestekről.",
+                info_section1_li4: "<b>Térképréteg váltása:</b> A jobb felső sarokban választható Világos, Sötét, Domborzati és Topográfiai térkép.",
+                info_section2_title: "2. Tulajdonságok & Megvalósított Célok",
+                info_section2_body: "<b>Fő cél:</b> A magyar katonatörténeti örökség és hadtörténet interaktív, vizuális és oktatási célú bemutatása modern térképi és animációs technológiával.",
+                info_feat1_title: "NATO Hadműveleti SVG ikonok:",
+                info_feat1_desc: "A körök helyett szabványos hadnem szimbólumok (lovasság, gyalogság, tüzérség, flotta) jelölik a seregeket.",
+                info_feat2_title: "Tricolor Győzelmi Kiemelés:",
+                info_feat2_desc: "A magyar győzelmeknél a zárófázisban nemzeti (piros-fehér-zöld) keret jelenik meg.",
+                info_feat3_title: "Kitakarásmentes Nézet:",
+                info_feat3_desc: "A térkép és a vezérlősávok kialakítása biztosítja, hogy a csataterület mindig jól látható maradjon.",
+                info_section3_title: "3. Használati Esetek (Use Cases)",
+                info_use1: "<b>Oktatás & Történelemóra:</b> Interaktív szemléltetés általános és középiskolás diákok számára.",
+                info_use2: "<b>Katonai Kutatás & Hadtörténet:</b> Taktikai és stratégiai seregmozgások elemzése.",
+                info_use3: "<b>Múzeumi & Kiállítási Kijelző:</b> Érintőképernyős bemutató eszköz történelmi kiállításokon.",
+                info_qa_title: "4. Kérdések & Válaszok (Q/A)",
+                qa_q1: "K: Milyen csatákat tartalmaz az adatbázis?",
+                qa_a1: "V: A magyar történelem legfontosabb ütközeteit tartalmazza a Pozsonyi csatától (907) és Muhitól egészen Isaszegen és Limanován át Budapest 1945-ös ostromáig.",
+                qa_q2: "K: Mit jelentenek az SVG szimbólumok a térképen?",
+                qa_a2: "V: A NATO szabványos katonai szimbólumait: átlós vonal = lovasság, X jel = gyalogság, ágyúgolyó = tüzérség, horgony = flotta, csillag = főhadiszállás.",
+                qa_q3: "K: Hogyan működik a többnyelvű támogatás?",
+                qa_a3: "V: A jobb felső gombbal bármikor válthat magyar (HU), angol (EN) és német (DE) nyelvek között.",
+                victory_badge: "🇭🇺 Magyar Győzelem",
+                defeat_badge: "Magyar Vereség",
+                draw_badge: "Döntetlen / Bizonytalan",
+                outcome_heading: "Csata Végeredménye",
+                casualties_label: "Veszteségek:"
+            },
+            en: {
+                app_title: "HUNGARIAN OPERATIONAL BATTLEFIELD",
+                app_subtitle: "Interactive operational map and simulation of historical battles",
+                battles_count_label: "Recorded battles:",
+                layer_btn: "Map Layer",
+                map_style_heading: "Map Style",
+                layer_light: "Light Map",
+                layer_dark: "Dark Map",
+                layer_terrain: "Terrain Map",
+                layer_topo: "Topographic Map",
+                tab_1_title: "1. Battles & Info",
+                tab_2_title: "2. War Log",
+                tab_3_title: "3. Information",
+                filter_label: "Filter Era & Search",
+                era_all: "All Eras",
+                era_honfoglalas: "Conquest & Raids (896–955)",
+                era_arpad: "Árpád Era (1000–1301)",
+                era_vegyes: "Anjou & Mixed Kings (1301–1526)",
+                era_torok: "Ottoman Era (1526–1699)",
+                era_kuruc: "Rákóczi's War of Independence",
+                era_1848: "1848–49 War of Independence",
+                era_ww1: "World War I (1914–1918)",
+                era_ww2: "World War II (1939–1945)",
+                search_ph: "Battle or location...",
+                select_battle_label: "Select Historical Battle:",
+                side_magyar: "Hungarian / Allies",
+                side_enemy: "Opponent",
+                strategic_significance: "Strategic Significance",
+                symbol_legend_title: "Military Branch SVG Legend",
+                type_infantry: "Infantry",
+                type_cavalry: "Cavalry",
+                type_artillery: "Artillery",
+                type_navy: "Navy / Riverine",
+                operational_phase_label: "Operational Phase",
+                active_units_label: "Active Units in Phase",
+                phase_initial: "Initial Phase",
+                play_btn: "Play",
+                pause_btn: "Pause",
+                speed_label: "Speed:",
+                info_doc_title: "Detailed User Manual & Documentation",
+                info_doc_subtitle: "Application features, use cases, and Q/A overview",
+                info_section1_title: "1. User Manual",
+                info_section1_body: "Explore key battles of Hungarian military history from the Hungarian Conquest (896) through World War II (1945) using this interactive map.",
+                info_section1_li1: "<b>Battle Selection:</b> Use the era filter or search bar on Tab 1, then pick a battle from the dropdown menu.",
+                info_section1_li2: "<b>Seamless Time Slider:</b> Drag the slider at the bottom or click Play to continuously step through military movements.",
+                info_section1_li3: "<b>Switch to War Log:</b> Click Tab 2 for tactical phase descriptions and participating troop statuses.",
+                info_section1_li4: "<b>Map Layer Switching:</b> Select Light, Dark, Terrain, or Topographic base maps in the top right corner.",
+                info_section2_title: "2. Features & Objectives",
+                info_section2_body: "<b>Main Objective:</b> Interactively showcase Hungarian military heritage using modern vector mapping and animation technologies.",
+                info_feat1_title: "NATO Operational SVG Icons:",
+                info_feat1_desc: "Standard military branch icons (cavalry, infantry, artillery, navy) instead of basic dots.",
+                info_feat2_title: "Tricolor Victory Highlight:",
+                info_feat2_desc: "Hungarian victories feature a sparkling national tricolor border in the final summary phase.",
+                info_feat3_title: "Unobstructed View:",
+                info_feat3_desc: "Sidebar layout ensures full visibility of the battlefield map at all times.",
+                info_section3_title: "3. Use Cases",
+                info_use1: "<b>Education & History Lessons:</b> Interactive visual tool for school students and teachers.",
+                info_use2: "<b>Military Research:</b> Tactical and strategic unit movement analysis.",
+                info_use3: "<b>Museum Display:</b> Touchscreen presentation tool in historical exhibitions.",
+                info_qa_title: "4. Questions & Answers (Q/A)",
+                qa_q1: "Q: Which battles are included?",
+                qa_a1: "A: Major pivotal Hungarian battles including Pressburg (907), Muhi, Isaszeg, Limanowa, and the Siege of Budapest (1945).",
+                qa_q2: "Q: What do the SVG icons represent?",
+                qa_a2: "A: Standard NATO military symbols: slash = cavalry, X = infantry, circle = artillery, anchor = navy, star = HQ.",
+                qa_q3: "Q: How do I switch languages?",
+                qa_a3: "A: Use the language dropdown in the top right header anytime to switch between HU, EN, and DE.",
+                victory_badge: "🇭🇺 Hungarian Victory",
+                defeat_badge: "Hungarian Defeat",
+                draw_badge: "Draw / Inconclusive",
+                outcome_heading: "Final Battle Outcome",
+                casualties_label: "Casualties:"
+            },
+            de: {
+                app_title: "UNGARISCHES OPERATIVES SCHLACHTFELD",
+                app_subtitle: "Interaktive operative Karte und Simulation historischer Schlachten",
+                battles_count_label: "Erfasste Schlachten:",
+                layer_btn: "Kartenebene",
+                map_style_heading: "Kartenstil",
+                layer_light: "Helle Karte",
+                layer_dark: "Dunkle Karte",
+                layer_terrain: "Geländekarte",
+                layer_topo: "Topografische Karte",
+                tab_1_title: "1. Schlachten & Info",
+                tab_2_title: "2. Tagebuch",
+                tab_3_title: "3. Informationen",
+                filter_label: "Epoche filtern & Suchen",
+                era_all: "Alle Epochen",
+                era_honfoglalas: "Landnahme & Streifzüge (896–955)",
+                era_arpad: "Árpáden-Zeit (1000–1301)",
+                era_vegyes: "Anjou & Gemischte Könige (1301–1526)",
+                era_torok: "Türkenkriege (1526–1699)",
+                era_kuruc: "Rákóczi-Unabhängigkeitskrieg",
+                era_1848: "Unabhängigkeitskrieg 1848–49",
+                era_ww1: "Erster Weltkrieg (1914–1918)",
+                era_ww2: "Zweiter Weltkrieg (1939–1945)",
+                search_ph: "Schlacht oder Ort...",
+                select_battle_label: "Historische Schlacht wählen:",
+                side_magyar: "Ungarn / Verbündete",
+                side_enemy: "Gegner",
+                strategic_significance: "Strategische Bedeutung",
+                symbol_legend_title: "NATO-Militärsymbol-Legende",
+                type_infantry: "Infanterie",
+                type_cavalry: "Kavallerie",
+                type_artillery: "Artillerie",
+                type_navy: "Flotte / Flussflottille",
+                operational_phase_label: "Operative Phase",
+                active_units_label: "Aktive Truppen in der Phase",
+                phase_initial: "Anfangsphase",
+                play_btn: "Wiedergabe",
+                pause_btn: "Pause",
+                speed_label: "Geschwindigkeit:",
+                info_doc_title: "Detailliertes Benutzerhandbuch & Dokumentation",
+                info_doc_subtitle: "Funktionen, Anwendungsfälle und FAQ Übersicht",
+                info_section1_title: "1. Benutzerhandbuch",
+                info_section1_body: "Verfolgen Sie die prägendsten Schlachten der ungarischen Militärgeschichte von der Landnahme (896) bis zum Ende des Zweiten Weltkriegs (1945).",
+                info_section1_li1: "<b>Schlachtauswahl:</b> Nutzen Sie den Epochenfilter auf Tab 1 oder das Suchfeld und wählen Sie eine Schlacht aus der Liste.",
+                info_section1_li2: "<b>Stufenloser Zeitregler:</b> Ziehen Sie den Regler unten oder klicken Sie auf Wiedergabe, um die Truppenbewegungen zu steuern.",
+                info_section1_li3: "<b>Kriegstagebuch:</b> Klicken Sie auf Tab 2 für taktische Phasenbeschreibungen und Truppenstatus.",
+                info_section1_li4: "<b>Kartenstil wechseln:</b> Wählen Sie oben rechts zwischen Heller, Dunkler, Gelände- oder Topokarte.",
+                info_section2_title: "2. Funktionen & Ziele",
+                info_section2_body: "<b>Hauptziel:</b> Interaktive Präsentation des ungarischen Militärerbes mit moderner Vektorkarten- und Animationstechnologie.",
+                info_feat1_title: "NATO-Operations-Icons:",
+                info_feat1_desc: "Standardisierte Truppensymbole (Kavallerie, Infanterie, Artillerie, Flotte) anstelle einfacher Punkte.",
+                info_feat2_title: "Trikolor-Sieg-Hervorhebung:",
+                info_feat2_desc: "Bei ungarischen Siegen erscheint in der Endphase ein Rahmen in den Nationalfarben (Rot-Weiß-Grün).",
+                info_feat3_title: "Freie Kartenansicht:",
+                info_feat3_desc: "Das Layout gewährleistet, dass das Schlachtfeld jederzeit ohne Verdeckung sichtbar bleibt.",
+                info_section3_title: "3. Anwendungsfälle (Use Cases)",
+                info_use1: "<b>Bildung & Geschichtsunterricht:</b> Interaktive Veranschaulichung für Schüler und Lehrer.",
+                info_use2: "<b>Militärforschung:</b> Analyse taktischer und strategischer Truppenbewegungen.",
+                info_use3: "<b>Museumsausstellung:</b> Touchscreen-Präsentationswerkzeug in historischen Ausstellungen.",
+                info_qa_title: "4. Fragen & Antworten (Q/A)",
+                qa_q1: "F: Welche Schlachten sind enthalten?",
+                qa_a1: "A: Die wichtigsten Schlachten ungarischer Geschichte von Pressburg (907) über Muhi, Isaszeg und Limanowa bis zur Belagerung von Budapest (1945).",
+                qa_q2: "F: Was bedeuten die SVG-Symbole auf der Karte?",
+                qa_a2: "A: NATO-Standard-Militärsymbole: Schrägstrich = Kavallerie, X = Infanterie, Kreis = Artillerie, Anker = Flotte, Stern = Hauptquartier.",
+                qa_q3: "F: Wie wechsle ich die Sprache?",
+                qa_a3: "A: Nutzen Sie das Sprachauswahlmenü oben rechts, um jederzeit zwischen HU, EN und DE zu wechseln.",
+                victory_badge: "🇭🇺 Ungarischer Sieg",
+                defeat_badge: "Ungarische Niederlage",
+                draw_badge: "Unentschieden",
+                outcome_heading: "Schlachtergebnis",
+                casualties_label: "Verluste:"
+            }
+        };
+
+        let currentLang = 'hu';
+
+        /**
+         * STREAMING_CHUNK:Translating static and dynamic UI elements based on current locale...
+         */
+        function changeLanguage(langKey) {
+            if (!TRANSLATIONS[langKey]) return;
+            currentLang = langKey;
+            document.documentElement.lang = langKey;
+
+            // Translate static elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (TRANSLATIONS[langKey][key]) {
+                    el.innerHTML = TRANSLATIONS[langKey][key];
+                }
+            });
+
+            // Translate placeholder text
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                const key = el.getAttribute('data-i18n-ph');
+                if (TRANSLATIONS[langKey][key]) {
+                    el.placeholder = TRANSLATIONS[langKey][key];
+                }
+            });
+
+            // Update battle dropdown list labels
+            populateBattleList(BATTLES_DATA);
+
+            // Refresh current view text
+            if (currentBattle) {
+                updateStepView();
+            }
+        }
+    </script>
+
+    <script>
+        /**
+         * MAGYAR CSATÁK DOKUMENTÁLT ADATBÁZISA (Honfoglalástól a II. világháborúig - 39 Történelmi Csata)
+         */
+        const BATTLES_DATA = [
+            // ==================== HONFOGLALÁS ÉS KALANDOZÁSOK (896–955) ====================
+            {
+                id: "pozsony_907",
+                name: "Pozsonyi csata",
+                year: 907,
+                dateStr: "907. július 4–7.",
+                era: "HONFOGLALAS",
+                location: "Pozsony (Bratislava)",
+                lat: 48.1486,
+                lng: 17.1077,
+                zoom: 12,
+                magyarCommander: "Árpád fejedelem",
+                magyarTroops: "~35 000 – 40 000 lovas íjász",
+                enemyCommander: "Luitpold bajor herceg & Theotmár érsek",
+                enemyTroops: "~60 000 bajor és keleti frank harcos",
+                result: "VICTORY",
+                context: "A honfoglaló magyarok megsemmisítő győzelmet arattak a Keleti Frank Királyság egyesített bajor seregén, megvédve a Kárpát-medencét.",
+                summary: "Árpád serege a nomád harcászat színlelt megfutamodásával és bekerítésével teljesen megsemmisítette a bajor sereget. Meghalt Luitpold herceg, Theotmár érsek és szinte a teljes bajor elit.",
+                casualties: "Magyar oldal: csekély veszteség | Bajor oldal: szinte a teljes sereg megsemmisült (~50 000 halott).",
+                steps: [
+                    {
+                        title: "1. Fázis: A bajor seregek felvonulása a Duna két partján",
+                        description: "Luitpold bajor herceg három oszlopban nyomul előre Pozsony felé: az egyik a Duna északi, a másik a déli partján, míg középen Sieghard flottája szállítja az utánpótlást.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Árpád főerői (Lovasság)", type: "cavalry", side: "magyar", lat: 48.140, lng: 17.130, label: "Árpád lovassága" },
+                            { id: "e1", name: "Luitpold Duna-északi serege", type: "infantry", side: "enemy", lat: 48.160, lng: 17.050, label: "Luitpold serege" },
+                            { id: "e2", name: "Theotmár Duna-déli serege", type: "infantry", side: "enemy", lat: 48.120, lng: 17.060, label: "Theotmár serege" },
+                            { id: "e3", name: "Sieghard Flottája", type: "navy", side: "enemy", lat: 48.138, lng: 17.070, label: "Bajor Flotta" }
+                        ],
+                        arrows: [
+                            { from: [48.160, 17.050], to: [48.150, 17.100], color: "#ef4444" },
+                            { from: [48.120, 17.060], to: [48.130, 17.100], color: "#ef4444" }
+                        ]
+                    },
+                    {
+                        title: "2. Fázis: Árpád gyors éjszakai átkelése és az északi sereg bekerítése",
+                        description: "A magyar lovasság kihasználta a bajor seregek szétválását. Éjszaka átkelt a Dunán, és váratlan nyílzáporral szétverte Luitpold északi seregét.",
+                        sliderPercent: 50,
+                        units: [
+                            { id: "m1", name: "Árpád csapásmérő lovassága", type: "cavalry", side: "magyar", lat: 48.155, lng: 17.070, label: "Magyar lovasroham" },
+                            { id: "e1", name: "Luitpold bekerített serege", type: "infantry", side: "enemy", lat: 48.158, lng: 17.065, label: "Bajor északi szárny megsemmisül" }
+                        ],
+                        arrows: [{ from: [48.140, 17.130], to: [48.155, 17.070], color: "#0284c7" }]
+                    },
+                    {
+                        title: "3. Fázis: A déli sereg és a flotta felőrlése – Tündöklő magyar győzelem",
+                        description: "Július 5-én a magyar lovasok átkelnek a déli partra, bekerítik Theotmár érsek sereget, majd felgyújtják a hajórajt.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Magyar győztes lovasság", type: "hq", side: "magyar", lat: 48.135, lng: 17.090, label: "Árpád győztes zászlaja" },
+                            { id: "e2", name: "Megsemmisült bajor seregek", type: "infantry", side: "enemy", lat: 48.125, lng: 17.085, label: "Teljes bajor vereség" }
+                        ],
+                        arrows: [{ from: [48.155, 17.070], to: [48.125, 17.085], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "merseburg_933",
+                name: "Merseburgi (riadei) csata",
+                year: 933,
+                dateStr: "933. március 15.",
+                era: "HONFOGLALAS",
+                location: "Merseburg (Riade, Németország)",
+                lat: 51.3539,
+                lng: 11.9997,
+                zoom: 11,
+                magyarCommander: "Zolta / Búcsú kalandozó vezérek",
+                magyarTroops: "~10 000 könnyűlovas",
+                enemyCommander: "I. (Madarász) Henrik német király",
+                enemyTroops: "~12 000 nehézlovas és fegyelmezett páncélos",
+                result: "DEFEAT",
+                context: "A német király megszegte az adófizetést, és a felkészült páncélos nehézlovasságával visszaszorította a kalandozó magyarokat.",
+                summary: "Madarász Henrik kilenc évig képezte nehézlovasságát a magyar harcmodor ellen. A színlelt megfutamodásra felkészülve nem bontotta meg a csatarendet, így fegyelmezett rohammal szétszórta a magyar könnyűlovasságot.",
+                casualties: "Magyar oldal: ~2 000–3 000 halott | Német oldal: csekély veszteség.",
+                steps: [
+                    {
+                        title: "1. Fázis: A színlelt megfutamodás próbálkozása",
+                        description: "A magyar könnyűlovasok cselből hátrálni kezdenek, bízva abban, hogy a németek felbontják soraikat.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Magyar könnyűlovasság", type: "cavalry", side: "magyar", lat: 51.350, lng: 12.010, label: "Színlelt visszavonulás" },
+                            { id: "e1", name: "Henrik nehézlovassága", type: "cavalry", side: "enemy", lat: 51.340, lng: 11.980, label: "Fegyelmezett német fal" }
+                        ],
+                        arrows: [{ from: [51.340, 11.980], to: [51.348, 11.995], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Henrik páncélos rohamának csapása",
+                        description: "I. Henrik megtartja a zárt alakzatot, és szemből elsöprő nehézlovas rohamot indít a meglepett magyarokra.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Visszavonuló magyar seregek", type: "cavalry", side: "magyar", lat: 51.360, lng: 12.030, label: "Magyar visszavonulás" },
+                            { id: "e1", name: "Henrik győztes páncélosai", type: "hq", side: "enemy", lat: 51.352, lng: 12.005, label: "Német győzelem" }
+                        ],
+                        arrows: [{ from: [51.348, 11.995], to: [51.360, 12.030], color: "#ef4444" }]
+                    }
+                ]
+            },
+            {
+                id: "augsburg_955",
+                name: "Augsburgi csata (Lech-mező)",
+                year: 955,
+                dateStr: "955. augusztus 10.",
+                era: "HONFOGLALAS",
+                location: "Augsburg (Lech-mező, Németország)",
+                lat: 48.3665,
+                lng: 10.8944,
+                zoom: 11,
+                magyarCommander: "Bulcsú harka & Lél (Lehel) vezér",
+                magyarTroops: "~10 000 – 15 000 kalandozó lovas",
+                enemyCommander: "I. (Nagy) Ottó német király",
+                enemyTroops: "~8 000 nehézlovag és páncélos gyalogos",
+                result: "DEFEAT",
+                context: "A kalandozó magyar seregek veresége I. Ottótól a Lech-mezőn, amely lezárta a nyugati magyar kalandozásokat.",
+                summary: "Az esős időjárás miatt az íjak idege megereszkedett. Ottó fegyelmezett nehézlovassága átkarolta és felmorzsolta a magyar seregtestet. Bulcsút és Lélt elfogták és Regensburgban felakasztották.",
+                casualties: "Magyar oldal: ~5 000–8 000 halott és fogoly | Német oldal: ~1 500 halott (köztük Vörös Konrád).",
+                steps: [
+                    {
+                        title: "1. Fázis: Augsburg ostroma és Ottó megérkezése",
+                        description: "Bulcsú és Lél Augsburg várát ostromolja, amikor megérkezik I. Ottó király felmentő nehézlovas serege.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Magyar főerők", type: "cavalry", side: "magyar", lat: 48.370, lng: 10.890, label: "Bulcsú serege" },
+                            { id: "e1", name: "Ottó nehézlovasai", type: "cavalry", side: "enemy", lat: 48.310, lng: 10.840, label: "Ottó felmentő serege" }
+                        ],
+                        arrows: [{ from: [48.310, 10.840], to: [48.350, 10.870], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: A magyar hátbatámadás és zsákmányolás",
+                        description: "Egy magyar lovas csapat átkel a Lecheken és hátba támadja a német utánpótlást, de fosztogatni kezdenek.",
+                        sliderPercent: 50,
+                        units: [
+                            { id: "m2", name: "Hátbatámadó magyarok", type: "cavalry", side: "magyar", lat: 48.320, lng: 10.830, label: "Zsákmányoló magyar szárny" },
+                            { id: "e2", name: "Vörös Konrád ellencsapása", type: "cavalry", side: "enemy", lat: 48.325, lng: 10.835, label: "Konrád ellentámadása" }
+                        ],
+                        arrows: [{ from: [48.370, 10.890], to: [48.320, 10.830], color: "#0284c7" }]
+                    },
+                    {
+                        title: "3. Fázis: Ottó mindent döntő rohama",
+                        description: "Vörös Konrád kiveri a fosztogatókat, Ottó pedig frontális nehézlovas rohammal szétszórja a fősereget.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Visszavonuló magyarok", type: "cavalry", side: "magyar", lat: 48.380, lng: 10.920, label: "Vereség és visszavonulás" },
+                            { id: "e1", name: "Ottó győztes serege", type: "hq", side: "enemy", lat: 48.368, lng: 10.892, label: "Német győzelem" }
+                        ],
+                        arrows: [{ from: [48.350, 10.870], to: [48.380, 10.920], color: "#ef4444" }]
+                    }
+                ]
+            },
+            {
+                id: "arkadiopolisz_970",
+                name: "Arkadiopoliszi csata",
+                year: 970,
+                dateStr: "970. március",
+                era: "HONFOGLALAS",
+                location: "Arkadiopolisz (Lüleburgaz, Törökország)",
+                lat: 41.4056,
+                lng: 27.3586,
+                zoom: 11,
+                magyarCommander: "Svtoslav kijevi fejedelem & Magyar/Besenyő vezérek",
+                magyarTroops: "~30 000 (magyar, kijevi ruszk, besenyő)",
+                enemyCommander: "Bardas Szklérosz bizánci hadvezér",
+                enemyTroops: "~10 000 – 12 000 nehézvértes bizánci katona",
+                result: "DEFEAT",
+                context: "A déli kalandozások utolsó nagy ütközete Bizánc ellen. A vereség lezárta a Balkánra irányuló magyar hadjáratokat.",
+                summary: "A bizánci hadvezér, Bardas Szklérosz cselből visszavonulást tettetett, majd a csapdába csalt szövetséges sereget bekerítette és szétszórta.",
+                casualties: "Szövetséges oldal: ~7 000 halott | Bizánci oldal: csekély veszteség.",
+                steps: [
+                    {
+                        title: "1. Fázis: Előrenyomulás Konstantinápoly felé",
+                        description: "A magyar-orosz-besenyő sereg Thrákiában előrenyomul Konstantinápoly felé.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Magyar-Besenyő lovasság", type: "cavalry", side: "magyar", lat: 41.410, lng: 27.340, label: "Svtoslav & Magyarok" },
+                            { id: "e1", name: "Bizánci előőrs", type: "infantry", side: "enemy", lat: 41.400, lng: 27.370, label: "Bardas bizánci alakulata" }
+                        ],
+                        arrows: [{ from: [41.410, 27.340], to: [41.402, 27.360], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Bizánci csapda és bekerítés",
+                        description: "Bardas színlelt megfutamodással a bizánci fősereg álcázott szárnyai közé csalja a magyarokat.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Bekerített szövetségesek", type: "cavalry", side: "magyar", lat: 41.405, lng: 27.365, label: "Bekerített erők" },
+                            { id: "e1", name: "Bardas csapdát bezáró serege", type: "hq", side: "enemy", lat: 41.400, lng: 27.360, label: "Bizánci győzelem" }
+                        ],
+                        arrows: [{ from: [41.400, 27.370], to: [41.405, 27.365], color: "#ef4444" }]
+                    }
+                ]
+            },
+
+            // ==================== ÁRPÁD-KOR (1000–1301) ====================
+            {
+                id: "veszprem_997",
+                name: "Veszprémi csata (Sólyi csata)",
+                year: 997,
+                dateStr: "997 ősze",
+                era: "ARPAD",
+                location: "Sóly / Veszprém",
+                lat: 47.0933,
+                lng: 17.9115,
+                zoom: 12,
+                magyarCommander: "Szent István fejedelem & Vencellin bajor lovag",
+                magyarTroops: "~8 000 (magyar kíséret és német nehézlovagok)",
+                enemyCommander: "Koppány somogyi herceg",
+                enemyTroops: "~10 000 törzsi harcos",
+                result: "VICTORY",
+                context: "A keresztény magyar állam megalapításának döntő ütközete. István legyőzte a senioratus jogán trónra törő Koppányt.",
+                summary: "Koppány Veszprém ostromára vonult. István a Bajorországból érkezett Vencellin nehézlovagjaival Sólynál szétverte Koppány seregét. Koppány maga is elesett a párviadalban.",
+                casualties: "István oldala: csekély | Koppány serege: több ezer halott és feloszlott törzsi erő.",
+                steps: [
+                    {
+                        title: "1. Fázis: Koppány serege Veszprém ellen vonul",
+                        description: "Koppány somogyi serege bekeríti István anyjának, Saroltnak a székhelyét Veszprémben.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "István és Vencellin nehézlovagjai", type: "cavalry", side: "magyar", lat: 47.080, lng: 17.950, label: "István serege" },
+                            { id: "e1", name: "Koppány törzsi serege", type: "cavalry", side: "enemy", lat: 47.095, lng: 17.900, label: "Koppány Veszprémnél" }
+                        ],
+                        arrows: [{ from: [47.080, 17.950], to: [47.090, 17.915], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Páncélos roham Sólynál – Koppány eleste",
+                        description: "Vencellin lovag nehéz páncélos rohama áttöri Koppány soraitt. Vencellin személyes párharcban végez Koppánnyal.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Szent István győztes serege", type: "hq", side: "magyar", lat: 47.093, lng: 17.911, label: "István király győzelme" },
+                            { id: "e1", name: "Szétszóródott Koppány-sereg", type: "infantry", side: "enemy", lat: 47.100, lng: 17.890, label: "Koppány elesik" }
+                        ],
+                        arrows: [{ from: [47.090, 17.915], to: [47.093, 17.911], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "mogyorod_1074",
+                name: "Mogyoródi csata",
+                year: 1074,
+                dateStr: "1074. március 14.",
+                era: "ARPAD",
+                location: "Mogyoród (Pest megye)",
+                lat: 47.6012,
+                lng: 19.2435,
+                zoom: 12,
+                magyarCommander: "Géza herceg & I. (Szent) László herceg",
+                magyarTroops: "~12 000 páncélos és lovas",
+                enemyCommander: "I. Salamon király",
+                enemyTroops: "~10 000 német lovag és királyi harcos",
+                result: "VICTORY",
+                context: "A trónviszályok meghatározó ütközete. Géza és László hercegek megdöntötték Salamon uralmát, Géza lett a magyar király.",
+                summary: "László herceg cselből köpenyét kicserélte Gézáéval, így Salamon főerői Géza szárnyát támadták meg. László nehézlovassága váratlanul oldalba kapta Salamon seregét, teljes győzelmet aratva.",
+                casualties: "Hercegek oldala: mérsékelt | Salamon oldala: súlyos veszteség, Salamon Mosonba menekült.",
+                steps: [
+                    {
+                        title: "1. Fázis: A seregek felállása Mogyoród dombjain",
+                        description: "Salamon király elfoglalja a magaslati pozíciót. László herceg cselből zászlót cserél Gézával.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Géza herceg szárnya", type: "cavalry", side: "magyar", lat: 47.595, lng: 19.230, label: "Géza szárnya" },
+                            { id: "m2", name: "Szent László rejtett nehézlovassága", type: "cavalry", side: "magyar", lat: 47.590, lng: 19.250, label: "László kerülő szárnya" },
+                            { id: "e1", name: "Salamon király főserege", type: "cavalry", side: "enemy", lat: 47.605, lng: 19.240, label: "Salamon főserege" }
+                        ],
+                        arrows: [{ from: [47.605, 19.240], to: [47.595, 19.230], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: László megsemmisítő oldalroham",
+                        description: "Amíg Salamon Gézát szorongatja, László nehézlovasai oldalról szétzúzzák Salamon seregét.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m2", name: "Szent László győztes rohamcsapata", type: "hq", side: "magyar", lat: 47.602, lng: 19.242, label: "Győztes László és Géza" },
+                            { id: "e1", name: "Menekülő Salamon király", type: "cavalry", side: "enemy", lat: 47.620, lng: 19.220, label: "Salamon menekül" }
+                        ],
+                        arrows: [{ from: [47.590, 19.250], to: [47.602, 19.242], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "muhi_1241",
+                name: "Muhi csata",
+                year: 1241,
+                dateStr: "1241. április 11–12.",
+                era: "ARPAD",
+                location: "Muhi (Sajó folyó hídja)",
+                lat: 47.9782,
+                lng: 20.9328,
+                zoom: 12,
+                magyarCommander: "IV. Béla király & Kálmán herceg",
+                magyarTroops: "~25 000 – 30 000 páncélos és gyalogos",
+                enemyCommander: "Batu kán & Szubotáj hadvezér",
+                enemyTroops: "~50 000 – 60 000 tatár (mongol) lovas",
+                result: "DEFEAT",
+                context: "A tatárjárás döntő csatája a Sajó mentén. A mongol hadigépezet felmorzsolta a szekértáborba zárkózott magyar seregtestet.",
+                summary: "Kálmán herceg sikeresen megvédte a Sajó hídját, de Szubotáj tatár tábornok délebbre hidat épített, átkelt a Sajón és bekerítette a magyar tábort. IV. Béla elmenekült, az ország elpusztult.",
+                casualties: "Magyar oldal: ~15 000–20 000 halott (a magyar elit elpusztult) | Tatár oldal: ~5 000 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: Éjszakai harc a Sajó hídjánál",
+                        description: "Kálmán herceg és Ugrin érsek vitézül visszaveri a híd átkelő mongol előőrsöt a Sajónál.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Kálmán herceg hídvédői", type: "cavalry", side: "magyar", lat: 47.980, lng: 20.938, label: "Hídvédő magyarok" },
+                            { id: "e1", name: "Batu kán előőrse", type: "cavalry", side: "enemy", lat: 47.981, lng: 20.945, label: "Batu előőrse" }
+                        ],
+                        arrows: [{ from: [47.981, 20.945], to: [47.980, 20.938], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Szubotáj átkarolása és a tábor ostroma",
+                        description: "Szubotáj tutajhidat épít délebbre, átkél a Sajón, és hátulról keríti be a szekértábort.",
+                        sliderPercent: 50,
+                        units: [
+                            { id: "m1", name: "Szekértábor", type: "infantry", side: "magyar", lat: 47.975, lng: 20.925, label: "Magyar szekértábor" },
+                            { id: "e2", name: "Szubotáj átkaroló serege", type: "cavalry", side: "enemy", lat: 47.960, lng: 20.930, label: "Szubotáj átkarolása" }
+                        ],
+                        arrows: [{ from: [47.960, 20.930], to: [47.970, 20.920], color: "#ef4444" }]
+                    },
+                    {
+                        title: "3. Fázis: A tábor felégetése és kimenekülés",
+                        description: "A mongolok tüzes nyilakkal felgyújtják a tábort. IV. Béla király elmenekül Dalmáciába.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Menekülő Béla király", type: "hq", side: "magyar", lat: 47.990, lng: 20.890, label: "IV. Béla menekülése" },
+                            { id: "e1", name: "Batu kán győztes tatárjai", type: "hq", side: "enemy", lat: 47.975, lng: 20.925, label: "Mongol győzelem" }
+                        ],
+                        arrows: [{ from: [47.975, 20.925], to: [47.990, 20.890], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "kroissenbrunn_1260",
+                name: "Kroissenbrunni csata",
+                year: 1260,
+                dateStr: "1260. július 12.",
+                era: "ARPAD",
+                location: "Groißenbrunn (Kroissenbrunn, Ausztria)",
+                lat: 48.2120,
+                lng: 16.8920,
+                zoom: 11,
+                magyarCommander: "IV. Béla király & István herceg",
+                magyarTroops: "~30 000 (magyar, kun és lengyel csapatok)",
+                enemyCommander: "II. (Otakar) Ottokár cseh király",
+                enemyTroops: "~35 000 cseh, osztrák és stájér nehézlovag",
+                result: "DEFEAT",
+                context: "Harc Stájerország és Ausztria birtoklásáért az Árpád-ház és a Přemysl-ház között.",
+                summary: "Fegyverszünet volt érvényben a Morva folyón való átkelésre. Ottokár megszegte az egyezséget, meglepetésszerűen megtámadta a készületlen magyar seregtestet, és visszaverte őket.",
+                casualties: "Magyar oldal: ~10 000 halott és vízbe fulladt | Cseh oldal: csekély veszteség.",
+                steps: [
+                    {
+                        title: "1. Fázis: Átkelés a Morva folyón a fegyverszünet alatt",
+                        description: "István herceg kun és magyar lovassága átkel a Morva folyón, bízva a fegyverszüneti megállapodásban.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "István herceg lovassága", type: "cavalry", side: "magyar", lat: 48.215, lng: 16.900, label: "Átkelő magyarok" },
+                            { id: "e1", name: "Ottokár cseh nehézlovagjai", type: "cavalry", side: "enemy", lat: 48.210, lng: 16.870, label: "Ottokár páncélosai" }
+                        ],
+                        arrows: [{ from: [48.210, 16.870], to: [48.213, 16.895], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Cseh roham és visszaszorítás a folyóba",
+                        description: "Ottokár nehézlovasai lerohanják az átkelt magyarokat, visszaszorítva őket a Morva folyó mocsaraiba.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Visszaszorított magyar sereg", type: "cavalry", side: "magyar", lat: 48.220, lng: 16.910, label: "Visszavonulás" },
+                            { id: "e1", name: "Ottokár győztes serege", type: "hq", side: "enemy", lat: 48.212, lng: 16.890, label: "Cseh győzelem" }
+                        ],
+                        arrows: [{ from: [48.213, 16.895], to: [48.220, 16.910], color: "#ef4444" }]
+                    }
+                ]
+            },
+            {
+                id: "durnkrut_1278",
+                name: "Morvamezei csata (Dürnkruti csata)",
+                year: 1278,
+                dateStr: "1278. augusztus 26.",
+                era: "ARPAD",
+                location: "Dürnkrut (Morvamező, Ausztria)",
+                lat: 48.4731,
+                lng: 16.8795,
+                zoom: 11,
+                magyarCommander: "IV. (Kun) László király & Habsburg Rudolf",
+                magyarTroops: "~15 000 magyar-kun könnyűlovas + ~15 000 osztrák",
+                enemyCommander: "II. (Otakar) Ottokár cseh király",
+                enemyTroops: "~30 000 cseh és német páncélos nehézlovag",
+                result: "VICTORY",
+                context: "Közép-Európa sorsát eldöntő lovagcsata. A magyar-kun segítségnek köszönhetően Habsburg Rudolf megalapozta a Habsburg-dinasztia hatalmát.",
+                summary: "László kun lovasai szétzilálták Ottokár szárnyait. Rudolf tartalék nehézlovassága hátba támadta a cseh nehézlovagokat. Ottokár maga is elesett a csatatéren.",
+                casualties: "Cseh oldal: ~12 000 halott (köztük Ottokár király) | Szövetséges oldal: csekély veszteség.",
+                steps: [
+                    {
+                        title: "1. Fázis: A kun lovas íjászok szétzilálják a cseh szárnyakat",
+                        description: "László kun lovasai folyamatos nyílzáporral megzavarják Ottokár páncélos lovagjainak sorait.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "IV. László kun-magyar lovassága", type: "cavalry", side: "magyar", lat: 48.475, lng: 16.890, label: "Kun lovas íjászok" },
+                            { id: "m2", name: "Habsburg Rudolf nehézlovassága", type: "cavalry", side: "magyar", lat: 48.465, lng: 16.870, label: "Rudolf serege" },
+                            { id: "e1", name: "Ottokár cseh páncélosai", type: "cavalry", side: "enemy", lat: 48.470, lng: 16.860, label: "Ottokár cseh serege" }
+                        ],
+                        arrows: [{ from: [48.475, 16.890], to: [48.472, 16.865], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Hátbatámadás és Ottokár király halála",
+                        description: "Rudolf tartalékos nehézlovas csapata oldalról-hátulról lecsap Ottokár seregére. Ottokár elesik.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes László és Rudolf", type: "hq", side: "magyar", lat: 48.473, lng: 16.879, label: "Magyar-Habsburg győzelem" },
+                            { id: "e1", name: "Megsemmisült cseh sereg", type: "infantry", side: "enemy", lat: 48.470, lng: 16.850, label: "Ottokár elesik" }
+                        ],
+                        arrows: [{ from: [48.465, 16.870], to: [48.473, 16.879], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "hodtavo_1282",
+                name: "Hód-tavi csata",
+                year: 1282,
+                dateStr: "1282. szeptember–október",
+                era: "ARPAD",
+                location: "Hód-tó (Hódmezővásárhely)",
+                lat: 46.4167,
+                lng: 20.3333,
+                zoom: 11,
+                magyarCommander: "IV. (Kun) László király",
+                magyarTroops: "~8 000 királyi nehézlovas és nemesi banda",
+                enemyCommander: "Oldamur kun vezér",
+                enemyTroops: "~10 000 lázadó kun harcos",
+                result: "VICTORY",
+                context: "IV. László leszámolása a törvények ellen fellázadt, pusztító kun törzsekkel.",
+                summary: "A hód-tavi mocsaras vidéken szakadó esőben vívott csatában a királyi nehézlovasság szétverte Oldamur kunjait, akik ezután elhagyták az országot vagy behódoltak.",
+                casualties: "Kun oldal: súlyos veszteség (Oldamur elmenekült) | Királyi oldal: mérsékelt.",
+                steps: [
+                    {
+                        title: "1. Fázis: Csatarend a szakadó esőben",
+                        description: "László király elszántan szembeszáll a felkelt kun törzsekkel Hód-tónál.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "IV. László királyi serege", type: "cavalry", side: "magyar", lat: 46.410, lng: 20.320, label: "Királyi nehézlovasság" },
+                            { id: "e1", name: "Oldamur kun serege", type: "cavalry", side: "enemy", lat: 46.425, lng: 20.345, label: "Lázadó kunok" }
+                        ],
+                        arrows: [{ from: [46.410, 20.320], to: [46.420, 20.335], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Páncélos roham és a kunok szétverése",
+                        description: "A kun íjak az esőben használhatatlanná válnak, a királyi nehézlovagok áttörik a kun vonalakat.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes László király", type: "hq", side: "magyar", lat: 46.417, lng: 20.333, label: "Magyar győzelem" },
+                            { id: "e1", name: "Szétvert kun hadak", type: "cavalry", side: "enemy", lat: 46.430, lng: 20.360, label: "Kunok menekülése" }
+                        ],
+                        arrows: [{ from: [46.420, 20.335], to: [46.417, 20.333], color: "#0284c7" }]
+                    }
+                ]
+            },
+
+            // ==================== VEGYESHÁZI KIRÁLYOK (1301–1526) ====================
+            {
+                id: "rozgony_1312",
+                name: "Rozgonyi csata",
+                year: 1312,
+                dateStr: "1312. június 15.",
+                era: "VEGYES",
+                location: "Rozgony (Kassa mellett, Szlovákia)",
+                lat: 48.7561,
+                lng: 21.3541,
+                zoom: 12,
+                magyarCommander: "I. Károly (Károly Róbert) király & Kassa polgárai",
+                magyarTroops: "~10 000 (királyi bandérium, kassai gyalogság, szepesi szászok)",
+                enemyCommander: "Aba Amadé fiai & Csák Máté segédcsapatai",
+                enemyTroops: "~12 000 tartományúri nehézlovas és fegyveres",
+                result: "VICTORY",
+                context: "Károly Róbert döntő győzelme a kiskirályok (kiskirályi hatalom) ellen az ország egyesítéséért.",
+                summary: "Véres nehézlovas ütközet. A királyi zászlóvivő elesett, de a Kassáról oldalról becsapó polgári és szepesi gyalogság eldöntötte a csatát. Az Aba-nemzetség hatalma megtört.",
+                casualties: "Mindkét oldalon súlyos veszteségek (a kor egyik legvéresebb csatája).",
+                steps: [
+                    {
+                        title: "1. Fázis: Az Aba-fiak nehézlovas rohama",
+                        description: "Az Aba-fiak és Csák Máté páncélosai megrohanják Károly Róbert középvonalát. A királyi zászlóvivő elesik.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Károly Róbert királyi serege", type: "cavalry", side: "magyar", lat: 48.750, lng: 21.350, label: "Királyi centrum" },
+                            { id: "e1", name: "Aba-fiak nehézlovassága", type: "cavalry", side: "enemy", lat: 48.765, lng: 21.355, label: "Aba Amadé fiai" }
+                        ],
+                        arrows: [{ from: [48.765, 21.355], to: [48.752, 21.352], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Kassai polgárok és szepesi szászok oldalbeavatkozása",
+                        description: "Kassa város gyalogsága és a szepesi szászok oldalról lecsapnak az Aba-fiak seregére, szétzúzva a tartományúri erőket.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m2", name: "Kassai polgárőrség & Károly Róbert", type: "hq", side: "magyar", lat: 48.756, lng: 21.354, label: "Királyi győzelem" },
+                            { id: "e1", name: "Megsemmisült Aba-sereg", type: "infantry", side: "enemy", lat: 48.770, lng: 21.360, label: "Kiskirályok veresége" }
+                        ],
+                        arrows: [{ from: [48.750, 21.350], to: [48.756, 21.354], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "posada_1330",
+                name: "Posadai csata",
+                year: 1330,
+                dateStr: "1330. november 9–12.",
+                era: "VEGYES",
+                location: "Posada (Havasalföldi szoros)",
+                lat: 45.2833,
+                lng: 24.3833,
+                zoom: 11,
+                magyarCommander: "I. Károly (Károly Róbert) király",
+                magyarTroops: "~15 000 páncélos és lovag",
+                enemyCommander: "I. Basarab havasalföldi fejedelem",
+                enemyTroops: "~10 000 oláh sziklamászó és íjász",
+                result: "DEFEAT",
+                context: "Károly Róbert büntetőhadjárata Havasalföldön, amely szorosba csalással tragédiába torkollott.",
+                summary: "Basarab a szűk hegyi szorosban tőrbe csalta a visszavonuló magyar sereget. A sziklákról zúduló kövek és nyílzápor elpusztította a királyi nehézlovasságot. Károly Róbert páncélcserével menekült meg.",
+                casualties: "Magyar oldal: ~8 000–10 000 halott (a magyar lovagság színe-java) | Oláh oldal: minimális.",
+                steps: [
+                    {
+                        title: "1. Fázis: A magyar nehézlovasság belép a szorosba",
+                        description: "Károly Róbert csapatai az élelemhiány miatt visszavonulva belépnek a szűk hegyi Posada-szorosba.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Károly Róbert lovagjai", type: "cavalry", side: "magyar", lat: 45.280, lng: 24.380, label: "Királyi lovagság szorosban" },
+                            { id: "e1", name: "Basarab hegyi harcosai", type: "infantry", side: "enemy", lat: 45.290, lng: 24.385, label: "Sziklákon rejtőző oláhok" }
+                        ],
+                        arrows: [{ from: [45.280, 24.380], to: [45.283, 24.383], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Szikla- és nyílzápor – Károly Róbert menekülése",
+                        description: "A sziklákról zúduló kövek teljesen eltorlaszolják az utat. Dezső fia Hontpázmány István páncélt cserél a királlyal, feláldozva magát.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Menekülő Károly Róbert", type: "hq", side: "magyar", lat: 45.260, lng: 24.360, label: "Király elmenekül" },
+                            { id: "e1", name: "Győztes Basarab", type: "hq", side: "enemy", lat: 45.285, lng: 24.384, label: "Posadai mészárlás" }
+                        ],
+                        arrows: [{ from: [45.283, 24.383], to: [45.260, 24.360], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "varna_1444",
+                name: "Várnai csata",
+                year: 1444,
+                dateStr: "1444. november 10.",
+                era: "VEGYES",
+                location: "Várna (Bulgária)",
+                lat: 43.2141,
+                lng: 27.9147,
+                zoom: 11,
+                magyarCommander: "I. Ulászló király & Hunyadi János",
+                magyarTroops: "~20 000 (magyar, lengyel, havasalföldi)",
+                enemyCommander: "II. Murad oszmán szultán",
+                enemyTroops: "~60 000 oszmán harcos",
+                result: "DEFEAT",
+                context: "Keresztes hadjárat a török Európából való kiűzésére. I. Ulászló meggondolatlan rohama elbukta a győzelmet.",
+                summary: "Hunyadi már szétverte a török szárnyakat, de a fiatal Ulászló király tanácsadói hatására meggondolatlanul rohamot indított a janicsárok sáncai ellen. Ulászlót lefejezték, a sereg megfutamodott.",
+                casualties: "Magyar oldal: ~10 000 halott (köztük I. Ulászló király és Cesarini bíboros) | Török oldal: ~15 000 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: Hunyadi sikeres szárnyrohamai",
+                        description: "Hunyadi János sikeresen szétveri az oszmán anatóliai és ruméliai szárnyakat.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Hunyadi szárnyrohamai", type: "cavalry", side: "magyar", lat: 43.220, lng: 27.900, label: "Hunyadi lovassága" },
+                            { id: "m2", name: "Ulászló király testőrsége", type: "cavalry", side: "magyar", lat: 43.210, lng: 27.890, label: "Ulászló király" },
+                            { id: "e1", name: "II. Murad szultán janicsárjai", type: "infantry", side: "enemy", lat: 43.215, lng: 27.920, label: "Janicsár sáncok" }
+                        ],
+                        arrows: [{ from: [43.220, 27.900], to: [43.218, 27.915], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Ulászló meggondolatlan rohama és eleste",
+                        description: "I. Ulászló meggondolatlanul beront a janicsárok sáncai közé. Lóval együtt felbukik, a törökök lefejezik.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Megfutamodó keresztesek", type: "cavalry", side: "magyar", lat: 43.200, lng: 27.870, label: "Vereség" },
+                            { id: "e1", name: "Győztes II. Murad", type: "hq", side: "enemy", lat: 43.215, lng: 27.920, label: "Török győzelem" }
+                        ],
+                        arrows: [{ from: [43.210, 27.890], to: [43.215, 27.920], color: "#ef4444" }]
+                    }
+                ]
+            },
+            {
+                id: "nandorfehervar_1456",
+                name: "Nándorfehérvári diadal",
+                year: 1456,
+                dateStr: "1456. július 4–22.",
+                era: "VEGYES",
+                location: "Nándorfehérvár (Belgrád, Szerbia)",
+                lat: 44.8236,
+                lng: 20.4503,
+                zoom: 12,
+                magyarCommander: "Hunyadi János, Szilágyi Mihály & Kapisztrán János",
+                magyarTroops: "~15 000 várvédő + ~30 000 keresztes népfelkelő",
+                enemyCommander: "II. (Hódító) Mohamed oszmán szultán",
+                enemyTroops: "~70 000 – 100 000 oszmán katona & 200 ágyú",
+                result: "VICTORY",
+                context: "Európa megvédése: Hunyadi megállította a Bizáncot elfoglaló II. Mohamed szultán európai terjeszkedését.",
+                summary: "Hunyadi áttörte a török dunai hajózárat, majd Kapisztrán kereszteseinek váratlan Száva-átkelése és Hunyadi kitörése felmorzsolta a szultáni tábort. A déli harangszó e diadal emléke.",
+                casualties: "Magyar oldal: ~4 000–6 000 halott | Török oldal: ~25 000–30 000 halott, a teljes ágyúpark elveszett.",
+                steps: [
+                    {
+                        title: "1. Fázis: A dunai hajózár áttörése",
+                        description: "Hunyadi július 14-én a magyar flottával áttöri a Dunát lezáró török hajóláncot.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Hunyadi flottája", type: "navy", side: "magyar", lat: 44.830, lng: 20.440, label: "Magyar flotta" },
+                            { id: "e1", name: "Török dunai flotta", type: "navy", side: "enemy", lat: 44.828, lng: 20.445, label: "Török hajózár" }
+                        ],
+                        arrows: [{ from: [44.830, 20.440], to: [44.825, 20.448], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Dugovics Titusz tette a várfalakon",
+                        description: "Július 21-én a törökök elérik a várfalat. Dugovics Titusz a mélybe rántja a lófarkas zászlót kitűző törököt.",
+                        sliderPercent: 50,
+                        units: [
+                            { id: "m2", name: "Szilágyi védői", type: "infantry", side: "magyar", lat: 44.823, lng: 20.451, label: "Várfalak védelme" },
+                            { id: "e2", name: "Janicsár rohamcsapat", type: "infantry", side: "enemy", lat: 44.821, lng: 20.453, label: "Janicsár roham" }
+                        ],
+                        arrows: [{ from: [44.821, 20.453], to: [44.823, 20.451], color: "#ef4444" }]
+                    },
+                    {
+                        title: "3. Fázis: Kapisztrán rohama és Hunyadi kitörése",
+                        description: "Kapisztrán keresztesei elfoglalják a török ágyúkat, Hunyadi kitör a várból. A szultán megsebesül és elmenekül.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m3", name: "Kapisztrán keresztesei", type: "infantry", side: "magyar", lat: 44.815, lng: 20.440, label: "Kapisztrán rohama" },
+                            { id: "m1", name: "Hunyadi kitörő lovassága", type: "hq", side: "magyar", lat: 44.820, lng: 20.455, label: "Hunyadi kitörése" },
+                            { id: "e2", name: "Menekülő Mohamed szultán", type: "hq", side: "enemy", lat: 44.810, lng: 20.465, label: "Török vereség" }
+                        ],
+                        arrows: [{ from: [44.815, 20.440], to: [44.812, 20.460], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "kenyermezo_1479",
+                name: "Kenyérmezei csata",
+                year: 1479,
+                dateStr: "1479. október 13.",
+                era: "VEGYES",
+                location: "Kenyérmező (Zsibót mellett, Erdély)",
+                lat: 45.8928,
+                lng: 23.3514,
+                zoom: 12,
+                magyarCommander: "Kinizsi Pál & Báthori István erdélyi vajda",
+                magyarTroops: "~12 000 – 15 000 (magyar, székely, szász és nehézlovag)",
+                enemyCommander: "Ali kódzsa pasa & Basarab laipotă",
+                enemyTroops: "~30 000 – 35 000 oszmán és havasalföldi harcos",
+                result: "VICTORY",
+                context: "Hunyadi Mátyás korának legnagyobb erdélyi győzelme az áttörő török betörő sereg felett.",
+                summary: "Báthori vajda már a csata elvesztésétől tartott, amikor Kinizsi Pál temesi főispán páncélos lovasaival megérkezett, két kardot forgatva felmorzsolta az oszmán centrumot. A legenda szerint Kinizsi a győzelmi táncot egy török holttesttel a fogai között járta.",
+                casualties: "Magyar oldal: ~3 000 halott | Török oldal: ~15 000 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: Báthori válságos helyzete a centrumban",
+                        description: "Ali pasa felülkerekedik Báthori István vajda seregén. Báthori megsebesül és lefordul a lováról.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Báthori vajda szorongatott serege", type: "infantry", side: "magyar", lat: 45.890, lng: 23.340, label: "Báthori centruma" },
+                            { id: "e1", name: "Ali pasa főerői", type: "infantry", side: "enemy", lat: 45.895, lng: 23.360, label: "Ali pasa" }
+                        ],
+                        arrows: [{ from: [45.895, 23.360], to: [45.891, 23.345], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Kinizsi Pál elsöprő felmentő rohama",
+                        description: "Kinizsi Pál temesi főispán nehézlovasságával megérkezik, oldalról tör át az oszmán sorokon és szétzúzza őket.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m2", name: "Kinizsi Pál győztes nehézlovassága", type: "hq", side: "magyar", lat: 45.893, lng: 23.351, label: "Kinizsi felmentő rohama" },
+                            { id: "e1", name: "Menekülő törökök", type: "cavalry", side: "enemy", lat: 45.900, lng: 23.380, label: "Törökök megsemmisülése" }
+                        ],
+                        arrows: [{ from: [45.880, 23.330], to: [45.893, 23.351], color: "#0284c7" }]
+                    }
+                ]
+            },
+
+            // ==================== TÖRÖK HÓDOLTSÁG KORA (1526–1699) ====================
+            {
+                id: "mohacs_1526",
+                name: "Mohácsi csata",
+                year: 1526,
+                dateStr: "1526. augusztus 29.",
+                era: "TOROK",
+                location: "Mohács (Sátorhely)",
+                lat: 45.9619,
+                lng: 18.6432,
+                zoom: 12,
+                magyarCommander: "II. Lajos király & Tomori Pál kalocsai érsek",
+                magyarTroops: "~25 000 magyar és szövetséges",
+                enemyCommander: "I. (Nagy) Szulejmán szultán & Ibrahim pasa",
+                enemyTroops: "~60 000 oszmán katona & 300 ágyú",
+                result: "DEFEAT",
+                context: "A középkori Magyar Királyság bukásának és a török hódoltság kezdetének tragikus mérföldköve.",
+                summary: "Tomori Pál nehézlovas rohama áttörte a török előőrsöt, de beleszaladt a szultáni ágyúk tűzvonalába és a janicsárok pusztító röptüzébe. II. Lajos király a Csele-patakba fulladt.",
+                casualties: "Magyar oldal: ~15 000–20 000 halott (köztük II. Lajos király és 7 főpap) | Török oldal: ~3 000 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: Tomori Pál elszánt nehézlovas rohama",
+                        description: "Tomori Pál és Batthyány Ferenc nehézlovasai lerohanják a Ruméliai hadtestet.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Tomori nehézlovassága", type: "cavalry", side: "magyar", lat: 45.960, lng: 18.630, label: "Magyar nehézlovas roham" },
+                            { id: "e1", name: "Ruméliai török hadtest", type: "infantry", side: "enemy", lat: 45.965, lng: 18.650, label: "Ruméliai szárny" }
+                        ],
+                        arrows: [{ from: [45.960, 18.630], to: [45.964, 18.645], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Tüzérségi zárótűz és II. Lajos király halála",
+                        description: "A roham beleszalad a láncokra fűzött oszmán ágyúk és janicsárok tűzébe. A sereg elpusztul, II. Lajos a Csele-patakba fullad.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Elhaló magyar roham", type: "cavalry", side: "magyar", lat: 45.970, lng: 18.620, label: "II. Lajos Csele-pataknál" },
+                            { id: "e1", name: "I. Szulejmán győztes serege", type: "hq", side: "enemy", lat: 45.962, lng: 18.643, label: "Török győzelem" }
+                        ],
+                        arrows: [{ from: [45.964, 18.645], to: [45.970, 18.620], color: "#ef4444" }]
+                    }
+                ]
+            },
+            {
+                id: "koszeg_1532",
+                name: "Kőszeg ostroma",
+                year: 1532,
+                dateStr: "1532. augusztus 5–29.",
+                era: "TOROK",
+                location: "Kőszeg",
+                lat: 47.3892,
+                lng: 16.5408,
+                zoom: 13,
+                magyarCommander: "Jurisics Miklós várkapitány",
+                magyarTroops: "~700 (46 katona + várba menekült jobbágyok)",
+                enemyCommander: "I. (Nagy) Szulejmán szultán & Ibrahim nagyvezír",
+                enemyTroops: "~80 000 oszmán katona",
+                result: "VICTORY",
+                context: "A Bécs ellen vonuló Szulejmán szultán feltartóztatása egy apró határvárban.",
+                summary: "Jurisics Miklós maroknyi védőjével 19 kemény rohamot vert vissza 25 nap alatt. A szultán az időveszteség miatt kénytelen volt elállni Bécs ostromától, és jelképes megadásért cserébe török zászót tűztek ki.",
+                casualties: "Kőszegi védők: ~400 halott | Török oldal: ~5 000 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: Állandó ágyúzás és a falak réselése",
+                        description: "Ibrahim nagyvezír folyamatosan ágyúzza a kőszegi várfalakat és aknákat robbant.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Jurisics Miklós várvédői", type: "infantry", side: "magyar", lat: 47.389, lng: 16.540, label: "Kőszegi vár" },
+                            { id: "e1", name: "Oszmán ostromló ágyúk", type: "artillery", side: "enemy", lat: 47.385, lng: 16.545, label: "Török ágyúállások" }
+                        ],
+                        arrows: [{ from: [47.385, 16.545], to: [47.389, 16.540], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: A 19. roham visszaverése – Hősi kőszegi siker",
+                        description: "A védők utolsó erejükkel is visszaverik az oszmán rohamot. A szultán visszavonul.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes Jurisics Miklós", type: "hq", side: "magyar", lat: 47.3892, lng: 16.5408, label: "Jurisics győzelme" },
+                            { id: "e1", name: "Visszavonuló Szulejmán szultán", type: "hq", side: "enemy", lat: 47.380, lng: 16.550, label: "Török visszavonulás" }
+                        ],
+                        arrows: [{ from: [47.385, 16.545], to: [47.380, 16.550], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "eger_1552",
+                name: "Egri vár ostroma",
+                year: 1552,
+                dateStr: "1552. szeptember 9. – október 17.",
+                era: "TOROK",
+                location: "Eger",
+                lat: 47.9025,
+                lng: 20.3783,
+                zoom: 13,
+                magyarCommander: "Dobó István, Mekcsey István & Bornemissza Gergely",
+                magyarTroops: "~2 100 (védők, egri nők)",
+                enemyCommander: "Ahmed pasa nagyvezír & Ali pasa szerasker",
+                enemyTroops: "~40 000 – 50 000 oszmán harcos",
+                result: "VICTORY",
+                context: "A török hódoltság korának legszebb magyar győzelme, amely megállította az északi terjeszkedést.",
+                summary: "Dobó István 'Esküje', Bornemissza Gergely robbanó golyóbombái és az egri nők hősiessége megtörte a kétszeres túlerőben lévő török sereget. Ali és Ahmed pasa kénytelen volt elvonulni a vár alól.",
+                casualties: "Magyar oldal: ~500 halott | Török oldal: ~8 000–10 000 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: Bornemissza robbanóbombái és a falak védelme",
+                        description: "Bornemissza Gergely szurokba forgatott tüzes kerekekkel és robbanó bombákkal pusztítja a réseket rohamozó törököket.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Dobó István és az egri nők", type: "infantry", side: "magyar", lat: 47.902, lng: 20.378, label: "Egri vár védői" },
+                            { id: "e1", name: "Ali és Ahmed pasa rohamozói", type: "infantry", side: "enemy", lat: 47.898, lng: 20.382, label: "Janicsár rohamok" }
+                        ],
+                        arrows: [{ from: [47.898, 20.382], to: [47.902, 20.378], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Október 17. – A törökök fejvesztett elvonulása",
+                        description: "A török sereg megtört harci szelleme miatt a pasák elrendelik az ostrom feladását. Eger megmenekül.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes egri várvédők", type: "hq", side: "magyar", lat: 47.9025, lng: 20.3783, label: "Egri diadal" },
+                            { id: "e1", name: "Elvonuló török sereg", type: "hq", side: "enemy", lat: 47.890, lng: 20.390, label: "Török elvonulás" }
+                        ],
+                        arrows: [{ from: [47.898, 20.382], to: [47.890, 20.390], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "szigetvar_1566",
+                name: "Szigetvári csata",
+                year: 1566,
+                dateStr: "1566. augusztus 6. – szeptember 7.",
+                era: "TOROK",
+                location: "Szigetvár",
+                lat: 46.0483,
+                lng: 17.7981,
+                zoom: 13,
+                magyarCommander: "Zrínyi Miklós várkapitány",
+                magyarTroops: "~2 500 magyar és horvát védő",
+                enemyCommander: "I. (Nagy) Szulejmán szultán & Szokollu Mehmed",
+                enemyTroops: "~60 000 – 80 000 oszmán katona",
+                result: "DEFEAT",
+                context: "Szigetvár hősi kiállása megállította I. Szulejmán utolsó Bécs elleni hadjáratát.",
+                summary: "Szulejmán szultán az ostrom közben a sátrában meghalt. Zrínyi Miklós a lángoló belső várból maradvány seregével hősi kirohanást hajtott végre, és mindannyian az életüket adták a hazáért.",
+                casualties: "Szigetvári védők: szinte mind elestek (~2 400 halott) | Török oldal: ~20 000 halott (köztük I. Szulejmán szultán).",
+                steps: [
+                    {
+                        title: "1. Fázis: A mocsaras külső vár elvesztése és lángba borulása",
+                        description: "A törökök feltöltik a mocsarat és folyamatos ágyúzással felgyújtják a külső várat.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Zrínyi Miklós belső várvédői", type: "infantry", side: "magyar", lat: 46.048, lng: 17.798, label: "Belső vár" },
+                            { id: "e1", name: "Oszmán ostromágyúk", type: "artillery", side: "enemy", lat: 46.042, lng: 17.802, label: "Török ostromágyúk" }
+                        ],
+                        arrows: [{ from: [46.042, 17.802], to: [46.048, 17.798], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Zrínyi Miklós mindent eldöntő hősi kirohanása",
+                        description: "Szeptember 7-én Zrínyi felnyittatja a kaput, és 'Éljünk, vagy haljunk meg becsülettel!' kiáltással ráront a törökökre.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Zrínyi Miklós kirohanó hősei", type: "hq", side: "magyar", lat: 46.046, lng: 17.800, label: "Zrínyi hősi kirohanása" },
+                            { id: "e1", name: "Janicsárok gyűrűje", type: "infantry", side: "enemy", lat: 46.045, lng: 17.803, label: "Török győzelem (Szulejmán halála)" }
+                        ],
+                        arrows: [{ from: [46.048, 17.798], to: [46.046, 17.800], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "mezokeresztes_1596",
+                name: "Mezőkeresztesi csata",
+                year: 1596,
+                dateStr: "1596. október 24–26.",
+                era: "TOROK",
+                location: "Mezőkeresztes",
+                lat: 47.9542,
+                lng: 20.6908,
+                zoom: 12,
+                magyarCommander: "Miksa főherceg & Báthory Zsigmond erdélyi fejedelem",
+                magyarTroops: "~45 000 (magyar, erdélyi, osztrák, német)",
+                enemyCommander: "III. Mehmed szultán & Czigalazáde Szinán pasa",
+                enemyTroops: "~80 000 – 100 000 oszmán katona",
+                result: "DEFEAT",
+                context: "A 15 éves háború legnagyobb nyílt mezei ütközete, ahol a már megnyert csatát a zsákmányolás miatt vesztették el.",
+                summary: "A keresztény seregek szétverték a török fősereget, a szultán elmenekült. A katonák azonban harc helyett a török tábor fosztogatásába kezdtek. Szinán pasa ellentámadása mészárlásba torkollott.",
+                casualties: "Keresztény oldal: ~12 000–15 000 halott | Török oldal: ~20 000 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: A török tábor áttörése és a szultán futása",
+                        description: "A magyar és német nehézlovasság teljesen szétzúzza a török vonalakat. III. Mehmed elhagyja a csatateret.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Báthory Zsigmond és Miksa serege", type: "cavalry", side: "magyar", lat: 47.950, lng: 20.680, label: "Keresztény roham" },
+                            { id: "e1", name: "III. Mehmed megfutamodó tábora", type: "hq", side: "enemy", lat: 47.960, lng: 20.700, label: "Török tábor áttörve" }
+                        ],
+                        arrows: [{ from: [47.950, 20.680], to: [47.958, 20.695], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Zsákmányolási fegyelmezetlenség és Szinán ellencsapása",
+                        description: "A katonák fosztogatni kezdenek. Czigalazáde Szinán pasa tartalékos lovassága hátulról lecsap a szervezetlenségre.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Szétszóródott fosztogatók", type: "infantry", side: "magyar", lat: 47.958, lng: 20.695, label: "Fegyelmezetlen sereg" },
+                            { id: "e2", name: "Szinán pasa ellentámadása", type: "cavalry", side: "enemy", lat: 47.965, lng: 20.710, label: "Török ellentámadás" }
+                        ],
+                        arrows: [{ from: [47.965, 20.710], to: [47.958, 20.695], color: "#ef4444" }]
+                    }
+                ]
+            },
+            {
+                id: "szentgotthard_1664",
+                name: "Szentgotthárdi csata",
+                year: 1664,
+                dateStr: "1664. augusztus 1.",
+                era: "TOROK",
+                location: "Szentgotthárd (Rába folyó)",
+                lat: 46.9531,
+                lng: 16.2736,
+                zoom: 12,
+                magyarCommander: "Raimondo Montecuccoli, Zrínyi Miklós & Hohenlohe",
+                magyarTroops: "~25 000 (osztrák, magyar, francia, német birodalmi)",
+                enemyCommander: "Köprülü Ahmed nagyvezír",
+                enemyTroops: "~60 000 – 70 000 oszmán katona",
+                result: "VICTORY",
+                context: "A Rába folyó kanyarulatában vívott stratégiai győzelem, amely megállította a törökök Bécs elleni előrenyomulását.",
+                summary: "Köprülü Ahmed átkelt a Rábán, de Montecuccoli nemzetközi serege bekerítette a hídfőt. A francia nehézlovasság és a magyar gyalogság a folyóba szorította a törököket.",
+                casualties: "Keresztény oldal: ~2 000 halott | Török oldal: ~16 000–20 000 halott és vízbe fulladt.",
+                steps: [
+                    {
+                        title: "1. Fázis: A török átkelés a Rába kanyarulatában",
+                        description: "Köprülü Ahmed szpáhija és janicsárjai átkelnek a Rábán és hídfőt létesítenek Mogersdorf mellett.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Montecuccoli centruma", type: "infantry", side: "magyar", lat: 46.955, lng: 16.260, label: "Keresztény vonalak" },
+                            { id: "e1", name: "Köprülü Ahmed átkelt előörse", type: "infantry", side: "enemy", lat: 46.952, lng: 16.275, label: "Török hídfő" }
+                        ],
+                        arrows: [{ from: [46.950, 16.285], to: [46.952, 16.275], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: A Rába-kanyarületi bekerítés és áttörés",
+                        description: "A francia nehézlovasság és a magyar alakulatok ellentámadást indítanak, visszaszorítva a törököket a Rába folyóba.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes Montecuccoli és Zrínyi", type: "hq", side: "magyar", lat: 46.953, lng: 16.273, label: "Keresztény győzelem" },
+                            { id: "e1", name: "Rábába fulladó török sereg", type: "infantry", side: "enemy", lat: 46.950, lng: 16.280, label: "Török katasztrófa" }
+                        ],
+                        arrows: [{ from: [46.955, 16.260], to: [46.953, 16.273], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "buda_1686",
+                name: "Buda visszavétele",
+                year: 1686,
+                dateStr: "1686. június 18. – szeptember 2.",
+                era: "TOROK",
+                location: "Buda (Budai Vár)",
+                lat: 47.5022,
+                lng: 19.0339,
+                zoom: 13,
+                magyarCommander: "Lotharingiai Károly, Miksa Emánuel & Bottyán János",
+                magyarTroops: "~80 000 (Szent Liga: osztrák, magyar, német, spanyol)",
+                enemyCommander: "Abdurrahman Abdi pasa budai vezérőrnagy",
+                enemyTroops: "~12 000 janicsár és ostromlott török katona",
+                result: "VICTORY",
+                context: "Buda 145 éves török uralom alóli felszabadítása a Szent Liga európai összefogásával.",
+                summary: "Hónapokig tartó véres ostrom és a török felmentő sereg visszaverése után szeptember 2-án általános roham indult. Abdurrahman pasa a Bécsi kapunál elesett, Buda visszatért a kereszténységhez.",
+                casualties: "Szent Liga: ~20 000 halott és sebesült | Török oldal: ~10 000 halott (köztük az utolsó budai pasa).",
+                steps: [
+                    {
+                        title: "1. Fázis: Rohamrések robbantása a várfalakon",
+                        description: "A Szent Liga tüzérsége heteken át ágyúzza a budai Várfalakat, rést nyitva a Bécsi kapunál.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Lotharingiai Károly ostromlói", type: "artillery", side: "magyar", lat: 47.505, lng: 19.030, label: "Szent Liga ágyúállásai" },
+                            { id: "e1", name: "Abdurrahman pasa védői", type: "infantry", side: "enemy", lat: 47.502, lng: 19.034, label: "Budai Vár" }
+                        ],
+                        arrows: [{ from: [47.505, 19.030], to: [47.502, 19.034], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Szeptember 2. – Döntő roham és a Vár bevétele",
+                        description: "Általános roham tör be a Bécsi kapunál és a Fehérvári kapunál. Abdurrahman pasa elesik, Buda felszabadul.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes Lotharingiai Károly", type: "hq", side: "magyar", lat: 47.5022, lng: 19.0339, label: "Buda Felszabadult!" },
+                            { id: "e1", name: "Elesett Abdurrahman pasa", type: "infantry", side: "enemy", lat: 47.503, lng: 19.035, label: "Törökuralom vége Budán" }
+                        ],
+                        arrows: [{ from: [47.505, 19.030], to: [47.5022, 19.0339], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "nagyharsany_1687",
+                name: "Nagyharsányi csata (II. Mohácsi csata)",
+                year: 1687,
+                dateStr: "1687. augusztus 12.",
+                era: "TOROK",
+                location: "Nagyharsány (Harsány-hegy)",
+                lat: 45.8644,
+                lng: 18.4117,
+                zoom: 12,
+                magyarCommander: "Lotharingiai Károly & Bádeni Lajos",
+                magyarTroops: "~50 000 (osztrák, magyar, német birodalmi)",
+                enemyCommander: "Szari Szulejmán nagyvezír",
+                enemyTroops: "~60 000 oszmán katona",
+                result: "VICTORY",
+                context: "A mohácsi csata revánsa: a Szent Liga döntő győzelme a Harsány-hegynél kiköszörülte az 1526-os csorbát.",
+                summary: "Bádeni Lajos lovassága szétzúzta a törökök elhamarkodott támadását, majd a Szent Liga csapatai bekerítették és felmorzsolták a nagyvezír sáncait. A törökök elhagyták Magyarország déli részét.",
+                casualties: "Szent Liga: ~600 halott | Török oldal: ~10 000 halott, a teljes tüzérség elveszett.",
+                steps: [
+                    {
+                        title: "1. Fázis: Szari Szulejmán támadása a Harsány-hegynél",
+                        description: "A nagyvezír szpáhija megtámadja a Szent Liga jobb szárnyát a Harsány-hegy lábánál.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Bádeni Lajos jobb szárnya", type: "cavalry", side: "magyar", lat: 45.860, lng: 18.400, label: "Bádeni Lajos szárnya" },
+                            { id: "e1", name: "Szari Szulejmán török serege", type: "cavalry", side: "enemy", lat: 45.870, lng: 18.420, label: "Oszmán nagyvezír" }
+                        ],
+                        arrows: [{ from: [45.870, 18.420], to: [45.862, 18.405], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Ellentámadás és a török sáncok elfoglalása",
+                        description: "Lotharingiai Károly átfogó ellentámadást rendel el, elfoglalva az oszmán tábort és ágyúkat.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes Szent Liga hadsereg", type: "hq", side: "magyar", lat: 45.8644, lng: 18.4117, label: "Második Mohácsi Győzelem" },
+                            { id: "e1", name: "Szétszórt török sereg", type: "infantry", side: "enemy", lat: 45.875, lng: 18.430, label: "Török vereség" }
+                        ],
+                        arrows: [{ from: [45.860, 18.400], to: [45.8644, 18.4117], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "zenta_1697",
+                name: "Zentai csata",
+                year: 1697,
+                dateStr: "1697. szeptember 11.",
+                era: "TOROK",
+                location: "Zenta (Tisza-part, Szerbia)",
+                lat: 45.9275,
+                lng: 20.0772,
+                zoom: 12,
+                magyarCommander: "Savoyai Jenő herceg",
+                magyarTroops: "~50 000 (osztrák, magyar huszárok és szerb határőrök)",
+                enemyCommander: "II. Musztafa szultán & Elmasz Mehmed nagyvezír",
+                enemyTroops: "~80 000 oszmán katona",
+                result: "VICTORY",
+                context: "A török kiűzésének végső, mindent eldöntő ütközete a Tisza átkelőjénél, amely a Karlócai békéhez vezetett.",
+                summary: "Savoyai Jenő kihasználta, hogy a török sereg éppen átkelt a Tiszán. Amikor a szultán már a túlparton volt, Savoyai lecsapott a hídfőre szorult török főerőkre, és megsemmisítette őket.",
+                casualties: "Keresztény oldal: ~400 halott | Török oldal: ~30 000 halott (köztük a nagyvezír és 30 pasa).",
+                steps: [
+                    {
+                        title: "1. Fázis: A török sereg kettészakadása a Tisza-hídon",
+                        description: "II. Musztafa szultán már átkelt a Tisza keleti partjára, míg a nagyvezír és a fősereg a nyugati hídfőben maradt.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Savoyai Jenő rohamra kész serege", type: "cavalry", side: "magyar", lat: 45.920, lng: 20.060, label: "Savoyai serege" },
+                            { id: "e1", name: "Elmasz Mehmed hídfőbe szorult serege", type: "infantry", side: "enemy", lat: 45.928, lng: 20.075, label: "Török hídfő" },
+                            { id: "e2", name: "II. Musztafa a túlparton", type: "hq", side: "enemy", lat: 45.930, lng: 20.090, label: "Szultán a túlparton" }
+                        ],
+                        arrows: [{ from: [45.920, 20.060], to: [45.927, 20.072], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: A hídfő bekerítése és áttörése – Zentai diadal",
+                        description: "Savoyai fegyverei szétzúzzák a hidat. A hídfőbe szorult török sereg megsemmisül, a szultán elmenekül.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes Savoyai Jenő", type: "hq", side: "magyar", lat: 45.9275, lng: 20.0772, label: "Zentai Történelmi Győzelem" },
+                            { id: "e1", name: "Tisza folyóba fulladt törökök", type: "infantry", side: "enemy", lat: 45.929, lng: 20.080, label: "Török katasztrófa" }
+                        ],
+                        arrows: [{ from: [45.927, 20.072], to: [45.9275, 20.0772], color: "#0284c7" }]
+                    }
+                ]
+            },
+
+            // ==================== RÁKÓCZI-SZABAD SÁGHARC (1703–1711) ====================
+            {
+                id: "tiszabecs_1703",
+                name: "Tiszabecsi csata",
+                year: 1703,
+                dateStr: "1703. július 14.",
+                era: "KURUC",
+                location: "Tiszabecs (Tisza átkelő)",
+                lat: 48.1025,
+                lng: 22.8333,
+                zoom: 12,
+                magyarCommander: "II. Rákóczi Ferenc & Ocskay László",
+                magyarTroops: "~3 000 kuruc felkelő (gyalogos és lovas)",
+                enemyCommander: "Nehem osztrák ezredes",
+                enemyTroops: "~1 000 császári vértezett lovas",
+                result: "VICTORY",
+                context: "A Rákóczi-szabadságharc legelső sikeres ütközete, amely utat nyitott a Tiszántúl felszabadításához.",
+                summary: "Rákóczi kurucai a Tisza gázlóján átkelve meglepték Nehem osztrák ezredes csapatait. Ocskay László huszárjai szétverték a császári vérteseket.",
+                casualties: "Kuruc oldal: ~50 halott | Császári oldal: ~200 halott és fogoly.",
+                steps: [
+                    {
+                        title: "1. Fázis: Átkelés a Tiszán Tiszabecsnél",
+                        description: "II. Rákóczi Ferenc kurucai átgázolnak a Tiszán és meglepik a császári védőket.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Rákóczi és Ocskay kurucai", type: "cavalry", side: "magyar", lat: 48.100, lng: 22.820, label: "Kuruc átkelő sereg" },
+                            { id: "e1", name: "Nehem ezredes vértesei", type: "cavalry", side: "enemy", lat: 48.105, lng: 22.840, label: "Császári vértesek" }
+                        ],
+                        arrows: [{ from: [48.100, 22.820], to: [48.102, 22.833], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Ocskay huszárrohama – Az első kuruc győzelem",
+                        description: "Ocskay huszárjai szétverik a császári alakulatot, megszilárdítva a szabadságharc kezdetét.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes Rákóczi fejedelem", type: "hq", side: "magyar", lat: 48.1025, lng: 22.8333, label: "Első Kuruc Győzelem" },
+                            { id: "e1", name: "Menekülő osztrákok", type: "cavalry", side: "enemy", lat: 48.110, lng: 22.850, label: "Nehem visszavonul" }
+                        ],
+                        arrows: [{ from: [48.102, 22.833], to: [48.1025, 22.8333], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "koronco_1704",
+                name: "Koroncói csata",
+                year: 1704,
+                dateStr: "1704. június 13.",
+                era: "KURUC",
+                location: "Koroncó (Győr mellett)",
+                lat: 47.6042,
+                lng: 17.5283,
+                zoom: 12,
+                magyarCommander: "Forgách Simon tábornagy",
+                magyarTroops: "~18 000 kuruc harcos",
+                enemyCommander: "Heister Hannibal császári tábornagy",
+                enemyTroops: "~7 000 fegyelmezett császári páncélos és dán segédcsapat",
+                result: "DEFEAT",
+                context: "Nyílt mezei ütközet a Dunántúl birtoklásáért, ahol a kuruc fegyelmezetlenség vereséget okozott.",
+                summary: "A kuruc lovasság kezdeti sikerei után Heister Hannibal fegyelmezett dán gyalogsága és császári tüzérsége megállította a rohamot. A kuruc sorok felbomlottak és megfutamodtak.",
+                casualties: "Kuruc oldal: ~3 000 halott és fogoly | Császári oldal: ~500 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: Forgách Simon kuruc rohamának kezdete",
+                        description: "Forgách tábornagy kuruc lovassága rohamot indít Heister centruma ellen.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Forgách Simon kuruc lovassága", type: "cavalry", side: "magyar", lat: 47.600, lng: 17.520, label: "Kuruc roham" },
+                            { id: "e1", name: "Heister Hannibal dán és császári serege", type: "infantry", side: "enemy", lat: 47.610, lng: 17.535, label: "Császári vonal" }
+                        ],
+                        arrows: [{ from: [47.600, 17.520], to: [47.605, 17.528], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: A császári tüzérség röptüze és a kurucok megfutamodása",
+                        description: "A fegyelmezett dán gyalogság röptüze felbontja a kuruc rohamot. Forgách serege megfutamodik.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Visszavonuló kurucok", type: "cavalry", side: "magyar", lat: 47.590, lng: 17.510, label: "Kuruc vereség" },
+                            { id: "e1", name: "Győztes Heister Hannibal", type: "hq", side: "enemy", lat: 47.6042, lng: 17.5283, label: "Császári győzelem" }
+                        ],
+                        arrows: [{ from: [47.605, 17.528], to: [47.590, 17.510], color: "#ef4444" }]
+                    }
+                ]
+            },
+            {
+                id: "trencsen_1708",
+                name: "Trencséni csata",
+                year: 1708,
+                dateStr: "1708. augusztus 3.",
+                era: "KURUC",
+                location: "Trencsén (Szlovákia)",
+                lat: 48.8942,
+                lng: 18.0414,
+                zoom: 12,
+                magyarCommander: "II. Rákóczi Ferenc fejedelem",
+                magyarTroops: "~14 000 kuruc katona",
+                enemyCommander: "Heister Hannibal császári tábornagy",
+                enemyTroops: "~8 000 vértes és fegyelmezett császári katona",
+                result: "DEFEAT",
+                context: "A Rákóczi-szabadságharc legsúlyosabb katonai fordulópontja és hanyatlásának kezdete.",
+                summary: "Rákóczi a csata hevében felugratott egy árokon, de lova felbukott és a fejedelem eszméletét vesztette. A vezér nélkül maradt kuruc seregben elterjedt a hír, hogy Rákóczi meghalt, így a sereg felbomlott.",
+                casualties: "Kuruc oldal: ~3 000 halott és 500 fogoly | Császári oldal: ~200 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: Pekry Lőrinc szárnyának meggondolatlan manővere",
+                        description: "Pekry Lőrinc kuruc altábornagy szárnya rossz terepmanőver miatt elakad a hegyi árkokban.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Rákóczi fejedelmi serege", type: "cavalry", side: "magyar", lat: 48.890, lng: 18.030, label: "Rákóczi centruma" },
+                            { id: "e1", name: "Heister császári lovassága", type: "cavalry", side: "enemy", lat: 48.900, lng: 18.050, label: "Heister rohamcsapata" }
+                        ],
+                        arrows: [{ from: [48.900, 18.050], to: [48.894, 18.038], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Rákóczi elesése a lóról és a sereg pánikja",
+                        description: "Rákóczi fejedelem átugrat egy árkot, lezuhan a lóról. Az eszméletlen fejedelmet látva a kuruc sereg pánikba esik.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Eszméletlen Rákóczi és menekülő sereg", type: "hq", side: "magyar", lat: 48.885, lng: 18.020, label: "Rákóczi kimenekítése" },
+                            { id: "e1", name: "Győztes Heister tábornagy", type: "hq", side: "enemy", lat: 48.8942, lng: 18.0414, label: "Császári győzelem" }
+                        ],
+                        arrows: [{ from: [48.894, 18.038], to: [48.885, 18.020], color: "#ef4444" }]
+                    }
+                ]
+            },
+            {
+                id: "romhany_1710",
+                name: "Romhányi csata",
+                year: 1710,
+                dateStr: "1710. január 22.",
+                era: "KURUC",
+                location: "Romhány (Nógrád megye)",
+                lat: 47.9250,
+                lng: 19.2569,
+                zoom: 12,
+                magyarCommander: "Károlyi Sándor generális",
+                magyarTroops: "~10 000 kuruc és lengyel/svéd segédcsapat",
+                enemyCommander: "Sickingen altábornagy",
+                enemyTroops: "~3 000 fegyelmezett császári vértes",
+                result: "DRAW",
+                context: "A Rákóczi-szabadságharc utolsó nagy nyílt mezei ütközete.",
+                summary: "Károlyi Sándor kurucai sikeresen bekerítették Sickingen császári seregét. Ám a győzelem küszöbén a kurucok zsákmányolni kezdtek, így Sickingen fegyelmezetten visszavonulhatott.",
+                casualties: "Kuruc oldal: ~400 halott | Császári oldal: ~600 halott és sebesült.",
+                steps: [
+                    {
+                        title: "1. Fázis: Kuruc bekerítés a fagyos csatatéren",
+                        description: "Károlyi Sándor svéd és lengyel gárdistái bekerítik Sickingen osztrák vérteseit.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Károlyi Sándor kurucai", type: "cavalry", side: "magyar", lat: 47.920, lng: 19.240, label: "Kuruc átkarolás" },
+                            { id: "e1", name: "Sickingen császári vértesei", type: "cavalry", side: "enemy", lat: 47.928, lng: 19.265, label: "Sickingen vértesei" }
+                        ],
+                        arrows: [{ from: [47.920, 19.240], to: [47.925, 19.255], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Zsákmányolás és Sickingen fegyelmezett kiválása",
+                        description: "A kuruc katonák elhagyják az alakzatot a zsákmányért, Sickingen kihasználja az alkalmat és visszavonul.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Károlyi kurucai", type: "hq", side: "magyar", lat: 47.9250, lng: 19.2569, label: "Döntetlen / Taktikai siker" },
+                            { id: "e1", name: "Visszavonuló Sickingen", type: "hq", side: "enemy", lat: 47.935, lng: 19.270, label: "Császári visszavonulás" }
+                        ],
+                        arrows: [{ from: [47.925, 19.255], to: [47.935, 19.270], color: "#ef4444" }]
+                    }
+                ]
+            },
+
+            // ==================== 1848–49-ES SZABAD SÁGHARC ====================
+            {
+                id: "pakozd_1848",
+                name: "Pákozdi csata",
+                year: 1848,
+                dateStr: "1848. szeptember 29.",
+                era: "1848",
+                location: "Pákozd – Sukoró (Velencei-tó)",
+                lat: 47.2189,
+                lng: 18.5469,
+                zoom: 12,
+                magyarCommander: "Móga János altábornagy & Guyon Richárd",
+                magyarTroops: "~17 000 újonc honvéd és nemzetőr",
+                enemyCommander: "Josip Jellačić horvát bán / császári altábornagy",
+                enemyTroops: "~30 000 császári-horvát katona",
+                result: "VICTORY",
+                context: "A 1848–49-es szabadságharc legelső, morálisan és politikailag áttörő győzelme a Pest ellen vonuló Jellačić felett.",
+                summary: "A fiatal honvédsereg a Sukorói dombokon visszaverte Jellačić háromszoros rohamát. Jellačić fegyverszünetet kért, majd éjszaka Bécs felé elmenekült az országból.",
+                casualties: "Honvéd oldal: ~50 halott | Jellačić serege: ~200 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: Jellačić rohama a sukorói dombok ellen",
+                        description: "Jellačić horvát bán rohamot vezényel a magyar jobb szárny ellen Pákozdnál.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Móga János honvéd védővonala", type: "infantry", side: "magyar", lat: 47.220, lng: 18.550, label: "Sukorói dombok" },
+                            { id: "e1", name: "Jellačić támadó oszlopai", type: "infantry", side: "enemy", lat: 47.210, lng: 18.530, label: "Jellačić serege" }
+                        ],
+                        arrows: [{ from: [47.210, 18.530], to: [47.218, 18.545], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: A rohamok visszaverése és Jellačić megfutamodása",
+                        description: "A magyar tüzérség és a huszárok visszaverik a rohamokat. Jellačić fegyverszünet után Bécs felé kimenekül.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes honvédsereg", type: "hq", side: "magyar", lat: 47.2189, lng: 18.5469, label: "Pákozdi Történelmi Győzelem" },
+                            { id: "e1", name: "Bécs felé menekülő Jellačić", type: "cavalry", side: "enemy", lat: 47.230, lng: 18.500, label: "Jellačić futása" }
+                        ],
+                        arrows: [{ from: [47.218, 18.545], to: [47.2189, 18.5469], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "branyiszko_1849",
+                name: "Branyiszkói csata",
+                year: 1849,
+                dateStr: "1849. február 5.",
+                era: "1848",
+                location: "Branyiszkó-hágó (Felvidék)",
+                lat: 49.0167,
+                lng: 20.8500,
+                zoom: 12,
+                magyarCommander: "Guyon Richárd ezredes",
+                magyarTroops: "~4 000 honvéd",
+                enemyCommander: "Deym vezérőrnagy",
+                enemyTroops: "~2 000 császári osztrák katona & sáncok",
+                result: "VICTORY",
+                context: "A téli hadjárat hősi tette: Guyon áttörte a meredek Branyiszkói-hágót, megnyitva az utat Görgei főseregének felvidéki egyesüléséhez.",
+                summary: "Guyon Richárd a legendás szavaival ('Ha megnyeritek a csatát, előléptetést kaptok, ha elfutotok, agyonlőlek benneteket!') rohamra vezényelte az újoncokat a meredek hegyi sáncok ellen. A honvédek szuronnyal áttörték a hágót.",
+                casualties: "Honvéd oldal: ~150 halott | Császári oldal: ~800 halott és fogoly.",
+                steps: [
+                    {
+                        title: "1. Fázis: Roham a havas, meredek hegyi szerpentineken",
+                        description: "Guyon Richárd honvédjei a meredek, havas hágón rohamozzák a császári sáncokat.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Guyon Richárd rohamosztaga", type: "infantry", side: "magyar", lat: 49.010, lng: 20.840, label: "Honvéd hegyi roham" },
+                            { id: "e1", name: "Deym vezérőrnagy sáncai", type: "artillery", side: "enemy", lat: 49.020, lng: 20.860, label: "Császári sáncok" }
+                        ],
+                        arrows: [{ from: [49.010, 20.840], to: [49.016, 20.848], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Szurok- és szuronyroham – Branyiszkó bevétele",
+                        description: "A honvédek szuronnyal beveszik a hágó csúcsát, Deym serege Eperjes felé elmenekül.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes Guyon ezredes", type: "hq", side: "magyar", lat: 49.0167, lng: 20.8500, label: "Branyiszkói Hősi Győzelem" },
+                            { id: "e1", name: "Menekülő osztrákok", type: "infantry", side: "enemy", lat: 49.025, lng: 20.880, label: "Deym feladja a hágót" }
+                        ],
+                        arrows: [{ from: [49.016, 20.848], to: [49.0167, 20.8500], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "isaszeg_1849",
+                name: "Isaszegi csata",
+                year: 1849,
+                dateStr: "1849. április 6.",
+                era: "1848",
+                location: "Isaszeg (Pest megye)",
+                lat: 47.5323,
+                lng: 19.3712,
+                zoom: 12,
+                magyarCommander: "Görgei Artúr fővezér, Klapka György, Damjanich János",
+                magyarTroops: "~31 000 honvéd & 91 ágyú",
+                enemyCommander: "Windisch-Grätz herceg tábornagy",
+                enemyTroops: "~26 000 császári katona & 137 ágyú",
+                result: "VICTORY",
+                context: "A dicsőséges tavaszi hadjárat csúcspontja: Görgei szétverte a császári fősereget, megnyitva az utat Buda felszabadításához.",
+                summary: "Klapka kezdetben meghátrált, de Damjanich Vörössipkásai felvették a harcot. Görgei a csatatérre érve átrendezte a sorokat és általános rohamot vezényelt. Isaszeg lángokban állt, Windisch-Grätz elmenekült.",
+                casualties: "Honvéd oldal: ~800 halott | Császári oldal: ~2 000 halott és fogoly.",
+                steps: [
+                    {
+                        title: "1. Fázis: Damjanich 'Megállj!'-t parancsol",
+                        description: "Klapka I. testülete visszaszorul az erdőben, de Damjanich Vörössipkásai felveszik a harcot.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Klapka I. testülete", type: "infantry", side: "magyar", lat: 47.525, lng: 19.360, label: "Klapka visszavonul" },
+                            { id: "m2", name: "Damjanich Vörössipkásai", type: "infantry", side: "magyar", lat: 47.520, lng: 19.380, label: "Damjanich III. testülete" },
+                            { id: "e1", name: "Jellačić császári alakulata", type: "infantry", side: "enemy", lat: 47.535, lng: 19.365, label: "Jellačić előrenyomul" }
+                        ],
+                        arrows: [{ from: [47.520, 19.380], to: [47.530, 19.370], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Görgei fővezér rohamot rendel el",
+                        description: "Görgei Artúr a csataterére száguld, felállítja a zászlóaljakat és áttöri Windisch-Grätz centrumát.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m3", name: "Győztes Görgei Artúr", type: "hq", side: "magyar", lat: 47.5323, lng: 19.3712, label: "Isaszegi Történelmi Diadal" },
+                            { id: "e1", name: "Pest felé menekülő osztrákok", type: "infantry", side: "enemy", lat: 47.550, lng: 19.330, label: "Windisch-Grätz veresége" }
+                        ],
+                        arrows: [{ from: [47.530, 19.370], to: [47.5323, 19.3712], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "buda_1849",
+                name: "Buda ostroma (1849)",
+                year: 1849,
+                dateStr: "1849. május 4–21.",
+                era: "1848",
+                location: "Buda (Budai Vár)",
+                lat: 47.5022,
+                lng: 19.0339,
+                zoom: 13,
+                magyarCommander: "Görgei Artúr fővezér",
+                magyarTroops: "~30 000 honvéd",
+                enemyCommander: "Heinrich Hentzi vezérőrnagy",
+                enemyTroops: "~5 000 császári védő",
+                result: "VICTORY",
+                context: "Magyarország fővárosának dicsőséges felszabadítása a tavaszi hadjárat betetőzéseként.",
+                summary: "Hentzi bombázta Pest polgári épületeit, de Görgei ostromágyúkkal rést nyitott a Várfalon. Május 21-én hajnalban a honvédek létrákkal behatoltak a Várba. Hentzi halálosan megsebesült.",
+                casualties: "Honvéd oldal: ~1 000 halott | Császári oldal: ~1 500 halott és 3 500 fogoly.",
+                steps: [
+                    {
+                        title: "1. Fázis: A Várfalak ágyúzása a Naphegyről",
+                        description: "Görgei nehéz ostromágyúi a Naphegyről rést ütnek a budai Vár Fehérvári kapujánál.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Görgei ostromágyúi", type: "artillery", side: "magyar", lat: 47.495, lng: 19.025, label: "Naphegyi ostromágyúk" },
+                            { id: "e1", name: "Hentzi tábornok védői", type: "infantry", side: "enemy", lat: 47.502, lng: 19.034, label: "Hentzi a Budai Várban" }
+                        ],
+                        arrows: [{ from: [47.495, 19.025], to: [47.502, 19.034], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Május 21. hajnal – A Vár dicsőséges bevétele",
+                        description: "A honvédek létrákon másznak fel a Várfalra. Hentzi elesik, Buda magyar kézre kerül.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes Görgei Artúr", type: "hq", side: "magyar", lat: 47.5022, lng: 19.0339, label: "Buda Felszabadult! (1849)" },
+                            { id: "e1", name: "Elesett Hentzi tábornok", type: "infantry", side: "enemy", lat: 47.503, lng: 19.035, label: "Császári megadás" }
+                        ],
+                        arrows: [{ from: [47.495, 19.025], to: [47.5022, 19.0339], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "temesvar_1849",
+                name: "Temesvári csata",
+                year: 1849,
+                dateStr: "1849. augusztus 9.",
+                era: "1848",
+                location: "Temesvár (Bánság)",
+                lat: 45.7537,
+                lng: 21.2257,
+                zoom: 12,
+                magyarCommander: "Bem József altábornagy & Dembiński Henrik",
+                magyarTroops: "~55 000 honvéd & 108 ágyú",
+                enemyCommander: "Julius Jacob von Haynau táborszeregyes",
+                enemyTroops: "~60 000 császári és orosz sereg",
+                result: "DEFEAT",
+                context: "A szabadságharc utolsó, döntő csatája, amely után elkerülhetetlenné vált a fegyverletétel.",
+                summary: "Bem tábornok sebesülten átvette a parancsnokságot és sikeres támadást indított. Ám a magyar tüzérség lőszere teljesen kifogyott, így Haynau ellentámadása felmorzsolta a honvédsereget.",
+                casualties: "Honvéd oldal: ~4 000 halott és 6 000 fogoly | Császári oldal: ~1 500 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: Bem tábornok rohamának kezdeti sikere",
+                        description: "Bem tábornok a jobb szárnyon visszaszorítja Haynau osztrák csapatait.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Bem József honvédserege", type: "infantry", side: "magyar", lat: 45.750, lng: 21.210, label: "Bem rohama" },
+                            { id: "e1", name: "Haynau császári főserege", type: "infantry", side: "enemy", lat: 45.760, lng: 21.240, label: "Haynau vonala" }
+                        ],
+                        arrows: [{ from: [45.750, 21.210], to: [45.755, 21.225], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Lőszerhiány és Haynau ellencsapása",
+                        description: "A honvéd tüzérség lőszere kifogy. Haynau tömeges nehézlovas rohama szétzilálja a magyar seregtestet.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Visszavonuló Bem apó", type: "hq", side: "magyar", lat: 45.740, lng: 21.190, label: "Honvéd vereség" },
+                            { id: "e1", name: "Győztes Haynau tábornok", type: "hq", side: "enemy", lat: 45.7537, lng: 21.2257, label: "Császári győzelem" }
+                        ],
+                        arrows: [{ from: [45.755, 21.225], to: [45.740, 21.190], color: "#ef4444" }]
+                    }
+                ]
+            },
+
+            // ==================== I. VILÁGHÁBORÚ (1914–1918) ====================
+            {
+                id: "limanowa_1914",
+                name: "Limanowai csata",
+                year: 1914,
+                dateStr: "1914. december 1–13.",
+                era: "WW1",
+                location: "Limanowa (Jabłoniec-domb, Lengyelország)",
+                lat: 49.7022,
+                lng: 20.4231,
+                zoom: 12,
+                magyarCommander: "Muhr Ottokár ezredes & Roth altábornagy",
+                magyarTroops: "~30 000 (Osztrák–Magyar 3. huszárezred és gyalogság)",
+                enemyCommander: "Borsztschov tábornok",
+                enemyTroops: "~60 000 cári orosz katona",
+                result: "VICTORY",
+                context: "Az I. világháború keleti frontjának sorsdöntő magyar áttörése: a huszárok megmentették Krakkót az orosz elfoglalástól.",
+                summary: "Muhr Ottokár ezredes és huszárjai a Jabłoniec-dombon lovukról leszállva, gyalogsági ásóval és szuronnyal vívtak kézitusát a háromszoros orosz túlerővel. Muhr ezredes hősi halált halt, de a frontvonal megállt.",
+                casualties: "Osztrák–Magyar oldal: ~2 000 halott (köztük Muhr Ottokár) | Orosz oldal: ~10 000 halott és fogoly.",
+                steps: [
+                    {
+                        title: "1. Fázis: Kézitusa a Jabłoniec-dombon",
+                        description: "Muhr Ottokár 9. Nádasdy huszárjai lóhátról leszállva rohamozzák meg az orosz lövészárkokat.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Muhr Ottokár huszárjai", type: "cavalry", side: "magyar", lat: 49.700, lng: 20.415, label: "Muhr huszárroham" },
+                            { id: "e1", name: "Cári orosz gyalogság", type: "infantry", side: "enemy", lat: 49.705, lng: 20.430, label: "Orosz lövészárkok" }
+                        ],
+                        arrows: [{ from: [49.700, 20.415], to: [49.702, 20.422], color: "#0284c7" }]
+                    },
+                    {
+                        title: "2. Fázis: Muhr ezredes hősi halála és Krakkó megmentése",
+                        description: "A huszárok kiverik az oroszokat a dombról. Az orosz gőzhenger megtorpant, Krakkó megmenekült.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes Nádasdy huszárok", type: "hq", side: "magyar", lat: 49.7022, lng: 20.4231, label: "Limanowai Hősi Győzelem" },
+                            { id: "e1", name: "Visszavonuló orosz hadtest", type: "infantry", side: "enemy", lat: 49.710, lng: 20.450, label: "Orosz visszavonulás" }
+                        ],
+                        arrows: [{ from: [49.702, 20.422], to: [49.7022, 20.4231], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "doberdo_1915",
+                name: "Doberdói csaták (Isonzó-front)",
+                year: 1915,
+                dateStr: "1915–1917 (12 Isonzói csata)",
+                era: "WW1",
+                location: "Doberdó-fennsík (Isonzó, Olaszország)",
+                lat: 45.8500,
+                lng: 13.5333,
+                zoom: 12,
+                magyarCommander: "József főherceg & Boroević tábornagy",
+                magyarTroops: "~80 000 (Osztrák–Magyar 20. honvéd házi ezred)",
+                enemyCommander: "Luigi Cadorna olasz vezérkari főnök",
+                enemyTroops: "~200 000 olasz katona & tüzérség",
+                result: "VICTORY",
+                context: "A Karszt-sziklákon vívott véres állóháború, ahol a magyar honvédek emberfeletti szilárdsággal védték a határt.",
+                summary: "A karszti sziklákon a becsapódó gránátok sziklaszilánkjai szedték a legtöbb áldozatot. A magyar nagyváradi, szegedi és budapesti ezredek 12 olasz rohamot vertek vissza 2 éven át.",
+                casualties: "Osztrák–Magyar oldal: ~100 000 halott és sebesült | Olasz oldal: ~250 000 halott és sebesült.",
+                steps: [
+                    {
+                        title: "1. Fázis: Olasz tüzérségi barázdálás a sziklákon",
+                        description: "Cadorna olasz tüzérsége éjjel-nappal ágyúzza a doberdói karsztsziklákba vájt kavernákat.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Magyar honvéd kavernák", type: "infantry", side: "magyar", lat: 45.850, lng: 13.530, label: "Doberdói védők" },
+                            { id: "e1", name: "Olasz nehéztüzérség", type: "artillery", side: "enemy", lat: 45.840, lng: 13.510, label: "Cadorna ágyúállásai" }
+                        ],
+                        arrows: [{ from: [45.840, 13.510], to: [45.848, 13.528], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Emberfeletti védekezés és az olasz rohamok összeomlása",
+                        description: "A honvédek elszánt szuronyrohamokkal visszaverik az olasz hullámokat. A front szilárd marad.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes Doberdói honvédek", type: "hq", side: "magyar", lat: 45.8500, lng: 13.5333, label: "Doberdói Szilárdság" },
+                            { id: "e1", name: "Visszavert olasz gyalogság", type: "infantry", side: "enemy", lat: 45.835, lng: 13.500, label: "Olasz veszteségek" }
+                        ],
+                        arrows: [{ from: [45.848, 13.528], to: [45.8500, 13.5333], color: "#0284c7" }]
+                    }
+                ]
+            },
+
+            // ==================== II. VILÁGHÁBORÚ (1939–1945) ====================
+            {
+                id: "donkanyar_1943",
+                name: "Don-kanyari áttörés (Urivi csata)",
+                year: 1943,
+                dateStr: "1943. január 12–16.",
+                era: "WW2",
+                location: "Uriv – Sztorozsevoje (Don folyó, Oroszország)",
+                lat: 50.9833,
+                lng: 39.1500,
+                zoom: 11,
+                magyarCommander: "Jány Gusztáv vezérezredes (2. magyar hadsereg)",
+                magyarTroops: "~200 000 magyar katona (hiányos felszerelés)",
+                enemyCommander: "Filipp Golikov marsall (Vörös Hadsereg)",
+                enemyTroops: "~350 000 szovjet katona & T–34 tankok",
+                result: "DEFEAT",
+                context: "A magyar hadtörténet legnagyobb katasztrófája a fagyos Don-kanyarban.",
+                summary: "A -35 fokos fagyban a szovjet harckocsik áttörték az urivi és sztorozsevojei hídfőt. Páncéltörő fegyverek hiányában a 2. magyar hadsereg felmorzsolódott és megsemmisült.",
+                casualties: "Magyar oldal: ~120 000–140 000 halott, sebesült és fogságba esett katona | Szovjet oldal: ~30 000 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: Szovjet páncélos áttörés -35 fokban",
+                        description: "Január 12-én a szovjet T-34-es tankok elözönlik az urivi magyar állásokat.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "2. magyar hadsereg állásai", type: "infantry", side: "magyar", lat: 50.980, lng: 39.160, label: "Don-i védővonal" },
+                            { id: "e1", name: "Szovjet páncélos ék", type: "artillery", side: "enemy", lat: 50.990, lng: 39.130, label: "T-34-es tankroham" }
+                        ],
+                        arrows: [{ from: [50.990, 39.130], to: [50.982, 39.155], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: A front felbomlása és a visszavonulás",
+                        description: "A védővonal áttörése után a katonák a dermesztő hidegben Nyugat felé visszavonulnak. A hadsereg felmorzsolódik.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Visszavonuló magyar alakulatok", type: "infantry", side: "magyar", lat: 50.950, lng: 39.050, label: "Don-i Katasztrófa" },
+                            { id: "e1", name: "Győztes Vörös Hadsereg", type: "hq", side: "enemy", lat: 50.9833, lng: 39.1500, label: "Szovjet áttörés" }
+                        ],
+                        arrows: [{ from: [50.982, 39.155], to: [50.950, 39.050], color: "#ef4444" }]
+                    }
+                ]
+            },
+            {
+                id: "torda_1944",
+                name: "Tordai csata",
+                year: 1944,
+                dateStr: "1944. szeptember 5. – október 8.",
+                era: "WW2",
+                location: "Torda (Erdély)",
+                lat: 46.5667,
+                lng: 23.7833,
+                zoom: 12,
+                magyarCommander: "Heszlényi József altábornagy & Veress Lajos",
+                magyarTroops: "~35 000 magyar (2. hadsereg) és német páncélosok",
+                enemyCommander: "Rodion Malinovszkij marsall",
+                enemyTroops: "~100 000 szovjet és román katona",
+                result: "VICTORY",
+                context: "Kiemelkedő védekező sikersorozat: a magyar honvédek 1 hónapig feltartóztatták az Erdélybe betörő szovjet-román sereget.",
+                summary: "A román kiugrás után a magyar 2. hadsereg szilárdan tartotta a Tordai-hasadékot és az Aranyos folyó vonalát, elhárítva a bekerítést és biztosítva Erdély kiürítését.",
+                casualties: "Magyar-Német oldal: ~5 000 halott | Szovjet-Román oldal: ~20 000 halott.",
+                steps: [
+                    {
+                        title: "1. Fázis: Harc a Tordai-hasadéknál",
+                        description: "A magyar páncélosok és gyalogság elszántan védik az Aranyos folyó hidjait a túlerővel szemben.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Heszlényi 2. magyar hadserege", type: "cavalry", side: "magyar", lat: 46.560, lng: 23.770, label: "Tordai állások" },
+                            { id: "e1", name: "Malinovszkij szovjet-román serege", type: "infantry", side: "enemy", lat: 46.575, lng: 23.800, label: "Szovjet rohamok" }
+                        ],
+                        arrows: [{ from: [46.575, 23.800], to: [46.565, 23.780], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Sikeres feltartóztatás és fegyelmezett visszavonulás",
+                        description: "A honvédek egy hónapig sikeresen tartják a frontot, majd parancsra harcolva visszavonulnak a Tisza vonalára.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes védekező Heszlényi", type: "hq", side: "magyar", lat: 46.5667, lng: 23.7833, label: "Tordai Sikeres Védelem" },
+                            { id: "e1", name: "Feltartóztatott szovjet alakulatok", type: "infantry", side: "enemy", lat: 46.580, lng: 23.810, label: "Szovjet megtorpanás" }
+                        ],
+                        arrows: [{ from: [46.565, 23.780], to: [46.5667, 23.7833], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "debrecen_1944",
+                name: "Debreceni páncéloscsata (Hortobágyi csata)",
+                year: 1944,
+                dateStr: "1944. október 9–28.",
+                era: "WW2",
+                location: "Debrecen – Hortobágy",
+                lat: 47.5333,
+                lng: 21.6333,
+                zoom: 11,
+                magyarCommander: "Friessner vezérezredes & Wöhler tábornok",
+                magyarTroops: "~80 000 magyar és német páncélos katona (Tigris, Párduc tankok)",
+                enemyCommander: "Issza Plijev altábornagy (Plijev lovas-páncélos csoport)",
+                enemyTroops: "~120 000 szovjet páncélos katona",
+                result: "DRAW",
+                context: "A II. világháború keleti frontjának egyik legnagyobb páncélos összecsapása a Tiszántúlon.",
+                summary: "Plijev tábornok páncélos ékei áttörtek Debrecennél, de a magyar-német páncélosok Nyíregyházánál katlanba zárták és szétverték a szovjet gépesített hadtestet.",
+                casualties: "Magyar-Német oldal: ~15 000 halott | Szovjet oldal: ~25 000 halott és 500 páncélos megsemmisült.",
+                steps: [
+                    {
+                        title: "1. Fázis: Plijev páncélos ék áttörése Hortobágynál",
+                        description: "Plijev szovjet páncélos csoportja áttör a Hortobágyon Debrecen és Nyíregyháza felé.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Magyar-Német páncélosok", type: "artillery", side: "magyar", lat: 47.530, lng: 21.610, label: "Páncélos elhárítás" },
+                            { id: "e1", name: "Plijev páncélos éke", type: "artillery", side: "enemy", lat: 47.540, lng: 21.650, label: "Plijev T-34-esei" }
+                        ],
+                        arrows: [{ from: [47.540, 21.650], to: [47.533, 21.625], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Nyíregyházi katlan és a szovjet ék bekerítése",
+                        description: "A páncélos ellentámadás bekeríti Plijev csapatait. A magyar-német sereg átkel a Tiszán.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes páncélos alakulatok", type: "hq", side: "magyar", lat: 47.5333, lng: 21.6333, label: "Taktikai Siker / Döntetlen" },
+                            { id: "e1", name: "Bekerített Plijev-katlan", type: "artillery", side: "enemy", lat: 47.550, lng: 21.670, label: "Szovjet veszteségek" }
+                        ],
+                        arrows: [{ from: [47.533, 21.625], to: [47.5333, 21.6333], color: "#0284c7" }]
+                    }
+                ]
+            },
+            {
+                id: "budapest_1945",
+                name: "Budapest ostroma",
+                year: 1945,
+                dateStr: "1944. december 25. – 1945. február 13.",
+                era: "WW2",
+                location: "Budapest",
+                lat: 47.4979,
+                lng: 19.0402,
+                zoom: 12,
+                magyarCommander: "Hindy Iván vezérezredes & Karl Pfeffer-Wildenbruch",
+                magyarTroops: "~70 000 (magyar honvéd, egyetemi zászlóalj és német védők)",
+                enemyCommander: "Rodion Malinovszkij & Fjodor Tolbuhin marsallok",
+                enemyTroops: "~160 000 szovjet és román ostromló",
+                result: "DEFEAT",
+                context: "A II. világháború egyik leghosszabb és legvéresebb városostroma ('Sztálingrád a Dunánál').",
+                summary: "50 napig tartó elszánt házról házra folyó harc. A hidakat felrobbantották, Pest eleste után a védők a Budai Várba szorultak. A február 11-i tragikus kitörési kísérlet után a város elesett.",
+                casualties: "Védők: ~50 000 halott és 20 000 fogoly | Szovjet ostromlók: ~80 000 halott | Polgári áldozat: ~38 000 civilszemély.",
+                steps: [
+                    {
+                        title: "1. Fázis: Pesti oldal utcai harcai és a dunai hidak felrobbantása",
+                        description: "Elszánt utcai harcok Pesten. A védők január közepén felrobbantják a Lánchidat és az Erzsébet hidat, áthúzódva Budára.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Hindy Iván budai védői", type: "infantry", side: "magyar", lat: 47.500, lng: 19.030, label: "Budai Vár és hegyek" },
+                            { id: "e1", name: "Malinovszkij pesti ostromlói", type: "infantry", side: "enemy", lat: 47.495, lng: 19.060, label: "Szovjet gyűrű Pesten" }
+                        ],
+                        arrows: [{ from: [47.495, 19.060], to: [47.498, 19.042], color: "#ef4444" }]
+                    },
+                    {
+                        title: "2. Fázis: Február 11. – A kitörési kísérlet és Budapest eleste",
+                        description: "Február 11-én este a kitörési kísérlet során alig pár száz katona jut el a magyar vonalakig. Budapest ostroma lezárul.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Elesett budapesti védők", type: "hq", side: "magyar", lat: 47.4979, lng: 19.0402, label: "Budapest Elesett" },
+                            { id: "e1", name: "Győztes Vörös Hadsereg", type: "hq", side: "enemy", lat: 47.502, lng: 19.045, label: "Szovjet megszállás" }
+                        ],
+                        arrows: [{ from: [47.498, 19.042], to: [47.4979, 19.0402], color: "#ef4444" }]
+                    }
+                ]
+            }
+        ];
+    </script>
+
+    <script>
+        // Global State Variables
+        let map;
+        let baseLayers = {};
+        let currentBattle = null;
+        let currentStepIndex = 0;
+        let currentSliderVal = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let animationSpeed = 1000;
+        let isInitialLoad = true;
+
+        let activeMarkers = [];
+        let activePolylines = [];
+
+        /**
+         * Generates NATO SVG Icon string based on military type and faction
+         */
+        function createMilitarySvgIcon(type, side) {
+            const isMagyar = side === 'magyar';
+            const strokeColor = isMagyar ? '#0284c7' : '#ef4444';
+            const fillColor = isMagyar ? '#0f172a' : '#1f1924';
+            const iconColor = isMagyar ? '#38bdf8' : '#f87171';
+
+            let symbolContent = '';
+
+            switch (type) {
+                case 'cavalry':
+                    symbolContent = `<line x1="6" y1="26" x2="26" y2="6" stroke="${iconColor}" stroke-width="2.5"/>
+                                     <circle cx="16" cy="16" r="3" fill="${iconColor}"/>`;
+                    break;
+                case 'artillery':
+                    symbolContent = `<circle cx="16" cy="16" r="5" fill="${iconColor}"/>
+                                     <path d="M10 16 L22 16 M16 10 L16 22" stroke="${iconColor}" stroke-width="1.5"/>`;
+                    break;
+                case 'navy':
+                    symbolContent = `<path d="M16 8 L16 22 M11 18 C11 23, 21 23, 21 18 M11 12 L21 12" stroke="${iconColor}" stroke-width="2" fill="none"/>`;
+                    break;
+                case 'hq':
+                    symbolContent = `<polygon points="16,6 19,12 25,13 21,17 22,23 16,20 10,23 11,17 7,13 13,12" fill="${iconColor}"/>`;
+                    break;
+                case 'infantry':
+                default:
+                    symbolContent = `<line x1="6" y1="6" x2="26" y2="26" stroke="${iconColor}" stroke-width="2"/>
+                                     <line x1="26" y1="6" x2="6" y2="26" stroke="${iconColor}" stroke-width="2"/>`;
+                    break;
+            }
+
+            const svg = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 32 32">
+                    <rect x="2" y="2" width="28" height="28" rx="4" fill="${fillColor}" stroke="${strokeColor}" stroke-width="2.5"/>
+                    ${symbolContent}
+                </svg>
+            `;
+
+            return L.divIcon({
+                html: svg,
+                className: 'military-svg-marker',
+                iconSize: [36, 36],
+                iconAnchor: [18, 18],
+                popupAnchor: [0, -18]
+            });
+        }
+
+        /**
+         * Initialize Leaflet Map with 4 custom base layers
+         */
+        function initMap() {
+            baseLayers = {
+                dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap &copy; CARTO',
+                    maxZoom: 18
+                }),
+                light: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap &copy; CARTO',
+                    maxZoom: 18
+                }),
+                terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenTopoMap',
+                    maxZoom: 17
+                }),
+                topo: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri',
+                    maxZoom: 18
+                })
+            };
+
+            map = L.map('map', {
+                center: [47.1625, 19.5033],
+                zoom: 7,
+                layers: [baseLayers.dark],
+                zoomControl: false
+            });
+
+            L.control.zoom({ position: 'topright' }).addTo(map);
+
+            // Close layer dropdown on click outside
+            document.addEventListener('click', (e) => {
+                const btn = document.getElementById('layer-menu-btn');
+                const dropdown = document.getElementById('layer-dropdown');
+                if (btn && dropdown && !btn.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+
+            document.getElementById('layer-menu-btn').addEventListener('click', () => {
+                document.getElementById('layer-dropdown').classList.toggle('hidden');
+            });
+
+            // Set current footer year dynamically
+            const yearSpan = document.getElementById('current-year');
+            if (yearSpan) yearSpan.textContent = new Date().getFullYear();
+        }
+
+        function setBaseMap(layerKey) {
+            Object.values(baseLayers).forEach(layer => map.removeLayer(layer));
+            if (baseLayers[layerKey]) {
+                map.addLayer(baseLayers[layerKey]);
+            }
+            document.getElementById('layer-dropdown').classList.add('hidden');
+        }
+
+        /**
+         * STREAMING_CHUNK:Handling 3-tab sidebar navigation switching...
+         */
+        function switchTab(tabNumber) {
+            const btn1 = document.getElementById('tab-btn-1');
+            const btn2 = document.getElementById('tab-btn-2');
+            const btn3 = document.getElementById('tab-btn-3');
+            const content1 = document.getElementById('tab-content-1');
+            const content2 = document.getElementById('tab-content-2');
+            const content3 = document.getElementById('tab-content-3');
+
+            const inactiveStyle = "flex-1 py-2 px-1.5 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50";
+            const activeStyle = "flex-1 py-2 px-1.5 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition bg-amber-500/15 text-amber-300 border border-amber-500/30";
+
+            btn1.className = tabNumber === 1 ? activeStyle : inactiveStyle;
+            btn2.className = tabNumber === 2 ? activeStyle : inactiveStyle;
+            btn3.className = tabNumber === 3 ? activeStyle : inactiveStyle;
+
+            content1.classList.toggle('hidden', tabNumber !== 1);
+            content2.classList.toggle('hidden', tabNumber !== 2);
+            content3.classList.toggle('hidden', tabNumber !== 3);
+        }
+
+        function populateBattleList(battles) {
+            const select = document.getElementById('battle-select');
+            select.innerHTML = '';
+
+            battles.forEach(battle => {
+                const opt = document.createElement('option');
+                opt.value = battle.id;
+                opt.textContent = `${battle.year} - ${battle.name}`;
+                select.appendChild(opt);
+            });
+
+            document.getElementById('total-battles-count').textContent = BATTLES_DATA.length;
+            document.getElementById('filtered-count').textContent = `(${battles.length})`;
+        }
+
+        function filterBattles() {
+            const era = document.getElementById('era-filter').value;
+            const search = document.getElementById('search-input').value.toLowerCase().trim();
+
+            const filtered = BATTLES_DATA.filter(battle => {
+                const matchesEra = (era === 'ALL' || battle.era === era);
+                const matchesSearch = battle.name.toLowerCase().includes(search) || battle.location.toLowerCase().includes(search) || battle.year.toString().includes(search);
+                return matchesEra && matchesSearch;
+            });
+
+            populateBattleList(filtered);
+            if (filtered.length > 0) {
+                selectBattle(filtered[0].id);
+            }
+        }
+
+        /**
+         * STREAMING_CHUNK:Selecting battles, updating battle details and positioning Leaflet map...
+         */
+        function selectBattle(battleId) {
+            stopAnimation();
+            const battle = BATTLES_DATA.find(b => b.id === battleId);
+            if (!battle) return;
+
+            currentBattle = battle;
+            currentStepIndex = 0;
+            currentSliderVal = 0;
+
+            document.getElementById('battle-select').value = battle.id;
+
+            document.getElementById('battle-title').textContent = battle.name;
+            document.getElementById('battle-date').textContent = battle.dateStr;
+            document.getElementById('battle-location').textContent = battle.location;
+            document.getElementById('battle-era-badge').textContent = battle.era;
+            document.getElementById('battle-summary').textContent = battle.summary;
+            document.getElementById('battle-context').textContent = battle.context;
+
+            document.getElementById('side-1-leader').textContent = battle.magyarCommander;
+            document.getElementById('side-1-troops').textContent = battle.magyarTroops;
+            document.getElementById('side-2-leader').textContent = battle.enemyCommander;
+            document.getElementById('side-2-troops').textContent = battle.enemyTroops;
+
+            document.getElementById('map-overlay-title').textContent = `${battle.name} (${battle.year})`;
+            document.getElementById('map-overlay-coords').textContent = `N ${battle.lat.toFixed(4)}°, E ${battle.lng.toFixed(4)}°`;
+
+            map.invalidateSize();
+
+            if (isInitialLoad) {
+                map.setView([battle.lat, battle.lng], battle.zoom);
+                isInitialLoad = false;
+            } else {
+                try {
+                    map.flyTo([battle.lat, battle.lng], battle.zoom, { duration: 1.5 });
+                } catch (e) {
+                    map.setView([battle.lat, battle.lng], battle.zoom);
+                }
+            }
+
+            document.getElementById('time-slider').value = 0;
+            updateStepView();
+        }
+
+        /**
+         * STREAMING_CHUNK:Updating step view, handling victory card highlights and SVG arrow layers...
+         */
+        function updateStepView() {
+            if (!currentBattle || !currentBattle.steps) return;
+
+            const t = TRANSLATIONS[currentLang];
+            const steps = currentBattle.steps;
+            const step = steps[currentStepIndex];
+
+            document.getElementById('step-indicator').textContent = `${currentStepIndex + 1} / ${steps.length} ${t.operational_phase_label.toLowerCase()}`;
+            document.getElementById('step-title').textContent = step.title;
+            document.getElementById('step-description').textContent = step.description;
+
+            document.getElementById('time-slider-time').textContent = step.title.split(':')[0] || `${t.operational_phase_label} ${currentStepIndex + 1}`;
+            document.getElementById('time-slider-percent').textContent = `${Math.round(currentSliderVal)}%`;
+
+            // Final Summary Card Display on Last Step
+            const summaryCard = document.getElementById('final-summary-card');
+            if (currentStepIndex === steps.length - 1) {
+                summaryCard.classList.remove('hidden');
+                document.getElementById('final-outcome-title').textContent = `${currentBattle.name} – ${t.outcome_heading}`;
+                document.getElementById('final-outcome-text').textContent = currentBattle.summary;
+                document.getElementById('final-casualty-info').innerHTML = `
+                    <div class="font-semibold text-amber-300"><i class="fa-solid fa-skull-crossbones mr-1"></i> ${t.casualties_label}</div>
+                    <div class="text-slate-300 mt-0.5">${currentBattle.casualties}</div>
+                `;
+
+                if (currentBattle.result === 'VICTORY') {
+                    summaryCard.className = "rounded-xl p-4 transition-all duration-500 hungarian-victory-card";
+                    document.getElementById('final-outcome-badge').className = "inline-block px-3 py-1 rounded-md text-xs font-bold uppercase mb-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+                    document.getElementById('final-outcome-badge').textContent = t.victory_badge;
+                } else if (currentBattle.result === 'DEFEAT') {
+                    summaryCard.className = "rounded-xl p-4 transition-all duration-500 defeat-card bg-slate-900/90";
+                    document.getElementById('final-outcome-badge').className = "inline-block px-3 py-1 rounded-md text-xs font-bold uppercase mb-2 bg-red-500/20 text-red-300 border border-red-500/40";
+                    document.getElementById('final-outcome-badge').textContent = t.defeat_badge;
+                } else {
+                    summaryCard.className = "rounded-xl p-4 transition-all duration-500 draw-card bg-slate-900/90";
+                    document.getElementById('final-outcome-badge').className = "inline-block px-3 py-1 rounded-md text-xs font-bold uppercase mb-2 bg-amber-500/20 text-amber-300 border border-amber-500/40";
+                    document.getElementById('final-outcome-badge').textContent = t.draw_badge;
+                }
+            } else {
+                summaryCard.classList.add('hidden');
+            }
+
+            // Render Active Units List in Sidebar Tab 2
+            const activeUnitsContainer = document.getElementById('active-units-list');
+            activeUnitsContainer.innerHTML = '';
+            step.units.forEach(u => {
+                const item = document.createElement('div');
+                const isMagyar = u.side === 'magyar';
+                item.className = `p-2.5 rounded-lg border text-xs flex items-center justify-between ${isMagyar ? 'bg-sky-950/40 border-sky-800/60 text-sky-200' : 'bg-red-950/40 border-red-800/60 text-red-200'}`;
+                item.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid ${isMagyar ? 'fa-shield text-sky-400' : 'fa-crosshairs text-red-400'}"></i>
+                        <span class="font-medium">${u.name}</span>
+                    </div>
+                    <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-900/60">${u.type}</span>
+                `;
+                activeUnitsContainer.appendChild(item);
+            });
+
+            // Clear Old Map Layers
+            activeMarkers.forEach(m => map.removeLayer(m));
+            activePolylines.forEach(p => map.removeLayer(p));
+            activeMarkers = [];
+            activePolylines = [];
+
+            // Add SVG Markers for Units
+            step.units.forEach(unit => {
+                const icon = createMilitarySvgIcon(unit.type, unit.side);
+                const marker = L.marker([unit.lat, unit.lng], { icon: icon }).addTo(map);
+
+                marker.bindPopup(`
+                    <div class="p-1">
+                        <div class="font-bold text-amber-400 text-xs mb-1">${unit.name}</div>
+                        <div class="text-[11px] text-slate-300">Hadnem: <span class="capitalize text-slate-100 font-semibold">${unit.type}</span></div>
+                        <div class="text-[11px] text-slate-300">Oldal: <span class="font-semibold ${unit.side === 'magyar' ? 'text-sky-400' : 'text-red-400'}">${unit.side === 'magyar' ? t.side_magyar : t.side_enemy}</span></div>
+                        <div class="text-[10px] text-slate-400 mt-1 italic">${unit.label || ''}</div>
+                    </div>
+                `);
+
+                activeMarkers.push(marker);
+            });
+
+            // Render Animated Polyline Movement Arrows
+            if (step.arrows) {
+                step.arrows.forEach(arrow => {
+                    const polyline = L.polyline([arrow.from, arrow.to], {
+                        color: arrow.color || '#38bdf8',
+                        weight: 4,
+                        opacity: 0.85,
+                        dashArray: '8, 10',
+                        className: 'animated-arrow-line'
+                    }).addTo(map);
+
+                    const headCircle = L.circleMarker(arrow.to, {
+                        radius: 6,
+                        color: arrow.color || '#38bdf8',
+                        fillColor: arrow.color || '#38bdf8',
+                        fillOpacity: 0.9
+                    }).addTo(map);
+
+                    activePolylines.push(polyline);
+                    activePolylines.push(headCircle);
+                });
+            }
+        }
+
+        function onSliderInput(val) {
+            currentSliderVal = parseFloat(val);
+            if (!currentBattle || !currentBattle.steps) return;
+
+            const totalSteps = currentBattle.steps.length;
+            const stepIndex = Math.min(Math.floor((currentSliderVal / 100) * totalSteps), totalSteps - 1);
+
+            if (stepIndex !== currentStepIndex) {
+                currentStepIndex = stepIndex;
+            }
+            updateStepView();
+        }
+
+        function nextStep() {
+            if (!currentBattle) return;
+            if (currentStepIndex < currentBattle.steps.length - 1) {
+                currentStepIndex++;
+                currentSliderVal = (currentStepIndex / (currentBattle.steps.length - 1)) * 100;
+                document.getElementById('time-slider').value = currentSliderVal;
+                updateStepView();
+            }
+        }
+
+        function prevStep() {
+            if (!currentBattle) return;
+            if (currentStepIndex > 0) {
+                currentStepIndex--;
+                currentSliderVal = (currentStepIndex / (currentBattle.steps.length - 1)) * 100;
+                document.getElementById('time-slider').value = currentSliderVal;
+                updateStepView();
+            }
+        }
+
+        /**
+         * STREAMING_CHUNK:Managing playback state animation timer and speed controls...
+         */
+        function togglePlay() {
+            if (isPlaying) {
+                stopAnimation();
+            } else {
+                startAnimation();
+            }
+        }
+
+        function startAnimation() {
+            if (!currentBattle) return;
+            isPlaying = true;
+            const t = TRANSLATIONS[currentLang];
+            document.getElementById('play-icon').className = 'fa-solid fa-pause';
+            document.getElementById('play-text').textContent = t.pause_btn;
+
+            playInterval = setInterval(() => {
+                currentSliderVal += 1.5;
+                if (currentSliderVal > 100) {
+                    currentSliderVal = 0;
+                }
+                document.getElementById('time-slider').value = currentSliderVal;
+                onSliderInput(currentSliderVal);
+            }, animationSpeed / 10);
+        }
+
+        function stopAnimation() {
+            isPlaying = false;
+            if (playInterval) clearInterval(playInterval);
+            const t = TRANSLATIONS[currentLang];
+            document.getElementById('play-icon').className = 'fa-solid fa-play';
+            document.getElementById('play-text').textContent = t.play_btn;
+        }
+
+        function changeSpeed(ms) {
+            animationSpeed = parseInt(ms);
+            if (isPlaying) {
+                stopAnimation();
+                startAnimation();
+            }
+        }
+
+        window.onload = function() {
+            initMap();
+            populateBattleList(BATTLES_DATA);
+            changeLanguage('hu'); // Default to Hungarian
+            
+            setTimeout(() => {
+                map.invalidateSize();
+                if (BATTLES_DATA.length > 0) {
+                    selectBattle(BATTLES_DATA[0].id);
+                }
+            }, 100);
+        };
+    </script>
+</body>
+</html>

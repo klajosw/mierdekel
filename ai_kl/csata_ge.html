@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="hu" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magyar Történelmi Csaták Interaktív Térképe (896–1945)</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#C82333',
+                            green: '#28A745',
+                            gold: '#D4AF37',
+                            dark: '#121826',
+                            card: '#1E293B'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-cinzel { font-family: 'Cinzel', serif; }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748B; }
+
+        /* Map styling */
+        #map { width: 100%; height: 100%; z-index: 1; background-color: #0f172a; }
+
+        /* SVG Arrow animation styling */
+        .animated-arrow-line {
+            stroke-dasharray: 8, 8;
+            animation: dash 1.2s linear infinite;
+        }
+        @keyframes dash {
+            to { stroke-dashoffset: -16; }
+        }
+
+        /* NATO SVG Icon Marker container */
+        .military-svg-marker {
+            background: transparent;
+            border: none;
+            transition: transform 0.2s ease-out;
+        }
+        .military-svg-marker:hover {
+            transform: scale(1.15);
+            z-index: 1000 !important;
+        }
+
+        /* National Tricolor Frame for Hungarian Victories */
+        .hungarian-victory-card {
+            border: 3px solid transparent;
+            border-image: linear-gradient(135deg, #ce2939 0%, #ffffff 50%, #477050 100%) 1;
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.35);
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+        }
+
+        .defeat-card {
+            border: 2px solid #ef4444;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+        }
+
+        .draw-card {
+            border: 2px solid #f59e0b;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+        }
+
+        /* Custom Leaflet popup overrides */
+        .leaflet-popup-content-wrapper {
+            background: #1e293b;
+            color: #f8fafc;
+            border: 1px solid #475569;
+            border-radius: 0.75rem;
+            padding: 4px;
+        }
+        .leaflet-popup-tip { background: #1e293b; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-full overflow-hidden flex flex-col select-none">
+
+    <header class="bg-slate-900/90 border-b border-slate-800 px-4 py-2 flex items-center justify-between z-20 backdrop-blur shrink-0">
+        <div class="flex items-center gap-3">
+            <!-- Custom Logo reproduced from logo.png (4-quadrant grid: T, :), ?, !) -->
+            <div class="w-9 h-9 rounded-lg overflow-hidden grid grid-cols-2 grid-rows-2 border border-slate-700 shadow-md shrink-0 font-bold text-[13px] text-black leading-none select-none">
+                <div class="bg-gradient-to-br from-blue-300 to-blue-500 flex items-center justify-center font-sans font-black">T</div>
+                <div class="bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center font-sans font-black">:)</div>
+                <div class="bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center font-sans font-black">?</div>
+                <div class="bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center font-sans font-black">!</div>
+            </div>
+            <div>
+                <h1 class="font-cinzel text-base md:text-lg font-bold tracking-wider text-slate-100 flex items-center gap-2">
+                    <span data-i18n="app_title">MAGYAR HADMŰVELETI CSATATÉR</span>
+                    <span class="text-[10px] font-sans font-normal px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 hidden sm:inline-block">896 – 1945</span>
+                </h1>
+                <p class="text-xs text-slate-400 hidden md:block" data-i18n="app_subtitle">Történeti csaták interaktív hadműveleti térképe és szimulációja</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+            <!-- Total Battles counter -->
+            <div class="hidden lg:flex items-center gap-2 text-xs bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60">
+                <span class="text-slate-400" data-i18n="battles_count_label">Rögzített csaták:</span>
+                <span id="total-battles-count" class="font-bold text-amber-400">0</span>
+            </div>
+
+            <!-- Language Switcher Dropdown -->
+            <div class="relative">
+                <select id="lang-select" onchange="changeLanguage(this.value)" class="bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-semibold rounded-lg px-2.5 py-1.5 border border-slate-700 outline-none cursor-pointer">
+                    <option value="hu">🇭🇺 HU</option>
+                    <option value="en">🇬🇧 EN</option>
+                    <option value="de">🇩🇪 DE</option>
+                </select>
+            </div>
+
+            <!-- Layer Quick Switch Button -->
+            <div class="relative">
+                <button id="layer-menu-btn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-2 transition">
+                    <i class="fa-solid fa-layer-group text-sky-400"></i>
+                    <span class="hidden sm:inline" data-i18n="layer_btn">Térképréteg</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                </button>
+                <!-- Layer selector dropdown -->
+                <div id="layer-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-2 z-50 text-xs space-y-1">
+                    <div class="text-[10px] font-semibold text-slate-400 px-2 py-1 uppercase tracking-wider" data-i18n="map_style_heading">Térkép stílus</div>
+                    <button onclick="setBaseMap('light')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-800 flex items-center justify-between">
+                        <span data-i18n="layer_light">Világos térkép</span> <i class="fa-solid fa-sun text-amber-400"></i>
+                    </button>
+                    <button onclick="setBaseMap('dark')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-800 flex items-center justify-between">
+                        <span data-i18n="layer_dark">Sötét térkép</span> <i class="fa-solid fa-moon text-indigo-400"></i>
+                    </button>
+                    <button onclick="setBaseMap('terrain')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-800 flex items-center justify-between">
+                        <span data-i18n="layer_terrain">Domborzati térkép</span> <i class="fa-solid fa-mountain text-emerald-400"></i>
+                    </button>
+                    <button onclick="setBaseMap('topo')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-800 flex items-center justify-between">
+                        <span data-i18n="layer_topo">Topográfiai térkép</span> <i class="fa-solid fa-map text-amber-600"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- Sidebar Panel (Tabbed UI) -->
+        <aside id="sidebar" class="w-full sm:w-[420px] lg:w-[460px] bg-slate-900/95 border-r border-slate-800 flex flex-col z-10 shrink-0 backdrop-blur shadow-2xl transition-all duration-300">
+            
+            <!-- Tab Navigation Bar (3 Tabs) -->
+            <div class="flex border-b border-slate-800 bg-slate-950/60 p-1 gap-1 text-[11px]">
+                <button id="tab-btn-1" onclick="switchTab(1)" class="flex-1 py-2 px-1.5 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span data-i18n="tab_1_title">1. Csaták & Infó</span>
+                </button>
+                <button id="tab-btn-2" onclick="switchTab(2)" class="flex-1 py-2 px-1.5 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50">
+                    <i class="fa-solid fa-timeline"></i>
+                    <span data-i18n="tab_2_title">2. Napló</span>
+                </button>
+                <button id="tab-btn-3" onclick="switchTab(3)" class="flex-1 py-2 px-1.5 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span data-i18n="tab_3_title">3. Információk</span>
+                </button>
+            </div>
+
+            <div id="tab-content-1" class="flex-1 overflow-y-auto p-4 space-y-4">
+                
+                <!-- Era Filter & Search -->
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-filter text-amber-400"></i>
+                        <span data-i18n="filter_label">Korszak szűrése & Keresés</span>
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <select id="era-filter" onchange="filterBattles()" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-2 text-slate-200 focus:ring-1 focus:ring-amber-400 outline-none">
+                            <option value="ALL" data-i18n="era_all">Minden korszak</option>
+                            <option value="HONFOGLALAS" data-i18n="era_honfoglalas">Honfoglalás & Kalandozások</option>
+                            <option value="ARPAD" data-i18n="era_arpad">Árpád-kor (1000–1301)</option>
+                            <option value="VEGYES" data-i18n="era_vegyes">Vegyesházi királyok</option>
+                            <option value="TOROK" data-i18n="era_torok">Török hódoltság kora</option>
+                            <option value="KURUC" data-i18n="era_kuruc">Rákóczi-szabadságharc</option>
+                            <option value="1848" data-i18n="era_1848">1848–49-es Szabadságharc</option>
+                            <option value="WW1" data-i18n="era_ww1">I. Világháború (1914–1918)</option>
+                            <option value="WW2" data-i18n="era_ww2">II. Világháború (1939–1945)</option>
+                        </select>
+                        <input type="text" id="search-input" onkeyup="filterBattles()" placeholder="Csata vagy helyszín..." data-i18n-ph="search_ph" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-2 text-slate-200 focus:ring-1 focus:ring-amber-400 outline-none">
+                    </div>
+                </div>
+
+                <!-- Battle Selector Dropdown -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                        <span data-i18n="select_battle_label">Válasszon történeti csatát:</span>
+                        <span id="filtered-count" class="text-[10px] text-slate-400"></span>
+                    </label>
+                    <select id="battle-select" onchange="selectBattle(this.value)" class="w-full bg-slate-800 border-2 border-amber-500/40 text-amber-300 font-medium text-sm rounded-xl px-3 py-2.5 focus:border-amber-400 outline-none cursor-pointer">
+                        <!-- Populated dynamically via JS -->
+                    </select>
+                </div>
+
+                <!-- Battle Quick Facts Card -->
+                <div id="battle-overview-card" class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-4 space-y-3">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <span id="battle-era-badge" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-700 text-slate-300">Korszak</span>
+                            <h2 id="battle-title" class="text-lg font-cinzel font-bold text-amber-400 mt-1">Csata neve</h2>
+                            <p id="battle-date-loc" class="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                                <i class="fa-solid fa-calendar-days text-amber-500"></i> <span id="battle-date">1241</span>
+                                <span class="text-slate-600">•</span>
+                                <i class="fa-solid fa-location-dot text-red-400"></i> <span id="battle-location">Helyszín</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <p id="battle-summary" class="text-xs text-slate-300 leading-relaxed border-t border-slate-700/50 pt-2.5">
+                        Válasszon egy csatát a listából a részletes hadi adatok és szimuláció megtekintéséhez.
+                    </p>
+
+                    <!-- Opposing Forces Summary Grid -->
+                    <div class="grid grid-cols-2 gap-2 text-xs pt-1">
+                        <div class="bg-slate-900/80 p-2.5 rounded-lg border border-sky-500/30">
+                            <div class="font-semibold text-sky-400 mb-1 flex items-center gap-1">
+                                <i class="fa-solid fa-shield"></i> <span data-i18n="side_magyar">Magyar / Szövetséges</span>
+                            </div>
+                            <div id="side-1-leader" class="text-[11px] text-slate-300 font-medium truncate">Parancsnok</div>
+                            <div id="side-1-troops" class="text-[10px] text-slate-400 mt-0.5">Létszám: -</div>
+                        </div>
+
+                        <div class="bg-slate-900/80 p-2.5 rounded-lg border border-red-500/30">
+                            <div class="font-semibold text-red-400 mb-1 flex items-center gap-1">
+                                <i class="fa-solid fa-crosshairs"></i> <span data-i18n="side_enemy">Ellenfél</span>
+                            </div>
+                            <div id="side-2-leader" class="text-[11px] text-slate-300 font-medium truncate">Parancsnok</div>
+                            <div id="side-2-troops" class="text-[10px] text-slate-400 mt-0.5">Létszám: -</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Strategic Context Box -->
+                <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                    <h4 class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-landmark text-amber-400"></i> <span data-i18n="strategic_significance">Stratégiai jelentőség</span>
+                    </h4>
+                    <p id="battle-context" class="text-xs text-slate-300 italic leading-relaxed">
+                        -
+                    </p>
+                </div>
+
+                <!-- Legend of NATO/SVG Markers -->
+                <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+                    <div class="font-semibold text-slate-400 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-map-pin text-sky-400"></i> <span data-i18n="symbol_legend_title">Hadnem SVG jelölések jelkulcsa</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                        <div class="flex items-center gap-2">
+                            <div class="w-5 h-5 bg-sky-900/80 border border-sky-400 rounded flex items-center justify-center text-sky-300 text-[10px]"><i class="fa-solid fa-person-rifle"></i></div>
+                            <span data-i18n="type_infantry">Gyalogság</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-5 h-5 bg-amber-900/80 border border-amber-400 rounded flex items-center justify-center text-amber-300 text-[10px]"><i class="fa-solid fa-horse-head"></i></div>
+                            <span data-i18n="type_cavalry">Lovasság</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-5 h-5 bg-red-900/80 border border-red-400 rounded flex items-center justify-center text-red-300 text-[10px]"><i class="fa-solid fa-burst"></i></div>
+                            <span data-i18n="type_artillery">Tüzérség</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-5 h-5 bg-blue-900/80 border border-blue-400 rounded flex items-center justify-center text-blue-300 text-[10px]"><i class="fa-solid fa-anchor"></i></div>
+                            <span data-i18n="type_navy">Flotta / Folyami</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="tab-content-2" class="flex-1 overflow-y-auto p-4 space-y-4 hidden">
+                
+                <!-- Step Header & Controls -->
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-flag-checkered"></i> <span data-i18n="operational_phase_label">Hadműveleti Fázis</span>
+                        </span>
+                        <span id="step-indicator" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                            1 / 3 fázis
+                        </span>
+                    </div>
+
+                    <!-- Step Title -->
+                    <h3 id="step-title" class="text-base font-cinzel font-bold text-slate-100">
+                        A csata kezdő felállása
+                    </h3>
+
+                    <p id="step-description" class="text-xs text-slate-300 leading-relaxed min-h-[60px]">
+                        A felek felvonulása és a pozíciók elfoglalása a csataterén.
+                    </p>
+                </div>
+
+                <!-- Battle Final Outcome Summary Box (Appears/Styles dynamically) -->
+                <div id="final-summary-card" class="hidden rounded-xl p-4 transition-all duration-500">
+                    <div id="final-outcome-badge" class="inline-block px-3 py-1 rounded-md text-xs font-bold uppercase mb-2">
+                        Eredmény
+                    </div>
+                    <h3 id="final-outcome-title" class="text-base font-cinzel font-bold mb-2">
+                        Csata Végeredménye
+                    </h3>
+                    <p id="final-outcome-text" class="text-xs leading-relaxed text-slate-200">
+                        ...
+                    </p>
+                    <div id="final-casualty-info" class="mt-3 pt-2.5 border-t border-slate-700/60 text-xs space-y-1">
+                        <!-- Casualty details inserted dynamically -->
+                    </div>
+                </div>
+
+                <!-- Operational Unit Status List for Current Phase -->
+                <div class="space-y-2">
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <i class="fa-solid fa-users-rays text-sky-400"></i> <span data-i18n="active_units_label">Aktív csapattestek a fázisban</span>
+                    </div>
+                    <div id="active-units-list" class="space-y-2">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="tab-content-3" class="flex-1 overflow-y-auto p-4 space-y-4 hidden">
+                
+                <div class="space-y-4">
+                    <div class="border-b border-slate-800 pb-2">
+                        <h2 class="text-base font-cinzel font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-book-bookmark"></i> <span data-i18n="info_doc_title">Részletes Felhasználói Kézikönyv & Dokumentáció</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1" data-i18n="info_doc_subtitle">Alkalmazási jellemzők, használati esetek és kérdések-válaszok</p>
+                    </div>
+
+                    <!-- 1. Felhasználói Kézikönyv -->
+                    <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 space-y-2">
+                        <h3 class="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-map-location-dot"></i> <span data-i18n="info_section1_title">1. Felhasználói Kézikönyv</span>
+                        </h3>
+                        <p class="text-xs text-slate-300 leading-relaxed" data-i18n="info_section1_body">
+                            Az interaktív térkép segítségével végigkövethetőek a magyar történelem legmeghatározóbb csatái a honfoglalástól (896) egészen a II. világháború végéig (1945).
+                        </p>
+                        <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside pl-1">
+                            <li data-i18n="info_section1_li1"><b>Csata kiválasztása:</b> Használja az 1. Tabon található korszak szűrőt vagy a keresőmezőt, majd válassza ki a kívánt csatát a gördülőlistából.</li>
+                            <li data-i18n="info_section1_li2"><b>Fokozatmentes Időcsúszka:</b> A csatorna alsó részén található csúszka húzásával vagy a Lejátszás gombbal folyamatosan léptetheti a seregmozgásokat.</li>
+                            <li data-i18n="info_section1_li3"><b>Váltás Hadműveleti Naplóra:</b> A 2. Tabra kattintva leírást kap az aktuális harci fázisról és az aktív csapattestekről.</li>
+                            <li data-i18n="info_section1_li4"><b>Térképréteg váltása:</b> A jobb felső sarokban választható Világos, Sötét, Domborzati és Topográfiai térkép.</li>
+                        </ul>
+                    </div>
+
+                    <!-- 2. Alkalmazás Tulajdonságai & Megvalósított Cél -->
+                    <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 space-y-2">
+                        <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-award"></i> <span data-i18n="info_section2_title">2. Tulajdonságok & Megvalósított Célok</span>
+                        </h3>
+                        <p class="text-xs text-slate-300 leading-relaxed" data-i18n="info_section2_body">
+                            <b>Fő cél:</b> A magyar katonatörténeti örökség és hadtörténet interaktív, vizuális és oktatási célú bemutatása modern térképi és animációs technológiával.
+                        </p>
+                        <div class="grid grid-cols-1 gap-2 text-xs text-slate-300 pt-1">
+                            <div class="bg-slate-900/70 p-2 rounded border border-slate-700/50">
+                                <b class="text-slate-100" data-i18n="info_feat1_title">NATO Hadműveleti SVG ikonok:</b> <span data-i18n="info_feat1_desc">A körök helyett szabványos hadnem szimbólumok (lovasság, gyalogság, tüzérség, flotta) jelölik a seregeket.</span>
+                            </div>
+                            <div class="bg-slate-900/70 p-2 rounded border border-slate-700/50">
+                                <b class="text-slate-100" data-i18n="info_feat2_title">Tricolor Győzelmi Kiemelés:</b> <span data-i18n="info_feat2_desc">A magyar győzelmeknél a zárófázisban nemzeti (piros-fehér-zöld) színű nemzeti keret jelenik meg.</span>
+                            </div>
+                            <div class="bg-slate-900/70 p-2 rounded border border-slate-700/50">
+                                <b class="text-slate-100" data-i18n="info_feat3_title">Kitakarásmentes Nézet:</b> <span data-i18n="info_feat3_desc">A térkép és a vezérlősávok kialakítása biztosítja, hogy a csataterület mindig jól látható maradjon.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Használati Esetek -->
+                    <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 space-y-2">
+                        <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-graduation-cap"></i> <span data-i18n="info_section3_title">3. Használati Esetek (Use Cases)</span>
+                        </h3>
+                        <ul class="text-xs text-slate-300 space-y-1 list-disc list-inside">
+                            <li data-i18n="info_use1"><b>Oktatás & Történelemóra:</b> Interaktív szemléltetés általános és középiskolás diákok számára.</li>
+                            <li data-i18n="info_use2"><b>Katonai Kutatás & Hadtörténet:</b> Taktikai és stratégiai seregmozgások elemzése.</li>
+                            <li data-i18n="info_use3"><b>Múzeumi & Kiállítási Kijelző:</b> Érintőképernyős bemutató eszköz történelmi kiállításokon.</li>
+                        </ul>
+                    </div>
+
+                    <!-- 4. Gyakran Ismételt Kérdések (Q/A) -->
+                    <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 space-y-2.5">
+                        <h3 class="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-question"></i> <span data-i18n="info_qa_title">4. Kérdések & Válaszok (Q/A)</span>
+                        </h3>
+                        
+                        <div class="space-y-2 text-xs">
+                            <div class="border-b border-slate-700/50 pb-1.5">
+                                <p class="font-semibold text-slate-100" data-i18n="qa_q1">K: Milyen csatákat tartalmaz az adatbázis?</p>
+                                <p class="text-slate-300 text-[11px] mt-0.5" data-i18n="qa_a1">V: A magyar történelem legfontosabb ütközeteit tartalmazza a Pozsonyi csatától (907) és Muhitól egészen Isaszegen és Limanován át Budapest 1945-ös ostromáig.</p>
+                            </div>
+
+                            <div class="border-b border-slate-700/50 pb-1.5">
+                                <p class="font-semibold text-slate-100" data-i18n="qa_q2">K: Mit jelentenek az SVG szimbólumok a térképen?</p>
+                                <p class="text-slate-300 text-[11px] mt-0.5" data-i18n="qa_a2">V: A NATO szabványos katonai szimbólumait: átlós vonal = lovasság, X jel = gyalogság, ágyúgolyó = tüzérség, horgony = flotta, csillag = főhadiszállás.</p>
+                            </div>
+
+                            <div>
+                                <p class="font-semibold text-slate-100" data-i18n="qa_q3">K: Hogyan működik a többnyelvű támogatás?</p>
+                                <p class="text-slate-300 text-[11px] mt-0.5" data-i18n="qa_a3">V: A jobb felső gombbal bármikor válthat magyar (HU), angol (EN) és német (DE) nyelvek között.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="border-t border-slate-800 bg-slate-950 p-3 space-y-3 shrink-0">
+                
+                <!-- Time Slider -->
+                <div class="space-y-1">
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                        <span id="time-slider-time" class="text-amber-400 font-bold" data-i18n="phase_initial">Kezdeti fázis</span>
+                        <span id="time-slider-percent" class="text-slate-400">0%</span>
+                    </div>
+                    <input type="range" id="time-slider" min="0" max="100" value="0" step="0.5" oninput="onSliderInput(this.value)" class="w-full accent-amber-500 h-2 bg-slate-800 rounded-lg cursor-pointer">
+                </div>
+
+                <!-- Play / Step Controls & Speed selector -->
+                <div class="flex items-center justify-between gap-2">
+                    <!-- Playback controls -->
+                    <div class="flex items-center gap-1">
+                        <button onclick="prevStep()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition" title="Előző lépés">
+                            <i class="fa-solid fa-backward-step"></i>
+                        </button>
+                        <button id="play-btn" onclick="togglePlay()" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg transition flex items-center gap-1.5 shadow-lg shadow-amber-500/20" title="Animáció Indítása/Megállítása">
+                            <i id="play-icon" class="fa-solid fa-play"></i>
+                            <span id="play-text" class="text-xs" data-i18n="play_btn">Lejátszás</span>
+                        </button>
+                        <button onclick="nextStep()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition" title="Következő lépés">
+                            <i class="fa-solid fa-forward-step"></i>
+                        </button>
+                    </div>
+
+                    <!-- Speed Selector -->
+                    <div class="flex items-center gap-1 text-xs">
+                        <span class="text-slate-400 text-[10px] hidden sm:inline" data-i18n="speed_label">Sebesség:</span>
+                        <select id="speed-select" onchange="changeSpeed(this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1.5 outline-none">
+                            <option value="2000">0.5x</option>
+                            <option value="1000" selected>1.0x</option>
+                            <option value="500">2.0x</option>
+                            <option value="250">4.0x</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+        <main class="flex-1 relative h-full flex flex-col">
+            <div id="map" class="flex-1"></div>
+
+            <!-- Map Floating Legend Overlay -->
+            <div class="absolute bottom-10 right-6 bg-slate-900/90 backdrop-blur border border-slate-800 rounded-xl p-3 z-[400] text-xs shadow-2xl hidden md:block max-w-xs pointer-events-auto">
+                <div class="font-bold text-amber-400 mb-1 flex items-center justify-between">
+                    <span id="map-overlay-title">Csata Helyszín</span>
+                    <i class="fa-solid fa-compass text-slate-400"></i>
+                </div>
+                <div id="map-overlay-coords" class="text-[10px] text-slate-400 font-mono">
+                    N 47.4979°, E 19.0402°
+                </div>
+                <div class="mt-2 text-[11px] text-slate-300 flex items-center gap-3 border-t border-slate-800 pt-1.5">
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span> <span data-i18n="side_magyar">Magyar</span></span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> <span data-i18n="side_enemy">Ellenség</span></span>
+                </div>
+            </div>
+
+            <footer class="bg-slate-950 border-t border-slate-800 text-[11px] text-slate-400 px-4 py-2 flex items-center justify-between shrink-0 z-30">
+                <div class="flex items-center gap-2">
+                    <span class="font-semibold text-slate-300">© <span id="current-year">2026</span> Magyar Hadműveleti Csatatér</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="http://mierdekel.hu" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 transition underline decoration-amber-500/40">http://mierdekel.hu</a>
+                    <span class="text-slate-600">|</span>
+                    <a href="mailto:mierdekel@gmail.com" class="hover:text-slate-200 transition">mierdekel@gmail.com</a>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        const TRANSLATIONS = {
+            hu: {
+                app_title: "MAGYAR HADMŰVELETI CSATATÉR",
+                app_subtitle: "Történeti csaták interaktív hadműveleti térképe és szimulációja",
+                battles_count_label: "Rögzített csaták:",
+                layer_btn: "Térképréteg",
+                map_style_heading: "Térkép stílus",
+                layer_light: "Világos térkép",
+                layer_dark: "Sötét térkép",
+                layer_terrain: "Domborzati térkép",
+                layer_topo: "Topográfiai térkép",
+                tab_1_title: "1. Csaták & Infó",
+                tab_2_title: "2. Napló",
+                tab_3_title: "3. Információk",
+                filter_label: "Korszak szűrése & Keresés",
+                era_all: "Minden korszak",
+                era_honfoglalas: "Honfoglalás & Kalandozások (896–955)",
+                era_arpad: "Árpád-kor (1000–1301)",
+                era_vegyes: "Vegyesházi királyok (1301–1526)",
+                era_torok: "Török hódoltság kora (1526–1699)",
+                era_kuruc: "Rákóczi-szabadságharc (1703–1711)",
+                era_1848: "1848–49-es Szabadságharc",
+                era_ww1: "I. Világháború (1914–1918)",
+                era_ww2: "II. Világháború (1939–1945)",
+                search_ph: "Csata vagy helyszín...",
+                select_battle_label: "Válasszon történeti csatát:",
+                side_magyar: "Magyar / Szövetséges",
+                side_enemy: "Ellenfél",
+                strategic_significance: "Stratégiai jelentőség",
+                symbol_legend_title: "Hadnem SVG jelölések jelkulcsa",
+                type_infantry: "Gyalogság",
+                type_cavalry: "Lovasság",
+                type_artillery: "Tüzérség",
+                type_navy: "Flotta / Folyami",
+                operational_phase_label: "Hadműveleti Fázis",
+                active_units_label: "Aktív csapattestek a fázisban",
+                phase_initial: "Kezdeti fázis",
+                play_btn: "Lejátszás",
+                pause_btn: "Szünet",
+                speed_label: "Sebesség:",
+                info_doc_title: "Részletes Felhasználói Kézikönyv & Dokumentáció",
+                info_doc_subtitle: "Alkalmazási jellemzők, használati esetek és kérdések-válaszok",
+                info_section1_title: "1. Felhasználói Kézikönyv",
+                info_section1_body: "Az interaktív térkép segítségével végigkövethetőek a magyar történelem legmeghatározóbb csatái a honfoglalástól (896) egészen a II. világháború végéig (1945).",
+                info_section1_li1: "<b>Csata kiválasztása:</b> Használja az 1. Tabon található korszak szűrőt vagy a keresőmezőt, majd válassza ki a kívánt csatát a gördülőlistából.",
+                info_section1_li2: "<b>Fokozatmentes Időcsúszka:</b> A csatorna alsó részén található csúszka húzásával vagy a Lejátszás gombbal folyamatosan léptetheti a seregmozgásokat.",
+                info_section1_li3: "<b>Váltás Hadműveleti Naplóra:</b> A 2. Tabra kattintva leírást kap az aktuális harci fázisról és az aktív csapattestekről.",
+                info_section1_li4: "<b>Térképréteg váltása:</b> A jobb felső sarokban választható Világos, Sötét, Domborzati és Topográfiai térkép.",
+                info_section2_title: "2. Tulajdonságok & Megvalósított Célok",
+                info_section2_body: "<b>Fő cél:</b> A magyar katonatörténeti örökség és hadtörténet interaktív, vizuális és oktatási célú bemutatása modern térképi és animációs technológiával.",
+                info_feat1_title: "NATO Hadműveleti SVG ikonok:",
+                info_feat1_desc: "A körök helyett szabványos hadnem szimbólumok (lovasság, gyalogság, tüzérség, flotta) jelölik a seregeket.",
+                info_feat2_title: "Tricolor Győzelmi Kiemelés:",
+                info_feat2_desc: "A magyar győzelmeknél a zárófázisban nemzeti (piros-fehér-zöld) keret jelenik meg.",
+                info_feat3_title: "Kitakarásmentes Nézet:",
+                info_feat3_desc: "A térkép és a vezérlősávok kialakítása biztosítja, hogy a csataterület mindig jól látható maradjon.",
+                info_section3_title: "3. Használati Esetek (Use Cases)",
+                info_use1: "<b>Oktatás & Történelemóra:</b> Interaktív szemléltetés általános és középiskolás diákok számára.",
+                info_use2: "<b>Katonai Kutatás & Hadtörténet:</b> Taktikai és stratégiai seregmozgások elemzése.",
+                info_use3: "<b>Múzeumi & Kiállítási Kijelző:</b> Érintőképernyős bemutató eszköz történelmi kiállításokon.",
+                info_qa_title: "4. Kérdések & Válaszok (Q/A)",
+                qa_q1: "K: Milyen csatákat tartalmaz az adatbázis?",
+                qa_a1: "V: A magyar történelem legfontosabb ütközeteit tartalmazza a Pozsonyi csatától (907) és Muhitól egészen Isaszegen és Limanován át Budapest 1945-ös ostromáig.",
+                qa_q2: "K: Mit jelentenek az SVG szimbólumok a térképen?",
+                qa_a2: "V: A NATO szabványos katonai szimbólumait: átlós vonal = lovasság, X jel = gyalogság, ágyúgolyó = tüzérség, horgony = flotta, csillag = főhadiszállás.",
+                qa_q3: "K: Hogyan működik a többnyelvű támogatás?",
+                qa_a3: "V: A jobb felső gombbal bármikor válthat magyar (HU), angol (EN) és német (DE) nyelvek között.",
+                victory_badge: "🇭🇺 Magyar Győzelem",
+                defeat_badge: "Magyar Vereség",
+                draw_badge: "Döntetlen / Bizonytalan",
+                outcome_heading: "Csata Végeredménye",
+                casualties_label: "Veszteségek:"
+            },
+            en: {
+                app_title: "HUNGARIAN OPERATIONAL BATTLEFIELD",
+                app_subtitle: "Interactive operational map and simulation of historical battles",
+                battles_count_label: "Recorded battles:",
+                layer_btn: "Map Layer",
+                map_style_heading: "Map Style",
+                layer_light: "Light Map",
+                layer_dark: "Dark Map",
+                layer_terrain: "Terrain Map",
+                layer_topo: "Topographic Map",
+                tab_1_title: "1. Battles & Info",
+                tab_2_title: "2. War Log",
+                tab_3_title: "3. Information",
+                filter_label: "Filter Era & Search",
+                era_all: "All Eras",
+                era_honfoglalas: "Conquest & Raids (896–955)",
+                era_arpad: "Árpád Era (1000–1301)",
+                era_vegyes: "Anjou & Mixed Kings (1301–1526)",
+                era_torok: "Ottoman Era (1526–1699)",
+                era_kuruc: "Rákóczi's War of Independence",
+                era_1848: "1848–49 War of Independence",
+                era_ww1: "World War I (1914–1918)",
+                era_ww2: "World War II (1939–1945)",
+                search_ph: "Battle or location...",
+                select_battle_label: "Select Historical Battle:",
+                side_magyar: "Hungarian / Allies",
+                side_enemy: "Opponent",
+                strategic_significance: "Strategic Significance",
+                symbol_legend_title: "Military Branch SVG Legend",
+                type_infantry: "Infantry",
+                type_cavalry: "Cavalry",
+                type_artillery: "Artillery",
+                type_navy: "Navy / Riverine",
+                operational_phase_label: "Operational Phase",
+                active_units_label: "Active Units in Phase",
+                phase_initial: "Initial Phase",
+                play_btn: "Play",
+                pause_btn: "Pause",
+                speed_label: "Speed:",
+                info_doc_title: "Detailed User Manual & Documentation",
+                info_doc_subtitle: "Application features, use cases, and Q/A overview",
+                info_section1_title: "1. User Manual",
+                info_section1_body: "Explore key battles of Hungarian military history from the Hungarian Conquest (896) through World War II (1945) using this interactive map.",
+                info_section1_li1: "<b>Battle Selection:</b> Use the era filter or search bar on Tab 1, then pick a battle from the dropdown menu.",
+                info_section1_li2: "<b>Seamless Time Slider:</b> Drag the slider at the bottom or click Play to continuously step through military movements.",
+                info_section1_li3: "<b>Switch to War Log:</b> Click Tab 2 for tactical phase descriptions and participating troop statuses.",
+                info_section1_li4: "<b>Map Layer Switching:</b> Select Light, Dark, Terrain, or Topographic base maps in the top right corner.",
+                info_section2_title: "2. Features & Objectives",
+                info_section2_body: "<b>Main Objective:</b> Interactively showcase Hungarian military heritage using modern vector mapping and animation technologies.",
+                info_feat1_title: "NATO Operational SVG Icons:",
+                info_feat1_desc: "Standard military branch icons (cavalry, infantry, artillery, navy) instead of basic dots.",
+                info_feat2_title: "Tricolor Victory Highlight:",
+                info_feat2_desc: "Hungarian victories feature a sparkling national tricolor border in the final summary phase.",
+                info_feat3_title: "Unobstructed View:",
+                info_feat3_desc: "Sidebar layout ensures full visibility of the battlefield map at all times.",
+                info_section3_title: "3. Use Cases",
+                info_use1: "<b>Education & History Lessons:</b> Interactive visual tool for school students and teachers.",
+                info_use2: "<b>Military Research:</b> Tactical and strategic unit movement analysis.",
+                info_use3: "<b>Museum Display:</b> Touchscreen presentation tool in historical exhibitions.",
+                info_qa_title: "4. Questions & Answers (Q/A)",
+                qa_q1: "Q: Which battles are included?",
+                qa_a1: "A: Major pivotal Hungarian battles including Pressburg (907), Muhi, Isaszeg, Limanowa, and the Siege of Budapest (1945).",
+                qa_q2: "Q: What do the SVG icons represent?",
+                qa_a2: "A: Standard NATO military symbols: slash = cavalry, X = infantry, circle = artillery, anchor = navy, star = HQ.",
+                qa_q3: "Q: How do I switch languages?",
+                qa_a3: "A: Use the language dropdown in the top right header anytime to switch between HU, EN, and DE.",
+                victory_badge: "🇭🇺 Hungarian Victory",
+                defeat_badge: "Hungarian Defeat",
+                draw_badge: "Draw / Inconclusive",
+                outcome_heading: "Final Battle Outcome",
+                casualties_label: "Casualties:"
+            },
+            de: {
+                app_title: "UNGARISCHES OPERATIVES SCHLACHTFELD",
+                app_subtitle: "Interaktive operative Karte und Simulation historischer Schlachten",
+                battles_count_label: "Erfasste Schlachten:",
+                layer_btn: "Kartenebene",
+                map_style_heading: "Kartenstil",
+                layer_light: "Helle Karte",
+                layer_dark: "Dunkle Karte",
+                layer_terrain: "Geländekarte",
+                layer_topo: "Topografische Karte",
+                tab_1_title: "1. Schlachten & Info",
+                tab_2_title: "2. Tagebuch",
+                tab_3_title: "3. Informationen",
+                filter_label: "Epoche filtern & Suchen",
+                era_all: "Alle Epochen",
+                era_honfoglalas: "Landnahme & Streifzüge (896–955)",
+                era_arpad: "Árpáden-Zeit (1000–1301)",
+                era_vegyes: "Anjou & Gemischte Könige (1301–1526)",
+                era_torok: "Türkenkriege (1526–1699)",
+                era_kuruc: "Rákóczi-Unabhängigkeitskrieg",
+                era_1848: "Unabhängigkeitskrieg 1848–49",
+                era_ww1: "Erster Weltkrieg (1914–1918)",
+                era_ww2: "Zweiter Weltkrieg (1939–1945)",
+                search_ph: "Schlacht oder Ort...",
+                select_battle_label: "Historische Schlacht wählen:",
+                side_magyar: "Ungarn / Verbündete",
+                side_enemy: "Gegner",
+                strategic_significance: "Strategische Bedeutung",
+                symbol_legend_title: "NATO-Militärsymbol-Legende",
+                type_infantry: "Infanterie",
+                type_cavalry: "Kavallerie",
+                type_artillery: "Artillerie",
+                type_navy: "Flotte / Flussflottille",
+                operational_phase_label: "Operative Phase",
+                active_units_label: "Aktive Truppen in der Phase",
+                phase_initial: "Anfangsphase",
+                play_btn: "Wiedergabe",
+                pause_btn: "Pause",
+                speed_label: "Geschwindigkeit:",
+                info_doc_title: "Detailliertes Benutzerhandbuch & Dokumentation",
+                info_doc_subtitle: "Funktionen, Anwendungsfälle und FAQ Übersicht",
+                info_section1_title: "1. Benutzerhandbuch",
+                info_section1_body: "Verfolgen Sie die prägendsten Schlachten der ungarischen Militärgeschichte von der Landnahme (896) bis zum Ende des Zweiten Weltkriegs (1945).",
+                info_section1_li1: "<b>Schlachtauswahl:</b> Nutzen Sie den Epochenfilter auf Tab 1 oder das Suchfeld und wählen Sie eine Schlacht aus der Liste.",
+                info_section1_li2: "<b>Stufenloser Zeitregler:</b> Ziehen Sie den Regler unten oder klicken Sie auf Wiedergabe, um die Truppenbewegungen zu steuern.",
+                info_section1_li3: "<b>Kriegstagebuch:</b> Klicken Sie auf Tab 2 für taktische Phasenbeschreibungen und Truppenstatus.",
+                info_section1_li4: "<b>Kartenstil wechseln:</b> Wählen Sie oben rechts zwischen Heller, Dunkler, Gelände- oder Topokarte.",
+                info_section2_title: "2. Funktionen & Ziele",
+                info_section2_body: "<b>Hauptziel:</b> Interaktive Präsentation des ungarischen Militärerbes mit moderner Vektorkarten- und Animationstechnologie.",
+                info_feat1_title: "NATO-Operations-Icons:",
+                info_feat1_desc: "Standardisierte Truppensymbole (Kavallerie, Infanterie, Artillerie, Flotte) anstelle einfacher Punkte.",
+                info_feat2_title: "Trikolor-Sieg-Hervorhebung:",
+                info_feat2_desc: "Bei ungarischen Siegen erscheint in der Endphase ein Rahmen in den Nationalfarben (Rot-Weiß-Grün).",
+                info_feat3_title: "Freie Kartenansicht:",
+                info_feat3_desc: "Das Layout gewährleistet, dass das Schlachtfeld jederzeit ohne Verdeckung sichtbar bleibt.",
+                info_section3_title: "3. Anwendungsfälle (Use Cases)",
+                info_use1: "<b>Bildung & Geschichtsunterricht:</b> Interaktive Veranschaulichung für Schüler und Lehrer.",
+                info_use2: "<b>Militärforschung:</b> Analyse taktischer und strategischer Truppenbewegungen.",
+                info_use3: "<b>Museumsausstellung:</b> Touchscreen-Präsentationswerkzeug in historischen Ausstellungen.",
+                info_qa_title: "4. Fragen & Antworten (Q/A)",
+                qa_q1: "F: Welche Schlachten sind enthalten?",
+                qa_a1: "A: Die wichtigsten Schlachten ungarischer Geschichte von Pressburg (907) über Muhi, Isaszeg und Limanowa bis zur Belagerung von Budapest (1945).",
+                qa_q2: "F: Was bedeuten die SVG-Symbole auf der Karte?",
+                qa_a2: "A: NATO-Standard-Militärsymbole: Schrägstrich = Kavallerie, X = Infanterie, Kreis = Artillerie, Anker = Flotte, Stern = Hauptquartier.",
+                qa_q3: "F: Wie wechsle ich die Sprache?",
+                qa_a3: "A: Nutzen Sie das Sprachauswahlmenü oben rechts, um jederzeit zwischen HU, EN und DE zu wechseln.",
+                victory_badge: "🇭🇺 Ungarischer Sieg",
+                defeat_badge: "Ungarische Niederlage",
+                draw_badge: "Unentschieden",
+                outcome_heading: "Schlachtergebnis",
+                casualties_label: "Verluste:"
+            }
+        };
+
+        let currentLang = 'hu';
+
+        /**
+         * STREAMING_CHUNK:Translating static and dynamic UI elements based on current locale...
+         */
+        function changeLanguage(langKey) {
+            if (!TRANSLATIONS[langKey]) return;
+            currentLang = langKey;
+            document.documentElement.lang = langKey;
+
+            // Translate static elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (TRANSLATIONS[langKey][key]) {
+                    el.innerHTML = TRANSLATIONS[langKey][key];
+                }
+            });
+
+            // Translate placeholder text
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                const key = el.getAttribute('data-i18n-ph');
+                if (TRANSLATIONS[langKey][key]) {
+                    el.placeholder = TRANSLATIONS[langKey][key];
+                }
+            });
+
+            // Update battle dropdown list labels
+            populateBattleList(BATTLES_DATA);
+
+            // Refresh current view text
+            if (currentBattle) {
+                updateStepView();
+            }
+        }
+    </script>
+
+    <script>
+        /**
+         * MAGYAR CSATÁK DOKUMENTÁLT ADATBÁZISA (Honfoglalástól a II. világháborúig)
+         */
+        const BATTLES_DATA = [
+            {
+                id: "pozsony_907",
+                name: "Pozsonyi csata",
+                year: 907,
+                dateStr: "907. július 4–7.",
+                era: "HONFOGLALAS",
+                location: "Pozsony (Bratislava)",
+                lat: 48.1486,
+                lng: 17.1077,
+                zoom: 12,
+                magyarCommander: "Árpád fejedelem",
+                magyarTroops: "~35 000 – 40 000 lovas íjász",
+                enemyCommander: "Luitpold bajor herceg & Theotmár érsek",
+                enemyTroops: "~60 000 bajor és keleti frank harcos",
+                result: "VICTORY",
+                context: "A honfoglaló magyarok megsemmisítő győzelmet arattak a Keleti Frank Királyság egyesített bajor seregén, végleg biztosítva a Kárpát-medencét a magyarok számára.",
+                summary: "A pozsonyi csata a magyar történelem egyik legfontosabb stratégiai győzelme. Árpád serege a nomád harcászat színlelt megfutamodásával és bekerítésével teljesen megsemmisítette a bajor sereget. Meghalt Luitpold herceg, Theotmár érsek és szinte a teljes bajor elit.",
+                casualties: "Magyar oldal: csekély veszteség | Bajor oldal: szinte a teljes sereg megsemmisült (~50 000 halott).",
+                steps: [
+                    {
+                        title: "1. Fázis: A bajor seregek felvonulása a Duna két partján",
+                        description: "Luitpold bajor herceg három oszlopban nyomul előre Pozsony felé: az egyik a Duna északi, a másik a déli partján, míg középen Sieghard flottája szállítja az utánpótlást.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Árpád főerői (Lovasság)", type: "cavalry", side: "magyar", lat: 48.140, lng: 17.130, label: "Árpád lovassága" },
+                            { id: "e1", name: "Luitpold Duna-északi serege", type: "infantry", side: "enemy", lat: 48.160, lng: 17.050, label: "Luitpold serege" },
+                            { id: "e2", name: "Theotmár Duna-déli serege", type: "infantry", side: "enemy", lat: 48.120, lng: 17.060, label: "Theotmár serege" },
+                            { id: "e3", name: "Sieghard Flottája", type: "navy", side: "enemy", lat: 48.138, lng: 17.070, label: "Bajor Flotta" }
+                        ],
+                        arrows: [
+                            { from: [48.160, 17.050], to: [48.150, 17.100], color: "#ef4444" },
+                            { from: [48.120, 17.060], to: [48.130, 17.100], color: "#ef4444" }
+                        ]
+                    },
+                    {
+                        title: "2. Fázis: Árpád gyors éjszakai átkelése és az északi sereg bekerítése",
+                        description: "A magyar lovasság kihasználta a bajor seregek szétválását. Éjszaka átkelt a Dunán, és váratlan nyílzáporral, bekerítéssel teljesen szétszórta Luitpold északi seregét.",
+                        sliderPercent: 50,
+                        units: [
+                            { id: "m1", name: "Árpád csapásmérő lovassága", type: "cavalry", side: "magyar", lat: 48.155, lng: 17.070, label: "Magyar lovasroham" },
+                            { id: "e1", name: "Luitpold bekerített serege", type: "infantry", side: "enemy", lat: 48.158, lng: 17.065, label: "Bajor északi szárny megsemmisül" },
+                            { id: "e2", name: "Theotmár Duna-déli serege", type: "infantry", side: "enemy", lat: 48.120, lng: 17.080, label: "Theotmár tehetetlenül nézi" }
+                        ],
+                        arrows: [
+                            { from: [48.140, 17.130], to: [48.155, 17.070], color: "#0284c7" }
+                        ]
+                    },
+                    {
+                        title: "3. Fázis: A déli sereg és a flotta felőrlése – Tündöklő magyar győzelem",
+                        description: "Július 5-én a magyar lovasok átkelnek a déli partra, bekerítik Theotmár érsek sereget, majd felgyújtják a bajor utánpótlást szállító hajórajt.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Magyar győztes lovasság", type: "hq", side: "magyar", lat: 48.135, lng: 17.090, label: "Árpád győztes zászlaja" },
+                            { id: "e2", name: "Megsemmisült bajor seregek", type: "infantry", side: "enemy", lat: 48.125, lng: 17.085, label: "Teljes bajor vereség" }
+                        ],
+                        arrows: [
+                            { from: [48.155, 17.070], to: [48.125, 17.085], color: "#0284c7" }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "augsburg_955",
+                name: "Augsburgi csata (Lech-mezei csata)",
+                year: 955,
+                dateStr: "955. augusztus 10.",
+                era: "HONFOGLALAS",
+                location: "Augsburg (Lech-mező, Németország)",
+                lat: 48.3665,
+                lng: 10.8944,
+                zoom: 11,
+                magyarCommander: "Bulcsú harka & Lél (Lehel) vezér",
+                magyarTroops: "~10 000 – 15 000 kalandozó lovas",
+                enemyCommander: "I. (Nagy) Ottó német király",
+                enemyTroops: "~8 000 nehézlovag és páncélos gyalogos",
+                result: "DEFEAT",
+                context: "A kalandozó magyar seregek súlyos veresége I. Ottótól a Lech-mezőn. A csata a nyugati magyar kalandozások végét jelentette.",
+                summary: "A magyarok ostrom alá vették Augsburgot, ám I. Ottó felmentő serege megérkezett. A csatát az esős időjárás is befolyásolta (az íjak áztak), valamint a német nehézlovasság fegyelmezett ellencsapása felmorzsolta a magyar könnyűlovasságot.",
+                casualties: "Magyar oldal: ~5 000–8 000 halott és fogoly | Német oldal: ~1 000–2 000 halott (köztük Vörös Konrád herceg).",
+                steps: [
+                    {
+                        title: "1. Fázis: Augsburg ostroma és Ottó közeledése",
+                        description: "Bulcsú és Lél serege Augsburg várát ostromolja. I. Ottó király 8 nehézlovas legióval megérkezik a Lech-mezőre.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Magyar ostromló főerők", type: "cavalry", side: "magyar", lat: 48.370, lng: 10.890, label: "Bulcsú serege" },
+                            { id: "e1", name: "I. Ottó nehézlovassága", type: "cavalry", side: "enemy", lat: 48.310, lng: 10.840, label: "Ottó nehézlovagjai" }
+                        ],
+                        arrows: [
+                            { from: [48.310, 10.840], to: [48.350, 10.870], color: "#ef4444" }
+                        ]
+                    },
+                    {
+                        title: "2. Fázis: Magyar hátbatámadás és zsákmányolási hiba",
+                        description: "Egy magyar lovas csapat átkelt a Lech folyón és megtámadta a német utóvédet (zsákmányos szekerek), de ahelyett, hogy megsemmisítették volna őket, fosztogatni kezdtek.",
+                        sliderPercent: 50,
+                        units: [
+                            { id: "m2", name: "Portyázó magyar hátbatámadók", type: "cavalry", side: "magyar", lat: 48.320, lng: 10.830, label: "Hátbatámadó magyarok" },
+                            { id: "e2", name: "Vörös Konrád ellencsapása", type: "cavalry", side: "enemy", lat: 48.325, lng: 10.835, label: "Konrád ellentámadása" }
+                        ],
+                        arrows: [
+                            { from: [48.370, 10.890], to: [48.320, 10.830], color: "#0284c7" }
+                        ]
+                    },
+                    {
+                        title: "3. Fázis: Ottó nehézlovas rohama és a magyar sereg felbomlása",
+                        description: "Konrád kiverte a fosztogató magyarokat, Ottó pedig szemből indított döntő nehézlovas rohamot. Az elázott idegű íjak nem működtek hatékonyan.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Menekülő magyarság", type: "cavalry", side: "magyar", lat: 48.380, lng: 10.920, label: "Visszavonuló magyarok" },
+                            { id: "e1", name: "Győztes német páncélosok", type: "hq", side: "enemy", lat: 48.368, lng: 10.892, label: "Ottó győzelme" }
+                        ],
+                        arrows: [
+                            { from: [48.350, 10.870], to: [48.380, 10.920], color: "#ef4444" }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "muhi_1241",
+                name: "Muhi csata",
+                year: 1241,
+                dateStr: "1241. április 11–12.",
+                era: "ARPAD",
+                location: "Muhi (Sajó folyó hídja)",
+                lat: 47.9782,
+                lng: 20.9328,
+                zoom: 12,
+                magyarCommander: "IV. Béla király & Kálmán herceg",
+                magyarTroops: "~25 000 – 30 000 páncélos és gyalogos",
+                enemyCommander: "Batu kán & Szubotáj hadvezér",
+                enemyTroops: "~50 000 – 60 000 tatár (mongol) lovas",
+                result: "DEFEAT",
+                context: "A tatárjárás döntő csatája a Sajó mentén. A mongol hadigépezet taktikája felmorzsolta a szekértáborba zárkózott magyar királyi sereget.",
+                summary: "Kálmán herceg éjszaka még sikeresen megvédte a Sajó hídját, de másnap hajnalban Szubotáj tatár tábornok délebbre hidat épített a Sajón és bekerítette a magyar tábort. IV. Béla alig tudott elmenekülni.",
+                casualties: "Magyar oldal: ~15 000–20 000 halott (a magyar elit szinte teljességgel odaveszett) | Tatár oldal: jelentős veszteség (~5 000).",
+                steps: [
+                    {
+                        title: "1. Fázis: Éjszakai csata a Sajó hídjánál",
+                        description: "Kálmán herceg és Ugrin érsek vitézül visszaveri a híd átkelő mongol előőrsöt a Sajónál.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Kálmán herceg hídvédői", type: "cavalry", side: "magyar", lat: 47.980, lng: 20.938, label: "Hídvédő magyarok" },
+                            { id: "e1", name: "Batu kán hídfő-támadói", type: "cavalry", side: "enemy", lat: 47.981, lng: 20.945, label: "Batu előőrse" }
+                        ],
+                        arrows: [
+                            { from: [47.981, 20.945], to: [47.980, 20.938], color: "#ef4444" }
+                        ]
+                    },
+                    {
+                        title: "2. Fázis: Szubotáj déli átkelése és a szekértábor bekerítése",
+                        description: "Szubotáj titokban tutajhidat épít délebbre, átkél a Sajón, és hátulról keríti be a magyar szekértábort.",
+                        sliderPercent: 50,
+                        units: [
+                            { id: "m1", name: "Magyar királyi szekértábor", type: "infantry", side: "magyar", lat: 47.975, lng: 20.925, label: "Magyar szekértábor" },
+                            { id: "e1", name: "Batu kán főerői", type: "artillery", side: "enemy", lat: 47.980, lng: 20.935, label: "Batu kőhajítói" },
+                            { id: "e2", name: "Szubotáj átkaroló serege", type: "cavalry", side: "enemy", lat: 47.960, lng: 20.930, label: "Szubotáj átkarolása" }
+                        ],
+                        arrows: [
+                            { from: [47.980, 20.935], to: [47.975, 20.925], color: "#ef4444" },
+                            { from: [47.960, 20.930], to: [47.970, 20.920], color: "#ef4444" }
+                        ]
+                    },
+                    {
+                        title: "3. Fázis: A tábor felégetése és a fejvesztett kitörés",
+                        description: "A mongolok tüzes nyilakkal felgyújtják a tábort. A kitörő magyar harcosokat a mongolok szétverik. IV. Béla elmenekül.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Menekülő Béla király", type: "hq", side: "magyar", lat: 47.990, lng: 20.890, label: "IV. Béla menekülése" },
+                            { id: "e1", name: "Batu és Szubotáj győztes tatárjai", type: "hq", side: "enemy", lat: 47.975, lng: 20.925, label: "Mongol győzelem" }
+                        ],
+                        arrows: [
+                            { from: [47.975, 20.925], to: [47.990, 20.890], color: "#0284c7" }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "nandorfehervar_1456",
+                name: "Nándorfehérvári diadal",
+                year: 1456,
+                dateStr: "1456. július 4–22.",
+                era: "VEGYES",
+                location: "Nándorfehérvár (Belgrád, Szerbia)",
+                lat: 44.8236,
+                lng: 20.4503,
+                zoom: 12,
+                magyarCommander: "Hunyadi János, Szilágyi Mihály & Kapisztrán János",
+                magyarTroops: "~15 000 várvédő + ~30 000 keresztes népfelkelő",
+                enemyCommander: "II. (Hódító) Mohamed oszmán szultán",
+                enemyTroops: "~70 000 – 100 000 oszmán katona & 200 ágyú",
+                result: "VICTORY",
+                context: "Európa védőpajzsának leghíresebb győzelme: Hunyadi János megállította a Bizáncot elfoglaló Hódító Mohamed szultán európai előrenyomulását.",
+                summary: "Hunyadi először a Dunán törte át a török hajózárat, majd szemből szorította meg az ostromlókat. Kapisztrán János lelkes keresztesei váratlanul átkeltek a Száván és elfoglalták az oszmán ágyúállásokat. Hunyadi kitört a várból. A déli harangszó máig e győzelem emléke.",
+                casualties: "Magyar oldal: ~4 000–6 000 halott | Török oldal: ~25 000–30 000 halott, a teljes ágyúpark elveszett.",
+                steps: [
+                    {
+                        title: "1. Fázis: Duna-i hajócsata és a zár áttörése",
+                        description: "Hunyadi július 14-én a magyar flottával szétzúzza a törökök Dunát lezáró hajóláncát, bejuttatva az utánpótlást a várba.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Hunyadi flottája", type: "navy", side: "magyar", lat: 44.830, lng: 20.440, label: "Hunyadi flottája" },
+                            { id: "e1", name: "Oszmán dunai flotta", type: "navy", side: "enemy", lat: 44.828, lng: 20.445, label: "Török hajózár áttörve" },
+                            { id: "m2", name: "Szilágyi Mihály várvédői", type: "infantry", side: "magyar", lat: 44.823, lng: 20.451, label: "Nándorfehérvári vár" }
+                        ],
+                        arrows: [
+                            { from: [44.830, 20.440], to: [44.825, 20.448], color: "#0284c7" }
+                        ]
+                    },
+                    {
+                        title: "2. Fázis: Július 21. – Dugovics Titusz önfeláldozása a falakon",
+                        description: "A törökök általános rohamot indítanak. Dúl a harc a várfalakon. Dugovics Titusz a mélybe rántja a lófarkas zászlót kitűzni akaró törököt.",
+                        sliderPercent: 50,
+                        units: [
+                            { id: "m2", name: "Elszánt magyar várvédők", type: "infantry", side: "magyar", lat: 44.823, lng: 20.451, label: "Várfalak védelme" },
+                            { id: "e2", name: "Janicsárok rohamozó tömege", type: "infantry", side: "enemy", lat: 44.821, lng: 20.453, label: "Janicsár roham" }
+                        ],
+                        arrows: [
+                            { from: [44.821, 20.453], to: [44.823, 20.451], color: "#ef4444" }
+                        ]
+                    },
+                    {
+                        title: "3. Fázis: Kapisztrán átkelése a Száván és Hunyadi mindent döntő kitörése",
+                        description: "Kapisztrán keresztesei átkelnek a Száván és elfoglalják a török ágyúkat. Hunyadi nehézlovassága kitör a várból, s szétveri a szultáni tábort.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m3", name: "Kapisztrán keresztesei", type: "infantry", side: "magyar", lat: 44.815, lng: 20.440, label: "Kapisztrán roham" },
+                            { id: "m1", name: "Hunyadi kitörő nehézlovassága", type: "hq", side: "magyar", lat: 44.820, lng: 20.455, label: "Hunyadi felmentő rohama" },
+                            { id: "e2", name: "Menekülő Mohamed szultán", type: "hq", side: "enemy", lat: 44.810, lng: 20.465, label: "Török tábor eleste" }
+                        ],
+                        arrows: [
+                            { from: [44.815, 20.440], to: [44.812, 20.460], color: "#0284c7" },
+                            { from: [44.823, 20.451], to: [44.812, 20.460], color: "#0284c7" }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "isaszeg_1849",
+                name: "Isaszegi csata",
+                year: 1849,
+                dateStr: "1849. április 6.",
+                era: "1848",
+                location: "Isaszeg (Pest megye)",
+                lat: 47.5323,
+                lng: 19.3712,
+                zoom: 12,
+                magyarCommander: "Görgei Artúr fővezér, Klapka György, Damjanich János",
+                magyarTroops: "~31 000 honvéd & 91 ágyú",
+                enemyCommander: "Windisch-Grätz herceg tábornagy",
+                enemyTroops: "~26 000 császári katona & 137 ágyú",
+                result: "VICTORY",
+                context: "A dicsőséges tavaszi hadjárat csúcspontja: Görgei Artúr szétverte a császári fősereget, megnyitva az utat Buda felszabadítása előtt.",
+                summary: "Klapka I. testülete kezdetben meghátrált Isaszegnél, ám Damjanich János III. testülete megérkezett és felvette a harcot. Görgei személyesen száguldott a csataterére, átrendezte a sorokat, és általános rohamot vezényelt.",
+                casualties: "Magyar oldal: ~800–1 000 halott és sebesült | Császári oldal: ~2 000 halott, sebesült és fogoly.",
+                steps: [
+                    {
+                        title: "1. Fázis: Klapka meghátrálása és Damjanich megérkezése",
+                        description: "Klapka I. testülete visszaszorul az Isaszegi erdőben Jellačić csapatai elől, de Damjanich megérkezik és 'Megállj!'-t parancsol.",
+                        sliderPercent: 0,
+                        units: [
+                            { id: "m1", name: "Klapka csapatai (I. testület)", type: "infantry", side: "magyar", lat: 47.525, lng: 19.360, label: "Klapka visszavonul" },
+                            { id: "m2", name: "Damjanich vörössipkásai (III. testület)", type: "infantry", side: "magyar", lat: 47.520, lng: 19.380, label: "Damjanich megérkezik!" },
+                            { id: "e1", name: "Jellačić császári hadtestje", type: "infantry", side: "enemy", lat: 47.535, lng: 19.365, label: "Jellačić előrenyomul" }
+                        ],
+                        arrows: [
+                            { from: [47.520, 19.380], to: [47.530, 19.370], color: "#0284c7" }
+                        ]
+                    },
+                    {
+                        title: "2. Fázis: Görgei megérkezése és az isaszegi erdő visszavétele",
+                        description: "Görgei Artúr a csatatérre érve átszervezi a seregtesteket, és ellentámadásba lendíti Aulich és Damjanich zászlóaljait.",
+                        sliderPercent: 50,
+                        units: [
+                            { id: "m3", name: "Görgei fővezéri törzse", type: "hq", side: "magyar", lat: 47.515, lng: 19.375, label: "Görgei fővezér" },
+                            { id: "m2", name: "Damjanich Vörössipkásai", type: "infantry", side: "magyar", lat: 47.532, lng: 19.370, label: "Vörössipkások rohama" },
+                            { id: "e1", name: "Windisch-Grätz centruma", type: "artillery", side: "enemy", lat: 47.540, lng: 19.360, label: "Császári tüzérség" }
+                        ],
+                        arrows: [
+                            { from: [47.532, 19.370], to: [47.540, 19.360], color: "#0284c7" }
+                        ]
+                    },
+                    {
+                        title: "3. Fázis: Teljes császári megfutamodás Pest felé",
+                        description: "Isaszeg lángokban áll. A honvédek szuronnyal verik ki az osztrákokat. Windisch-Grätz elrendeli az általános visszavonulást.",
+                        sliderPercent: 100,
+                        units: [
+                            { id: "m1", name: "Győztes honvédsereg", type: "hq", side: "magyar", lat: 47.535, lng: 19.370, label: "Isaszegi Dicsőség" },
+                            { id: "e1", name: "Menekülő császáriak", type: "infantry", side: "enemy", lat: 47.550, lng: 19.330, label: "Visszavonulás Pestre" }
+                        ],
+                        arrows: [
+                            { from: [47.540, 19.360], to: [47.550, 19.330], color: "#ef4444" }
+                        ]
+                    }
+                ]
+            }
+        ];
+    </script>
+
+    <script>
+        // Global State Variables
+        let map;
+        let baseLayers = {};
+        let currentBattle = null;
+        let currentStepIndex = 0;
+        let currentSliderVal = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let animationSpeed = 1000;
+        let isInitialLoad = true;
+
+        let activeMarkers = [];
+        let activePolylines = [];
+
+        /**
+         * Generates NATO SVG Icon string based on military type and faction
+         */
+        function createMilitarySvgIcon(type, side) {
+            const isMagyar = side === 'magyar';
+            const strokeColor = isMagyar ? '#0284c7' : '#ef4444';
+            const fillColor = isMagyar ? '#0f172a' : '#1f1924';
+            const iconColor = isMagyar ? '#38bdf8' : '#f87171';
+
+            let symbolContent = '';
+
+            switch (type) {
+                case 'cavalry':
+                    symbolContent = `<line x1="6" y1="26" x2="26" y2="6" stroke="${iconColor}" stroke-width="2.5"/>
+                                     <circle cx="16" cy="16" r="3" fill="${iconColor}"/>`;
+                    break;
+                case 'artillery':
+                    symbolContent = `<circle cx="16" cy="16" r="5" fill="${iconColor}"/>
+                                     <path d="M10 16 L22 16 M16 10 L16 22" stroke="${iconColor}" stroke-width="1.5"/>`;
+                    break;
+                case 'navy':
+                    symbolContent = `<path d="M16 8 L16 22 M11 18 C11 23, 21 23, 21 18 M11 12 L21 12" stroke="${iconColor}" stroke-width="2" fill="none"/>`;
+                    break;
+                case 'hq':
+                    symbolContent = `<polygon points="16,6 19,12 25,13 21,17 22,23 16,20 10,23 11,17 7,13 13,12" fill="${iconColor}"/>`;
+                    break;
+                case 'infantry':
+                default:
+                    symbolContent = `<line x1="6" y1="6" x2="26" y2="26" stroke="${iconColor}" stroke-width="2"/>
+                                     <line x1="26" y1="6" x2="6" y2="26" stroke="${iconColor}" stroke-width="2"/>`;
+                    break;
+            }
+
+            const svg = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 32 32">
+                    <rect x="2" y="2" width="28" height="28" rx="4" fill="${fillColor}" stroke="${strokeColor}" stroke-width="2.5"/>
+                    ${symbolContent}
+                </svg>
+            `;
+
+            return L.divIcon({
+                html: svg,
+                className: 'military-svg-marker',
+                iconSize: [36, 36],
+                iconAnchor: [18, 18],
+                popupAnchor: [0, -18]
+            });
+        }
+
+        /**
+         * Initialize Leaflet Map with 4 custom base layers
+         */
+        function initMap() {
+            baseLayers = {
+                dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap &copy; CARTO',
+                    maxZoom: 18
+                }),
+                light: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap &copy; CARTO',
+                    maxZoom: 18
+                }),
+                terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenTopoMap',
+                    maxZoom: 17
+                }),
+                topo: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri',
+                    maxZoom: 18
+                })
+            };
+
+            map = L.map('map', {
+                center: [47.1625, 19.5033],
+                zoom: 7,
+                layers: [baseLayers.dark],
+                zoomControl: false
+            });
+
+            L.control.zoom({ position: 'topright' }).addTo(map);
+
+            // Close layer dropdown on click outside
+            document.addEventListener('click', (e) => {
+                const btn = document.getElementById('layer-menu-btn');
+                const dropdown = document.getElementById('layer-dropdown');
+                if (btn && dropdown && !btn.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+
+            document.getElementById('layer-menu-btn').addEventListener('click', () => {
+                document.getElementById('layer-dropdown').classList.toggle('hidden');
+            });
+
+            // Set current footer year dynamically
+            const yearSpan = document.getElementById('current-year');
+            if (yearSpan) yearSpan.textContent = new Date().getFullYear();
+        }
+
+        function setBaseMap(layerKey) {
+            Object.values(baseLayers).forEach(layer => map.removeLayer(layer));
+            if (baseLayers[layerKey]) {
+                map.addLayer(baseLayers[layerKey]);
+            }
+            document.getElementById('layer-dropdown').classList.add('hidden');
+        }
+
+        /**
+         * STREAMING_CHUNK:Handling 3-tab sidebar navigation switching...
+         */
+        function switchTab(tabNumber) {
+            const btn1 = document.getElementById('tab-btn-1');
+            const btn2 = document.getElementById('tab-btn-2');
+            const btn3 = document.getElementById('tab-btn-3');
+            const content1 = document.getElementById('tab-content-1');
+            const content2 = document.getElementById('tab-content-2');
+            const content3 = document.getElementById('tab-content-3');
+
+            const inactiveStyle = "flex-1 py-2 px-1.5 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/50";
+            const activeStyle = "flex-1 py-2 px-1.5 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition bg-amber-500/15 text-amber-300 border border-amber-500/30";
+
+            btn1.className = tabNumber === 1 ? activeStyle : inactiveStyle;
+            btn2.className = tabNumber === 2 ? activeStyle : inactiveStyle;
+            btn3.className = tabNumber === 3 ? activeStyle : inactiveStyle;
+
+            content1.classList.toggle('hidden', tabNumber !== 1);
+            content2.classList.toggle('hidden', tabNumber !== 2);
+            content3.classList.toggle('hidden', tabNumber !== 3);
+        }
+
+        function populateBattleList(battles) {
+            const select = document.getElementById('battle-select');
+            select.innerHTML = '';
+
+            battles.forEach(battle => {
+                const opt = document.createElement('option');
+                opt.value = battle.id;
+                opt.textContent = `${battle.year} - ${battle.name}`;
+                select.appendChild(opt);
+            });
+
+            document.getElementById('total-battles-count').textContent = BATTLES_DATA.length;
+            document.getElementById('filtered-count').textContent = `(${battles.length})`;
+        }
+
+        function filterBattles() {
+            const era = document.getElementById('era-filter').value;
+            const search = document.getElementById('search-input').value.toLowerCase().trim();
+
+            const filtered = BATTLES_DATA.filter(battle => {
+                const matchesEra = (era === 'ALL' || battle.era === era);
+                const matchesSearch = battle.name.toLowerCase().includes(search) || battle.location.toLowerCase().includes(search) || battle.year.toString().includes(search);
+                return matchesEra && matchesSearch;
+            });
+
+            populateBattleList(filtered);
+            if (filtered.length > 0) {
+                selectBattle(filtered[0].id);
+            }
+        }
+
+        /**
+         * STREAMING_CHUNK:Selecting battles, updating battle details and positioning Leaflet map...
+         */
+        function selectBattle(battleId) {
+            stopAnimation();
+            const battle = BATTLES_DATA.find(b => b.id === battleId);
+            if (!battle) return;
+
+            currentBattle = battle;
+            currentStepIndex = 0;
+            currentSliderVal = 0;
+
+            document.getElementById('battle-select').value = battle.id;
+
+            document.getElementById('battle-title').textContent = battle.name;
+            document.getElementById('battle-date').textContent = battle.dateStr;
+            document.getElementById('battle-location').textContent = battle.location;
+            document.getElementById('battle-era-badge').textContent = battle.era;
+            document.getElementById('battle-summary').textContent = battle.summary;
+            document.getElementById('battle-context').textContent = battle.context;
+
+            document.getElementById('side-1-leader').textContent = battle.magyarCommander;
+            document.getElementById('side-1-troops').textContent = battle.magyarTroops;
+            document.getElementById('side-2-leader').textContent = battle.enemyCommander;
+            document.getElementById('side-2-troops').textContent = battle.enemyTroops;
+
+            document.getElementById('map-overlay-title').textContent = `${battle.name} (${battle.year})`;
+            document.getElementById('map-overlay-coords').textContent = `N ${battle.lat.toFixed(4)}°, E ${battle.lng.toFixed(4)}°`;
+
+            map.invalidateSize();
+
+            if (isInitialLoad) {
+                map.setView([battle.lat, battle.lng], battle.zoom);
+                isInitialLoad = false;
+            } else {
+                try {
+                    map.flyTo([battle.lat, battle.lng], battle.zoom, { duration: 1.5 });
+                } catch (e) {
+                    map.setView([battle.lat, battle.lng], battle.zoom);
+                }
+            }
+
+            document.getElementById('time-slider').value = 0;
+            updateStepView();
+        }
+
+        /**
+         * STREAMING_CHUNK:Updating step view, handling victory card highlights and SVG arrow layers...
+         */
+        function updateStepView() {
+            if (!currentBattle || !currentBattle.steps) return;
+
+            const t = TRANSLATIONS[currentLang];
+            const steps = currentBattle.steps;
+            const step = steps[currentStepIndex];
+
+            document.getElementById('step-indicator').textContent = `${currentStepIndex + 1} / ${steps.length} ${t.operational_phase_label.toLowerCase()}`;
+            document.getElementById('step-title').textContent = step.title;
+            document.getElementById('step-description').textContent = step.description;
+
+            document.getElementById('time-slider-time').textContent = step.title.split(':')[0] || `${t.operational_phase_label} ${currentStepIndex + 1}`;
+            document.getElementById('time-slider-percent').textContent = `${Math.round(currentSliderVal)}%`;
+
+            // Final Summary Card Display on Last Step
+            const summaryCard = document.getElementById('final-summary-card');
+            if (currentStepIndex === steps.length - 1) {
+                summaryCard.classList.remove('hidden');
+                document.getElementById('final-outcome-title').textContent = `${currentBattle.name} – ${t.outcome_heading}`;
+                document.getElementById('final-outcome-text').textContent = currentBattle.summary;
+                document.getElementById('final-casualty-info').innerHTML = `
+                    <div class="font-semibold text-amber-300"><i class="fa-solid fa-skull-crossbones mr-1"></i> ${t.casualties_label}</div>
+                    <div class="text-slate-300 mt-0.5">${currentBattle.casualties}</div>
+                `;
+
+                if (currentBattle.result === 'VICTORY') {
+                    summaryCard.className = "rounded-xl p-4 transition-all duration-500 hungarian-victory-card";
+                    document.getElementById('final-outcome-badge').className = "inline-block px-3 py-1 rounded-md text-xs font-bold uppercase mb-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+                    document.getElementById('final-outcome-badge').textContent = t.victory_badge;
+                } else if (currentBattle.result === 'DEFEAT') {
+                    summaryCard.className = "rounded-xl p-4 transition-all duration-500 defeat-card bg-slate-900/90";
+                    document.getElementById('final-outcome-badge').className = "inline-block px-3 py-1 rounded-md text-xs font-bold uppercase mb-2 bg-red-500/20 text-red-300 border border-red-500/40";
+                    document.getElementById('final-outcome-badge').textContent = t.defeat_badge;
+                } else {
+                    summaryCard.className = "rounded-xl p-4 transition-all duration-500 draw-card bg-slate-900/90";
+                    document.getElementById('final-outcome-badge').className = "inline-block px-3 py-1 rounded-md text-xs font-bold uppercase mb-2 bg-amber-500/20 text-amber-300 border border-amber-500/40";
+                    document.getElementById('final-outcome-badge').textContent = t.draw_badge;
+                }
+            } else {
+                summaryCard.classList.add('hidden');
+            }
+
+            // Render Active Units List in Sidebar Tab 2
+            const activeUnitsContainer = document.getElementById('active-units-list');
+            activeUnitsContainer.innerHTML = '';
+            step.units.forEach(u => {
+                const item = document.createElement('div');
+                const isMagyar = u.side === 'magyar';
+                item.className = `p-2.5 rounded-lg border text-xs flex items-center justify-between ${isMagyar ? 'bg-sky-950/40 border-sky-800/60 text-sky-200' : 'bg-red-950/40 border-red-800/60 text-red-200'}`;
+                item.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid ${isMagyar ? 'fa-shield text-sky-400' : 'fa-crosshairs text-red-400'}"></i>
+                        <span class="font-medium">${u.name}</span>
+                    </div>
+                    <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-900/60">${u.type}</span>
+                `;
+                activeUnitsContainer.appendChild(item);
+            });
+
+            // Clear Old Map Layers
+            activeMarkers.forEach(m => map.removeLayer(m));
+            activePolylines.forEach(p => map.removeLayer(p));
+            activeMarkers = [];
+            activePolylines = [];
+
+            // Add SVG Markers for Units
+            step.units.forEach(unit => {
+                const icon = createMilitarySvgIcon(unit.type, unit.side);
+                const marker = L.marker([unit.lat, unit.lng], { icon: icon }).addTo(map);
+
+                marker.bindPopup(`
+                    <div class="p-1">
+                        <div class="font-bold text-amber-400 text-xs mb-1">${unit.name}</div>
+                        <div class="text-[11px] text-slate-300">Hadnem: <span class="capitalize text-slate-100 font-semibold">${unit.type}</span></div>
+                        <div class="text-[11px] text-slate-300">Oldal: <span class="font-semibold ${unit.side === 'magyar' ? 'text-sky-400' : 'text-red-400'}">${unit.side === 'magyar' ? t.side_magyar : t.side_enemy}</span></div>
+                        <div class="text-[10px] text-slate-400 mt-1 italic">${unit.label || ''}</div>
+                    </div>
+                `);
+
+                activeMarkers.push(marker);
+            });
+
+            // Render Animated Polyline Movement Arrows
+            if (step.arrows) {
+                step.arrows.forEach(arrow => {
+                    const polyline = L.polyline([arrow.from, arrow.to], {
+                        color: arrow.color || '#38bdf8',
+                        weight: 4,
+                        opacity: 0.85,
+                        dashArray: '8, 10',
+                        className: 'animated-arrow-line'
+                    }).addTo(map);
+
+                    const headCircle = L.circleMarker(arrow.to, {
+                        radius: 6,
+                        color: arrow.color || '#38bdf8',
+                        fillColor: arrow.color || '#38bdf8',
+                        fillOpacity: 0.9
+                    }).addTo(map);
+
+                    activePolylines.push(polyline);
+                    activePolylines.push(headCircle);
+                });
+            }
+        }
+
+        function onSliderInput(val) {
+            currentSliderVal = parseFloat(val);
+            if (!currentBattle || !currentBattle.steps) return;
+
+            const totalSteps = currentBattle.steps.length;
+            const stepIndex = Math.min(Math.floor((currentSliderVal / 100) * totalSteps), totalSteps - 1);
+
+            if (stepIndex !== currentStepIndex) {
+                currentStepIndex = stepIndex;
+            }
+            updateStepView();
+        }
+
+        function nextStep() {
+            if (!currentBattle) return;
+            if (currentStepIndex < currentBattle.steps.length - 1) {
+                currentStepIndex++;
+                currentSliderVal = (currentStepIndex / (currentBattle.steps.length - 1)) * 100;
+                document.getElementById('time-slider').value = currentSliderVal;
+                updateStepView();
+            }
+        }
+
+        function prevStep() {
+            if (!currentBattle) return;
+            if (currentStepIndex > 0) {
+                currentStepIndex--;
+                currentSliderVal = (currentStepIndex / (currentBattle.steps.length - 1)) * 100;
+                document.getElementById('time-slider').value = currentSliderVal;
+                updateStepView();
+            }
+        }
+
+        /**
+         * STREAMING_CHUNK:Managing playback state animation timer and speed controls...
+         */
+        function togglePlay() {
+            if (isPlaying) {
+                stopAnimation();
+            } else {
+                startAnimation();
+            }
+        }
+
+        function startAnimation() {
+            if (!currentBattle) return;
+            isPlaying = true;
+            const t = TRANSLATIONS[currentLang];
+            document.getElementById('play-icon').className = 'fa-solid fa-pause';
+            document.getElementById('play-text').textContent = t.pause_btn;
+
+            playInterval = setInterval(() => {
+                currentSliderVal += 1.5;
+                if (currentSliderVal > 100) {
+                    currentSliderVal = 0;
+                }
+                document.getElementById('time-slider').value = currentSliderVal;
+                onSliderInput(currentSliderVal);
+            }, animationSpeed / 10);
+        }
+
+        function stopAnimation() {
+            isPlaying = false;
+            if (playInterval) clearInterval(playInterval);
+            const t = TRANSLATIONS[currentLang];
+            document.getElementById('play-icon').className = 'fa-solid fa-play';
+            document.getElementById('play-text').textContent = t.play_btn;
+        }
+
+        function changeSpeed(ms) {
+            animationSpeed = parseInt(ms);
+            if (isPlaying) {
+                stopAnimation();
+                startAnimation();
+            }
+        }
+
+        window.onload = function() {
+            initMap();
+            populateBattleList(BATTLES_DATA);
+            changeLanguage('hu'); // Default to Hungarian
+            
+            setTimeout(() => {
+                map.invalidateSize();
+                if (BATTLES_DATA.length > 0) {
+                    selectBattle(BATTLES_DATA[0].id);
+                }
+            }, 100);
+        };
+    </script>
+</body>
+</html>

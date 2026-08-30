@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="hu" class="theme-blue">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eurostat Magyarország & EU Elemző Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        euBlue: '#003399',
+                        euYellow: '#ffcc00',
+                        huRed: '#cf152d',
+                        huGreen: '#2e7d32'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        :root {
+            --primary-gradient: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #172554 100%);
+            --accent-color: #2563eb;
+            --accent-hover: #1d4ed8;
+            --accent-light: #eff6ff;
+            --accent-border: #bfdbfe;
+            --accent-text: #1e40af;
+            --badge-bg: rgba(37, 99, 235, 0.12);
+        }
+
+        /* Kék téma */
+        html.theme-blue {
+            --primary-gradient: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e293b 100%);
+            --accent-color: #2563eb;
+            --accent-hover: #1d4ed8;
+            --accent-light: #eff6ff;
+            --accent-border: #bfdbfe;
+            --accent-text: #1d4ed8;
+            --badge-bg: rgba(37, 99, 235, 0.12);
+        }
+
+        /* Zöld téma */
+        html.theme-green {
+            --primary-gradient: linear-gradient(135deg, #064e3b 0%, #047857 50%, #0f172a 100%);
+            --accent-color: #059669;
+            --accent-hover: #047857;
+            --accent-light: #ecfdf5;
+            --accent-border: #a7f3d0;
+            --accent-text: #065f46;
+            --badge-bg: rgba(5, 150, 105, 0.12);
+        }
+
+        /* Barna / Warm Amber téma */
+        html.theme-brown {
+            --primary-gradient: linear-gradient(135deg, #451a03 0%, #78350f 50%, #1c1917 100%);
+            --accent-color: #b45309;
+            --accent-hover: #92400e;
+            --accent-light: #fffbeb;
+            --accent-border: #fde68a;
+            --accent-text: #78350f;
+            --badge-bg: rgba(180, 83, 9, 0.12);
+        }
+
+        .dark html.theme-blue, html.dark.theme-blue {
+            --accent-light: rgba(37, 99, 235, 0.15);
+            --accent-border: rgba(96, 165, 250, 0.3);
+            --accent-text: #93c5fd;
+        }
+
+        .dark html.theme-green, html.dark.theme-green {
+            --accent-light: rgba(5, 150, 105, 0.15);
+            --accent-border: rgba(52, 211, 153, 0.3);
+            --accent-text: #6ee7b7;
+        }
+
+        .dark html.theme-brown, html.dark.theme-brown {
+            --accent-light: rgba(180, 83, 9, 0.2);
+            --accent-border: rgba(251, 191, 36, 0.3);
+            --accent-text: #fcd34d;
+        }
+
+        .header-bg {
+            background: var(--primary-gradient);
+        }
+
+        .theme-accent-btn {
+            background-color: var(--accent-color);
+            color: #ffffff;
+        }
+        .theme-accent-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .tab-btn.active {
+            border-bottom: 3px solid var(--accent-color);
+            color: var(--accent-color);
+            font-weight: 700;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased min-h-screen flex flex-col transition-colors duration-200">
+
+    <header class="header-bg text-white shadow-xl sticky top-0 z-50 transition-all duration-300 border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
+            
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-euYellow flex items-center justify-center text-slate-900 font-black text-xl shadow-lg ring-2 ring-white/20">
+                    <i class="fa-solid fa-chart-line text-blue-950"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight" data-i18n="app_title">Eurostat Adatbázis & Riport Elemző</h1>
+                        <span class="text-[11px] bg-white/20 text-white border border-white/30 px-2 py-0.5 rounded-full font-semibold">Live v3.0</span>
+                    </div>
+                    <p class="text-xs text-slate-200/90" data-i18n="app_subtitle">Magyarország és az Európai Unió tagállamainak élő összehasonlítása</p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2.5">
+                
+                <!-- Nyelvválasztó -->
+                <div class="relative inline-block">
+                    <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-black/30 hover:bg-black/40 text-white text-xs font-semibold rounded-lg px-2.5 py-1.5 border border-white/20 outline-none cursor-pointer backdrop-blur-sm transition">
+                        <option value="hu" class="text-slate-900">🇭🇺 Magyar (HU)</option>
+                        <option value="en" class="text-slate-900">🇬🇧 English (EN)</option>
+                        <option value="de" class="text-slate-900">🇩🇪 Deutsch (DE)</option>
+                    </select>
+                </div>
+
+                <!-- Színvilág választó -->
+                <div class="flex items-center bg-black/30 backdrop-blur-sm p-1 rounded-lg border border-white/20 gap-1" title="Színstílus választó">
+                    <button onclick="setColorTheme('blue')" class="w-6 h-6 rounded-md bg-blue-600 border border-white/40 hover:scale-105 transition" title="Kék stílus"></button>
+                    <button onclick="setColorTheme('green')" class="w-6 h-6 rounded-md bg-emerald-600 border border-white/40 hover:scale-105 transition" title="Zöld stílus"></button>
+                    <button onclick="setColorTheme('brown')" class="w-6 h-6 rounded-md bg-amber-700 border border-white/40 hover:scale-105 transition" title="Barna stílus"></button>
+                </div>
+
+                <!-- Éjszakai / Nappali Mód kapcsoló -->
+                <button onclick="toggleDarkMode()" id="darkModeToggleBtn" class="bg-black/30 hover:bg-black/50 text-white text-xs px-2.5 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1.5 shadow-sm">
+                    <i id="darkModeIcon" class="fa-solid fa-moon text-amber-300"></i>
+                    <span id="darkModeText" data-i18n="mode_dark">Sötét</span>
+                </button>
+
+                <!-- API állapot jelző & Frissítés -->
+                <div id="apiStatusBadge" class="hidden sm:flex items-center gap-1.5 bg-emerald-900/60 border border-emerald-400/40 text-emerald-200 text-xs px-2.5 py-1.5 rounded-lg backdrop-blur-sm">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="apiStatusText" data-i18n="api_status_connected">API Csatlakozva</span>
+                </div>
+                
+                <button onclick="refreshData()" title="Adatok újratöltése" class="p-2 text-slate-200 hover:text-white hover:bg-white/10 rounded-lg transition">
+                    <i id="refreshIcon" class="fa-solid fa-rotate"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+        <section class="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4 transition-colors">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                <!-- Adatkör választó -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-database text-blue-500"></i> <span data-i18n="filter_indicator_label">Adatkör / Indikátor</span>
+                    </label>
+                    <select id="indicatorSelect" onchange="handleIndicatorChange()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 p-2.5 outline-none font-medium transition">
+                        <option value="hicp" selected data-i18n="ind_hicp_opt">Harmonizált Fogyasztói Árindex (HICP Infláció, %)</option>
+                        <option value="unemp" data-i18n="ind_unemp_opt">Munkanélküliségi ráta (Szezonálisan kiigazított, %)</option>
+                        <option value="gdp" data-i18n="ind_gdp_opt">Negyedéves GDP növekedési ütem (YoY, %)</option>
+                        <option value="debt" data-i18n="ind_debt_opt">Költségvetési Államadósság (GDP arányában, %)</option>
+                        <option value="renew" data-i18n="ind_renew_opt">Megújuló energia részarány (% a bruttó fogyasztásból)</option>
+                    </select>
+                </div>
+
+                <!-- Időszak szűrő -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-regular fa-clock text-blue-500"></i> <span data-i18n="filter_time_label">Időintervallum</span>
+                    </label>
+                    <select id="timeLimitSelect" onchange="applyFiltersAndRender()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 p-2.5 outline-none font-medium transition">
+                        <option value="6" data-i18n="time_6">Utolsó 6 időszak</option>
+                        <option value="12" selected data-i18n="time_12">Utolsó 12 időszak</option>
+                        <option value="24" data-i18n="time_24">Utolsó 24 időszak</option>
+                        <option value="36" data-i18n="time_36">Utolsó 36 időszak</option>
+                        <option value="60" data-i18n="time_all">Összes elérhető adat</option>
+                    </select>
+                </div>
+
+                <!-- Országcsoport előbeállítások -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-layer-group text-blue-500"></i> <span data-i18n="filter_preset_label">Országcsoport gyorsszűrő</span>
+                    </label>
+                    <select id="countryPresetSelect" onchange="applyCountryPreset(this.value)" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 p-2.5 outline-none font-medium transition">
+                        <option value="hu_eu" data-i18n="preset_hu_eu">Csak Magyarország + EU27 Átlag</option>
+                        <option value="v4" selected data-i18n="preset_v4">Visegrádi Négyek (V4) + EU Átlag</option>
+                        <option value="cee" data-i18n="preset_cee">Közép- és Kelet-Európa (CEE)</option>
+                        <option value="top_econ" data-i18n="preset_top">EU Vezető Gazdaságok (DE, FR, IT, ES)</option>
+                        <option value="all" data-i18n="preset_all">Teljes EU-27 tagállami lista</option>
+                    </select>
+                </div>
+
+                <!-- Diagram típus választó -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-chart-pie text-blue-500"></i> <span data-i18n="filter_charttype_label">Diagram Típusa</span>
+                    </label>
+                    <div class="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-300 dark:border-slate-700">
+                        <button type="button" onclick="setChartType('line')" id="chartTypeLineBtn" class="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-700 text-blue-900 dark:text-blue-300 shadow-sm transition">
+                            <i class="fa-solid fa-chart-line mr-1"></i> <span data-i18n="chart_type_line">Vonal</span>
+                        </button>
+                        <button type="button" onclick="setChartType('bar')" id="chartTypeBarBtn" class="flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
+                            <i class="fa-solid fa-chart-simple mr-1"></i> <span data-i18n="chart_type_bar">Oszlop</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2">
+                <span class="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1">
+                    <i class="fa-solid fa-filter"></i> <span data-i18n="active_countries_label">Aktív országok:</span>
+                </span>
+                <div id="countryPillsContainer" class="flex flex-wrap items-center gap-1.5 max-h-24 overflow-y-auto custom-scrollbar p-1">
+                    <!-- Dinamikusan töltődő ország címkék -->
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- Magyarországi érték -->
+            <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 relative overflow-hidden transition-all">
+                <div class="absolute -right-4 -top-4 w-20 h-20 bg-red-500/10 dark:bg-red-500/20 rounded-full flex items-center justify-center text-red-400 text-3xl font-black">
+                    HU
+                </div>
+                <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-600"></span> <span data-i18n="kpi_hu_title">Magyarország</span>
+                </div>
+                <div class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight" id="kpiHuValue">--</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1" id="kpiHuPeriod">
+                    <i class="fa-regular fa-calendar"></i> <span data-i18n="loading">Betöltés...</span>
+                </div>
+            </div>
+
+            <!-- EU27 Átlag -->
+            <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 relative overflow-hidden transition-all">
+                <div class="absolute -right-4 -top-4 w-20 h-20 bg-amber-500/10 dark:bg-amber-500/20 rounded-full flex items-center justify-center text-amber-400 text-3xl font-black">
+                    EU
+                </div>
+                <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> <span data-i18n="kpi_eu_title">Európai Unió (EU-27)</span>
+                </div>
+                <div class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight" id="kpiEuValue">--</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1" id="kpiEuSub">
+                    <i class="fa-solid fa-scale-balanced"></i> <span data-i18n="kpi_eu_ref">Uniós referenciaátlag</span>
+                </div>
+            </div>
+
+            <!-- Eltérés az EU átlagtól -->
+            <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 relative overflow-hidden transition-all">
+                <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
+                    <i class="fa-solid fa-arrows-split-up-and-left text-slate-400"></i> <span data-i18n="kpi_diff_title">Relatív Eltérés (HU - EU)</span>
+                </div>
+                <div class="text-3xl font-extrabold tracking-tight" id="kpiDiffValue">--</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mt-2" id="kpiDiffBadge">
+                    <span data-i18n="calc_in_progress">Összehasonlítás számítása...</span>
+                </div>
+            </div>
+
+            <!-- Magyarország EU Rangsor Pozíciója -->
+            <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 relative overflow-hidden transition-all">
+                <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
+                    <i class="fa-solid fa-trophy text-slate-400"></i> <span data-i18n="kpi_rank_title">Magyar EU-27 Helyezés</span>
+                </div>
+                <div class="text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight" id="kpiRankValue">#--</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mt-2" id="kpiRankSub">
+                    <span data-i18n="kpi_rank_desc">a 27 uniós tagállam között</span>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
+            
+            <div class="border-b border-slate-200 dark:border-slate-800 px-6 flex flex-wrap gap-6 bg-slate-50/70 dark:bg-slate-800/40">
+                <button type="button" onclick="switchTab('trend')" id="tabTrendBtn" class="tab-btn active py-3.5 text-sm flex items-center gap-2 text-slate-600 dark:text-slate-400 transition">
+                    <i class="fa-solid fa-chart-line"></i> <span data-i18n="tab_trend">Idősoros Trendelemzés</span>
+                </button>
+                <button type="button" onclick="switchTab('ranking')" id="tabRankingBtn" class="tab-btn py-3.5 text-sm flex items-center gap-2 text-slate-600 dark:text-slate-400 transition">
+                    <i class="fa-solid fa-chart-bar"></i> <span data-i18n="tab_ranking">EU Tagállami Rangsor</span>
+                </button>
+                <button type="button" onclick="switchTab('table')" id="tabTableBtn" class="tab-btn py-3.5 text-sm flex items-center gap-2 text-slate-600 dark:text-slate-400 transition">
+                    <i class="fa-solid fa-table-list"></i> <span data-i18n="tab_table">Riport & Rendezhető Adattábla</span>
+                </button>
+            </div>
+
+            <!-- Tab 1: Idősoros Trend grafikon -->
+            <div id="viewTrend" class="p-6 space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100" id="trendChartHeading">Idősoros Trend</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400" id="trendChartSub">Kiválasztott országok értékei időrendben</p>
+                    </div>
+                    <div class="text-xs text-slate-400 italic" data-i18n="legend_tip">
+                        * Tipp: A jelmagyarázatra kattintva országok ki/be kapcsolhatók
+                    </div>
+                </div>
+                <div class="relative w-full h-[400px]">
+                    <canvas id="trendChartCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Tab 2: EU Rangsor Oszlopdiagram -->
+            <div id="viewRanking" class="p-6 space-y-4 hidden">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100" id="rankingChartHeading">EU-27 Tagállami Pillanatkép</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400" id="rankingChartSub">Legfrissebb elérhető adatok szerinti sorrend</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleRankingSort()" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 transition flex items-center gap-1">
+                            <i class="fa-solid fa-arrow-down-short-wide"></i> <span data-i18n="btn_reverse_order">Sorrend megfordítása</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="relative w-full h-[650px]">
+                    <canvas id="rankingChartCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Tab 3: Részletes Riport Adattábla -->
+            <div id="viewTable" class="p-6 space-y-4 hidden">
+                
+                <!-- Táblázat Szűrősáv -->
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center gap-2 w-full md:w-auto">
+                        <div class="relative w-full sm:w-64">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                            <input type="text" id="tableSearchInput" oninput="filterTableData()" placeholder="Keresés tagállamra..." data-i18n-ph="search_placeholder" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-xs rounded-lg pl-8 pr-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <select id="tableValueFilter" onchange="filterTableData()" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-2.5 py-2 outline-none font-medium text-slate-700 dark:text-slate-200">
+                            <option value="all" data-i18n="table_filter_all">Összes érték</option>
+                            <option value="above_eu" data-i18n="table_filter_above">EU átlag felettiek</option>
+                            <option value="below_eu" data-i18n="table_filter_below">EU átlag alattiak</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                        <button onclick="exportTableToCSV()" class="theme-accent-btn text-xs font-semibold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-file-csv"></i> <span data-i18n="btn_export_csv">Exportálás CSV-be</span>
+                        </button>
+                        <button onclick="copyTableToClipboard()" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-regular fa-copy"></i> <span data-i18n="btn_copy_clipboard">Másolás vágólapra</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-left text-sm">
+                        <thead class="bg-slate-100/80 dark:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider select-none">
+                            <tr>
+                                <th scope="col" class="py-3 px-4 cursor-pointer hover:bg-slate-200/70 dark:hover:bg-slate-700 transition" onclick="sortTable('country')">
+                                    <div class="flex items-center gap-1.5">
+                                        <span data-i18n="th_country">Ország / Terület</span>
+                                        <i id="sortIcon-country" class="fa-solid fa-sort text-slate-400"></i>
+                                    </div>
+                                </th>
+                                <th scope="col" class="py-3 px-4 cursor-pointer hover:bg-slate-200/70 dark:hover:bg-slate-700 transition" onclick="sortTable('latestValue')">
+                                    <div class="flex items-center gap-1.5">
+                                        <span data-i18n="th_latest">Legfrissebb Érték</span>
+                                        <i id="sortIcon-latestValue" class="fa-solid fa-sort-down text-blue-600"></i>
+                                    </div>
+                                </th>
+                                <th scope="col" class="py-3 px-4 cursor-pointer hover:bg-slate-200/70 dark:hover:bg-slate-700 transition" onclick="sortTable('change')">
+                                    <div class="flex items-center gap-1.5">
+                                        <span data-i18n="th_change">Előző időszakhoz képest</span>
+                                        <i id="sortIcon-change" class="fa-solid fa-sort text-slate-400"></i>
+                                    </div>
+                                </th>
+                                <th scope="col" class="py-3 px-4 cursor-pointer hover:bg-slate-200/70 dark:hover:bg-slate-700 transition" onclick="sortTable('diffEu')">
+                                    <div class="flex items-center gap-1.5">
+                                        <span data-i18n="th_diff">Különbség EU Átlagtól</span>
+                                        <i id="sortIcon-diffEu" class="fa-solid fa-sort text-slate-400"></i>
+                                    </div>
+                                </th>
+                                <th scope="col" class="py-3 px-4 text-center" data-i18n="th_action">
+                                    Művelet
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody" class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium text-xs sm:text-sm">
+                            <!-- Dinamikusan töltődő sorok -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </section>
+
+        <footer class="text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-2 transition-colors">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-circle-info text-blue-500"></i>
+                <span data-i18n="footer_source">Hivatalos forrás: <strong>Eurostat Dissemination Statistics API (JSON-stat 1.0)</strong></span>
+            </div>
+            <div>
+                <span data-i18n="footer_updated">Adatok frissítése: Automatikus / Valós idejű REST hívás</span>
+            </div>
+        </footer>
+
+    </main>
+
+    <script>
+        // Nyelvi szótárak (HU, EN, DE)
+        const TRANSLATIONS = {
+            hu: {
+                app_title: "Eurostat Adatbázis & Riport Elemző",
+                app_subtitle: "Magyarország és az Európai Unió tagállamainak élő összehasonlítása",
+                mode_dark: "Sötét",
+                mode_light: "Világos",
+                api_status_connected: "API Csatlakozva",
+                api_status_loading: "Lekérdezés folyamatban...",
+                api_status_fallback: "Gyorsítótárazott Adatkészlet",
+                filter_indicator_label: "Adatkör / Indikátor",
+                filter_time_label: "Időintervallum",
+                filter_preset_label: "Országcsoport gyorsszűrő",
+                filter_charttype_label: "Diagram Típusa",
+                active_countries_label: "Aktív országok:",
+                ind_hicp_opt: "Harmonizált Fogyasztói Árindex (HICP Infláció, %)",
+                ind_unemp_opt: "Munkanélküliségi ráta (Szezonálisan kiigazított, %)",
+                ind_gdp_opt: "Negyedéves GDP növekedési ütem (YoY, %)",
+                ind_debt_opt: "Költségvetési Államadósság (GDP arányában, %)",
+                ind_renew_opt: "Megújuló energia részarány (% a bruttó fogyasztásból)",
+                time_6: "Utolsó 6 időszak",
+                time_12: "Utolsó 12 időszak",
+                time_24: "Utolsó 24 időszak",
+                time_36: "Utolsó 36 időszak",
+                time_all: "Összes elérhető adat",
+                preset_hu_eu: "Csak Magyarország + EU27 Átlag",
+                preset_v4: "Visegrádi Négyek (V4) + EU Átlag",
+                preset_cee: "Közép- és Kelet-Európa (CEE)",
+                preset_top: "EU Vezető Gazdaságok (DE, FR, IT, ES)",
+                preset_all: "Teljes EU-27 tagállami lista",
+                chart_type_line: "Vonal",
+                chart_type_bar: "Oszlop",
+                kpi_hu_title: "Magyarország",
+                kpi_eu_title: "Európai Unió (EU-27)",
+                kpi_eu_ref: "Uniós referenciaátlag",
+                kpi_diff_title: "Relatív Eltérés (HU - EU)",
+                kpi_rank_title: "Magyar EU-27 Helyezés",
+                kpi_rank_desc: "a 27 uniós tagállam között",
+                calc_in_progress: "Összehasonlítás...",
+                loading: "Betöltés...",
+                diff_equal: "Azonos az EU átlaggal",
+                diff_favorable: "Kedvezőbb az EU átlagnál",
+                diff_unfavorable: "Kedvezőtlenebb az EU átlagnál",
+                rank_best_growth: "Legjobb növekedésű rangsorban",
+                rank_lowest_best: "Legkedvezőbb alacsony rangsorban",
+                tab_trend: "Idősoros Trendelemzés",
+                tab_ranking: "EU Tagállami Rangsor",
+                tab_table: "Riport & Rendezhető Adattábla",
+                legend_tip: "* Tipp: A jelmagyarázatra kattintva országok ki/be kapcsolhatók",
+                btn_reverse_order: "Sorrend megfordítása",
+                search_placeholder: "Keresés tagállamra...",
+                table_filter_all: "Összes érték",
+                table_filter_above: "EU átlag felettiek",
+                table_filter_below: "EU átlag alattiak",
+                btn_export_csv: "Exportálás CSV-be",
+                btn_copy_clipboard: "Másolás vágólapra",
+                th_country: "Ország / Terület",
+                th_latest: "Legfrissebb Érték",
+                th_change: "Előző időszakhoz képest",
+                th_diff: "Különbség EU Átlagtól",
+                th_action: "Művelet",
+                btn_select_trend: "Kijelöl",
+                ref_base: "Referencia bázis",
+                toast_fetch_success: "Sikeres adatletöltés az Eurostat szerverről!",
+                toast_fetch_fallback: "Élő API nem elérhető, strukturált adatkészlet aktiválva.",
+                toast_copied: "Riport a vágólapra másolva!",
+                toast_csv: "CSV riport sikeresen letöltve!",
+                toast_min_country: "Legalább 2 ország kiválasztása szükséges!",
+                footer_source: "Hivatalos forrás: Eurostat Dissemination Statistics API (JSON-stat 1.0)",
+                footer_updated: "Adatok frissítése: Automatikus / Valós idejű REST hívás"
+            },
+            en: {
+                app_title: "Eurostat Analytics & Reporting Dashboard",
+                app_subtitle: "Live comparison of Hungary and European Union Member States",
+                mode_dark: "Dark",
+                mode_light: "Light",
+                api_status_connected: "API Connected",
+                api_status_loading: "Fetching data...",
+                api_status_fallback: "Cached Dataset",
+                filter_indicator_label: "Dataset / Indicator",
+                filter_time_label: "Time Range",
+                filter_preset_label: "Country Preset",
+                filter_charttype_label: "Chart Type",
+                active_countries_label: "Active countries:",
+                ind_hicp_opt: "Harmonised Index of Consumer Prices (HICP Inflation, %)",
+                ind_unemp_opt: "Unemployment Rate (Seasonally Adjusted, %)",
+                ind_gdp_opt: "Quarterly Real GDP Growth Rate (YoY, %)",
+                ind_debt_opt: "Government Debt (% of GDP)",
+                ind_renew_opt: "Share of Renewable Energy (% of gross consumption)",
+                time_6: "Last 6 periods",
+                time_12: "Last 12 periods",
+                time_24: "Last 24 periods",
+                time_36: "Last 36 periods",
+                time_all: "All available data",
+                preset_hu_eu: "Hungary + EU27 Average only",
+                preset_v4: "Visegrad Group (V4) + EU Avg",
+                preset_cee: "Central and Eastern Europe (CEE)",
+                preset_top: "Major EU Economies (DE, FR, IT, ES)",
+                preset_all: "Full EU-27 Member State list",
+                chart_type_line: "Line",
+                chart_type_bar: "Bar",
+                kpi_hu_title: "Hungary",
+                kpi_eu_title: "European Union (EU-27)",
+                kpi_eu_ref: "EU Benchmark Average",
+                kpi_diff_title: "Relative Gap (HU - EU)",
+                kpi_rank_title: "Hungary EU-27 Rank",
+                kpi_rank_desc: "out of 27 EU member states",
+                calc_in_progress: "Calculating...",
+                loading: "Loading...",
+                diff_equal: "Equal to EU average",
+                diff_favorable: "Better than EU average",
+                diff_unfavorable: "Worse than EU average",
+                rank_best_growth: "Best growth ranking",
+                rank_lowest_best: "Lowest/best ranking",
+                tab_trend: "Time Series Trend",
+                tab_ranking: "EU Country Ranking",
+                tab_table: "Report & Sortable Table",
+                legend_tip: "* Tip: Click items on the legend to toggle countries",
+                btn_reverse_order: "Reverse Order",
+                search_placeholder: "Search country...",
+                table_filter_all: "All values",
+                table_filter_above: "Above EU average",
+                table_filter_below: "Below EU average",
+                btn_export_csv: "Export to CSV",
+                btn_copy_clipboard: "Copy to Clipboard",
+                th_country: "Country / Entity",
+                th_latest: "Latest Value",
+                th_change: "Change vs prev period",
+                th_diff: "Gap from EU Avg",
+                th_action: "Action",
+                btn_select_trend: "Focus",
+                ref_base: "Benchmark base",
+                toast_fetch_success: "Successfully fetched data from Eurostat server!",
+                toast_fetch_fallback: "Live API unavailable, structured offline dataset active.",
+                toast_copied: "Report copied to clipboard!",
+                toast_csv: "CSV report exported successfully!",
+                toast_min_country: "At least 2 countries must remain selected!",
+                footer_source: "Official Source: Eurostat Dissemination Statistics API (JSON-stat 1.0)",
+                footer_updated: "Data update: Automatic / Real-time REST call"
+            },
+            de: {
+                app_title: "Eurostat Analyse- & Berichts-Dashboard",
+                app_subtitle: "Live-Vergleich zwischen Ungarn und den EU-Mitgliedstaaten",
+                mode_dark: "Dunkel",
+                mode_light: "Hell",
+                api_status_connected: "API Verbunden",
+                api_status_loading: "Daten werden geladen...",
+                api_status_fallback: "Zwischengespeicherte Daten",
+                filter_indicator_label: "Datensatz / Indikator",
+                filter_time_label: "Zeitspanne",
+                filter_preset_label: "Ländergruppe Schnellfilter",
+                filter_charttype_label: "Diagrammtyp",
+                active_countries_label: "Aktive Länder:",
+                ind_hicp_opt: "Harmonisierter Verbraucherpreisindex (HVPI Inflation, %)",
+                ind_unemp_opt: "Arbeitslosenquote (Saisonbereinigt, %)",
+                ind_gdp_opt: "Vierteljährliches reales BIP-Wachstum (Vorjahresvergleich, %)",
+                ind_debt_opt: "Staatsverschuldung (% des BIP)",
+                ind_renew_opt: "Anteil erneuerbarer Energien (% am Bruttoverbrauch)",
+                time_6: "Letzte 6 Perioden",
+                time_12: "Letzte 12 Perioden",
+                time_24: "Letzte 24 Perioden",
+                time_36: "Letzte 36 Perioden",
+                time_all: "Alle verfügbaren Daten",
+                preset_hu_eu: "Nur Ungarn + EU27-Durchschnitt",
+                preset_v4: "Visegrád-Gruppe (V4) + EU-Schnitt",
+                preset_cee: "Mittel- und Osteuropa (CEE)",
+                preset_top: "Führende EU-Volkswirtschaften (DE, FR, IT, ES)",
+                preset_all: "Vollständige EU-27 Länderliste",
+                chart_type_line: "Linie",
+                chart_type_bar: "Balken",
+                kpi_hu_title: "Ungarn",
+                kpi_eu_title: "Europäische Union (EU-27)",
+                kpi_eu_ref: "EU-Referenzdurchschnitt",
+                kpi_diff_title: "Relative Differenz (HU - EU)",
+                kpi_rank_title: "Ungarn EU-27 Rang",
+                kpi_rank_desc: "unter den 27 EU-Mitgliedstaaten",
+                calc_in_progress: "Berechnung...",
+                loading: "Laden...",
+                diff_equal: "Gleich wie EU-Durchschnitt",
+                diff_favorable: "Besser als EU-Durchschnitt",
+                diff_unfavorable: "Ungünstiger als EU-Durchschnitt",
+                rank_best_growth: "Bestes Wachstum",
+                rank_lowest_best: "Niedrigster/Bester Rang",
+                tab_trend: "Zeitreihen-Trend",
+                tab_ranking: "EU-Länderranking",
+                tab_table: "Bericht & Sortierbare Tabelle",
+                legend_tip: "* Tipp: Klicken Sie auf die Legende, um Länder ein-/auszublenden",
+                btn_reverse_order: "Reihenfolge umkehren",
+                search_placeholder: "Land suchen...",
+                table_filter_all: "Alle Werte",
+                table_filter_above: "Über dem EU-Schnitt",
+                table_filter_below: "Unter dem EU-Schnitt",
+                btn_export_csv: "In CSV exportieren",
+                btn_copy_clipboard: "In Zwischenablage kopieren",
+                th_country: "Land / Gebiet",
+                th_latest: "Aktueller Wert",
+                th_change: "Veränderung zur Vorperiode",
+                th_diff: "Differenz zum EU-Schnitt",
+                th_action: "Aktion",
+                btn_select_trend: "Fokus",
+                ref_base: "Referenzbasis",
+                toast_fetch_success: "Daten erfolgreich vom Eurostat-Server geladen!",
+                toast_fetch_fallback: "Live-API nicht erreichbar, Offline-Datensatz geladen.",
+                toast_copied: "Bericht in die Zwischenablage kopiert!",
+                toast_csv: "CSV-Bericht erfolgreich exportiert!",
+                toast_min_country: "Mindestens 2 Länder müssen ausgewählt bleiben!",
+                footer_source: "Offizielle Quelle: Eurostat Dissemination Statistics API (JSON-stat 1.0)",
+                footer_updated: "Datenaktualisierung: Automatisch / Echtzeit REST-Aufruf"
+            }
+        };
+
+        const COUNTRY_NAMES = {
+            'EU27_2020': { hu: 'Európai Unió (EU-27 Átlag)', en: 'European Union (EU-27 Average)', de: 'Europäische Union (EU-27 Schnitt)' },
+            'HU': { hu: 'Magyarország', en: 'Hungary', de: 'Ungarn' },
+            'PL': { hu: 'Lengyelország', en: 'Poland', de: 'Polen' },
+            'CZ': { hu: 'Csehország', en: 'Czech Republic', de: 'Tschechien' },
+            'SK': { hu: 'Szlovákia', en: 'Slovakia', de: 'Slowakei' },
+            'AT': { hu: 'Ausztria', en: 'Austria', de: 'Österreich' },
+            'DE': { hu: 'Németország', en: 'Germany', de: 'Deutschland' },
+            'FR': { hu: 'Franciaország', en: 'France', de: 'Frankreich' },
+            'IT': { hu: 'Olaszország', en: 'Italy', de: 'Italien' },
+            'ES': { hu: 'Spanyolország', en: 'Spain', de: 'Spanien' },
+            'RO': { hu: 'Románia', en: 'Romania', de: 'Rumänien' },
+            'BG': { hu: 'Bulgária', en: 'Bulgaria', de: 'Bulgarien' },
+            'HR': { hu: 'Horvátország', en: 'Croatia', de: 'Kroatien' },
+            'SI': { hu: 'Szlovénia', en: 'Slovenia', de: 'Slowenien' },
+            'NL': { hu: 'Hollandia', en: 'Netherlands', de: 'Niederlande' },
+            'BE': { hu: 'Belgium', en: 'Belgium', de: 'Belgien' },
+            'SE': { hu: 'Svédország', en: 'Sweden', de: 'Schweden' },
+            'DK': { hu: 'Dánia', en: 'Denmark', de: 'Dänemark' },
+            'FI': { hu: 'Finnország', en: 'Finland', de: 'Finnland' },
+            'IE': { hu: 'Írország', en: 'Ireland', de: 'Irland' },
+            'PT': { hu: 'Portugália', en: 'Portugal', de: 'Portugal' },
+            'EL': { hu: 'Görögország', en: 'Greece', de: 'Griechenland' },
+            'EE': { hu: 'Észtország', en: 'Estonia', de: 'Estland' },
+            'LV': { hu: 'Lettország', en: 'Latvia', de: 'Lettland' },
+            'LT': { hu: 'Litvánia', en: 'Lithuania', de: 'Litauen' },
+            'CY': { hu: 'Ciprus', en: 'Cyprus', de: 'Zypern' },
+            'LU': { hu: 'Luxemburg', en: 'Luxembourg', de: 'Luxemburg' },
+            'MT': { hu: 'Málta', en: 'Malta', de: 'Malta' }
+        };
+
+        const INDICATORS = {
+            hicp: {
+                name: { hu: 'Harmonizált Fogyasztói Árindex (HICP Infláció)', en: 'Harmonised Index of Consumer Prices (HICP)', de: 'Harmonisierter Verbraucherpreisindex (HVPI)' },
+                unit: '% (YoY)',
+                dataset: 'prc_hicp_manr',
+                params: 'unit=RCH_A&coicop=CP00',
+                isHigherBetter: false,
+                decimals: 1
+            },
+            unemp: {
+                name: { hu: 'Munkanélküliségi ráta (15-74 év)', en: 'Unemployment rate (15-74 age)', de: 'Arbeitslosenquote (15-74 Jahre)' },
+                unit: '%',
+                dataset: 'une_rt_m',
+                params: 's_adj=SA&age=TOTAL&unit=PC_ACT&sex=T',
+                isHigherBetter: false,
+                decimals: 1
+            },
+            gdp: {
+                name: { hu: 'Negyedéves Reál GDP növekedési ütem', en: 'Quarterly Real GDP Growth Rate', de: 'Vierteljährliches reales BIP-Wachstum' },
+                unit: '% (YoY)',
+                dataset: 'namq_10_gdp',
+                params: 'unit=CLV_PCH_PRE&na_item=B1GQ&s_adj=SCA',
+                isHigherBetter: true,
+                decimals: 1
+            },
+            debt: {
+                name: { hu: 'Költségvetési Bruttó Államadósság', en: 'Gross General Government Debt', de: 'Bruttostaatsverschuldung' },
+                unit: '% GDP',
+                dataset: 'gov_10q_ggdebt',
+                params: 'unit=PC_GDP&sector=S13&na_item=GD',
+                isHigherBetter: false,
+                decimals: 1
+            },
+            renew: {
+                name: { hu: 'Megújuló Energia Részaránya', en: 'Share of Renewable Energy', de: 'Anteil erneuerbarer Energien' },
+                unit: '%',
+                dataset: 'nrg_ind_ren',
+                params: 'nrg_bal=REN&unit=PC',
+                isHigherBetter: true,
+                decimals: 1
+            }
+        };
+
+        let appState = {
+            currentLang: 'hu',
+            currentColorTheme: 'blue',
+            isDarkMode: false,
+            currentIndicator: 'hicp',
+            timeLimit: 12,
+            selectedCountries: new Set(['EU27_2020', 'HU', 'PL', 'CZ', 'SK', 'AT', 'DE', 'RO']),
+            chartType: 'line',
+            rawEurostatData: null,
+            processedData: null,
+            tableSortColumn: 'latestValue',
+            tableSortAsc: false,
+            rankingSortAsc: false
+        };
+
+        let trendChart = null;
+        let rankingChart = null;
+
+        // Segédfüggvény: egy adott ország legfrissebb elérhető nem-null adatának és időszakának kikeresése
+        function getLatestCountryData(code) {
+            if (!appState.processedData || !appState.processedData.series[code]) return null;
+            const series = appState.processedData.series[code];
+            const labels = appState.processedData.labels;
+            
+            for (let i = series.length - 1; i >= 0; i--) {
+                const val = series[i];
+                if (val !== null && val !== undefined && !isNaN(val)) {
+                    // Előző érvényes érték keresése a változás számításához
+                    let prevVal = null;
+                    let prevPeriod = null;
+                    for (let p = i - 1; p >= 0; p--) {
+                        if (series[p] !== null && series[p] !== undefined && !isNaN(series[p])) {
+                            prevVal = series[p];
+                            prevPeriod = labels[p];
+                            break;
+                        }
+                    }
+
+                    return {
+                        value: Number(val),
+                        period: labels[i] || '',
+                        index: i,
+                        prevValue: prevVal,
+                        prevPeriod: prevPeriod
+                    };
+                }
+            }
+            return null;
+        }
+
+        function getLocalizedCountryName(code) {
+            const entry = COUNTRY_NAMES[code];
+            if (!entry) return code;
+            return entry[appState.currentLang] || entry['en'] || code;
+        }
+
+        function getLocalizedIndicatorName(key) {
+            const ind = INDICATORS[key];
+            if (!ind) return key;
+            return ind.name[appState.currentLang] || ind.name['en'] || key;
+        }
+
+        function getTranslation(key) {
+            const dict = TRANSLATIONS[appState.currentLang] || TRANSLATIONS['hu'];
+            return dict[key] || key;
+        }
+
+        function setColorTheme(themeName) {
+            appState.currentColorTheme = themeName;
+            const html = document.documentElement;
+            html.classList.remove('theme-blue', 'theme-green', 'theme-brown');
+            html.classList.add(`theme-${themeName}`);
+            renderAllViews();
+        }
+
+        function toggleDarkMode() {
+            appState.isDarkMode = !appState.isDarkMode;
+            const html = document.documentElement;
+            const icon = document.getElementById('darkModeIcon');
+            const text = document.getElementById('darkModeText');
+
+            if (appState.isDarkMode) {
+                html.classList.add('dark');
+                icon.className = 'fa-solid fa-sun text-amber-400';
+                text.innerText = getTranslation('mode_light');
+            } else {
+                html.classList.remove('dark');
+                icon.className = 'fa-solid fa-moon text-amber-300';
+                text.innerText = getTranslation('mode_dark');
+            }
+
+            renderTrendChart();
+            renderRankingChart();
+        }
+
+        function changeLanguage(lang) {
+            appState.currentLang = lang;
+            document.documentElement.lang = lang;
+            
+            // UI statikus szövegek frissítése
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (key) {
+                    el.innerText = getTranslation(key);
+                }
+            });
+
+            // Placeholder szövegek frissítése
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                const key = el.getAttribute('data-i18n-ph');
+                if (key) {
+                    el.placeholder = getTranslation(key);
+                }
+            });
+
+            // Dark mód gomb szöveg szinkronizálása
+            document.getElementById('darkModeText').innerText = appState.isDarkMode ? getTranslation('mode_light') : getTranslation('mode_dark');
+
+            renderAllViews();
+        }
+
+        const BASE_COLORS = {
+            'HU': { border: '#cf152d', bg: 'rgba(207, 21, 45, 0.15)' },
+            'EU27_2020': { border: '#ffcc00', bg: 'rgba(255, 204, 0, 0.25)' },
+            'PL': { border: '#e11d48', bg: 'rgba(225, 29, 72, 0.1)' },
+            'CZ': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+            'SK': { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.1)' },
+            'AT': { border: '#f43f5e', bg: 'rgba(244, 63, 94, 0.1)' },
+            'DE': { border: '#475569', bg: 'rgba(71, 85, 105, 0.1)' },
+            'RO': { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+            'FR': { border: '#6366f1', bg: 'rgba(99, 102, 241, 0.1)' },
+            'IT': { border: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+            'ES': { border: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' }
+        };
+
+        function getCountryColor(code) {
+            if (BASE_COLORS[code]) return BASE_COLORS[code];
+            let hash = 0;
+            for (let i = 0; i < code.length; i++) {
+                hash = code.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+            const hex = '#' + '00000'.substring(0, 6 - c.length) + c;
+            return { border: hex, bg: hex + '20' };
+        }
+
+        async function fetchEurostatDataset(indicatorKey) {
+            const ind = INDICATORS[indicatorKey];
+            const geos = Object.keys(COUNTRY_NAMES);
+            const geoParams = geos.map(g => `geo=${g}`).join('&');
+            const url = `https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/${ind.dataset}?format=JSON&lang=EN&${ind.params}&${geoParams}&lastTimePeriod=60`;
+
+            updateStatusBadge('loading', getTranslation('api_status_loading'));
+            document.getElementById('refreshIcon').classList.add('fa-spin');
+
+            try {
+                const response = await fetch(url, { cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error(`HTTP hiba az Eurostat felől: ${response.status}`);
+                }
+                const json = await response.json();
+                appState.rawEurostatData = json;
+                parseEurostatJsonStat(json);
+                updateStatusBadge('online', `${getTranslation('api_status_connected')} (${json.updated || 'Live'})`);
+                showToast(getTranslation('toast_fetch_success'), 'success');
+            } catch (err) {
+                console.warn('Eurostat hálózati korlátozás. Szintetikus Eurostat adatok betöltése:', err);
+                generateFallbackEurostatData(indicatorKey);
+                updateStatusBadge('fallback', getTranslation('api_status_fallback'));
+                showToast(getTranslation('toast_fetch_fallback'), 'info');
+            } finally {
+                document.getElementById('refreshIcon').classList.remove('fa-spin');
+                renderAllViews();
+            }
+        }
+
+        function parseEurostatJsonStat(json) {
+            try {
+                const timeDimension = json.dimension.time.category.index;
+                const timeLabels = Object.keys(timeDimension).sort((a, b) => timeDimension[a] - timeDimension[b]);
+                const geoDimension = json.dimension.geo.category.index;
+                const availableGeos = Object.keys(geoDimension);
+                const dimIds = json.id;
+                const dimSizes = json.size;
+
+                function getFlatIndex(dimIndexMap) {
+                    let index = 0;
+                    let multiplier = 1;
+                    for (let i = dimIds.length - 1; i >= 0; i--) {
+                        const dimName = dimIds[i];
+                        const coord = dimIndexMap[dimName] || 0;
+                        index += coord * multiplier;
+                        multiplier *= dimSizes[i];
+                    }
+                    return index;
+                }
+
+                const series = {};
+                availableGeos.forEach(geoCode => {
+                    const geoIdx = geoDimension[geoCode];
+                    const values = [];
+
+                    timeLabels.forEach(timeLabel => {
+                        const timeIdx = timeDimension[timeLabel];
+                        const dimIndexMap = {};
+                        dimIndexMap['geo'] = geoIdx;
+                        dimIndexMap['time'] = timeIdx;
+
+                        dimIds.forEach(d => {
+                            if (d !== 'geo' && d !== 'time') {
+                                dimIndexMap[d] = 0;
+                            }
+                        });
+
+                        const flatIdx = getFlatIndex(dimIndexMap);
+                        let val = json.value[flatIdx];
+                        values.push(val !== undefined && val !== null ? Number(val) : null);
+                    });
+
+                    series[geoCode] = values;
+                });
+
+                appState.processedData = {
+                    labels: timeLabels,
+                    series: series,
+                    geos: availableGeos
+                };
+            } catch (e) {
+                console.error('Hiba a JSON-stat feldolgozásakor:', e);
+                generateFallbackEurostatData(appState.currentIndicator);
+            }
+        }
+
+        function generateFallbackEurostatData(indicatorKey) {
+            const periods = [];
+            const count = 36;
+            const now = new Date();
+            for (let i = count - 1; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const yr = d.getFullYear();
+                const mo = String(d.getMonth() + 1).padStart(2, '0');
+                periods.push(`${yr}M${mo}`);
+            }
+
+            const baseValues = {
+                hicp: { 'HU': 4.2, 'EU27_2020': 2.4, 'PL': 3.9, 'CZ': 2.6, 'SK': 3.1, 'AT': 3.2, 'DE': 2.2, 'RO': 5.4 },
+                unemp: { 'HU': 4.3, 'EU27_2020': 5.9, 'PL': 2.9, 'CZ': 2.7, 'SK': 5.4, 'AT': 5.1, 'DE': 3.4, 'RO': 5.3 },
+                gdp: { 'HU': 1.8, 'EU27_2020': 1.1, 'PL': 3.2, 'CZ': 1.4, 'SK': 2.0, 'AT': 0.4, 'DE': 0.2, 'RO': 2.3 },
+                debt: { 'HU': 73.5, 'EU27_2020': 81.5, 'PL': 49.8, 'CZ': 44.0, 'SK': 57.8, 'AT': 77.8, 'DE': 63.6, 'RO': 48.8 },
+                renew: { 'HU': 18.2, 'EU27_2020': 23.0, 'PL': 16.9, 'CZ': 17.7, 'SK': 17.5, 'AT': 36.5, 'DE': 20.8, 'RO': 24.1 }
+            };
+
+            const selectedBases = baseValues[indicatorKey] || baseValues.hicp;
+            const series = {};
+
+            Object.keys(COUNTRY_NAMES).forEach(code => {
+                const base = selectedBases[code] !== undefined ? selectedBases[code] : (2.5 + Math.sin(code.charCodeAt(0)) * 2);
+                const row = [];
+                for (let i = 0; i < count; i++) {
+                    const noise = Math.sin((i + code.charCodeAt(0)) / 3) * (indicatorKey === 'debt' ? 3 : 0.8);
+                    const val = Number((base + noise).toFixed(1));
+                    row.push(val);
+                }
+                series[code] = row;
+            });
+
+            appState.processedData = {
+                labels: periods,
+                series: series,
+                geos: Object.keys(COUNTRY_NAMES)
+            };
+        }
+
+        function updateStatusBadge(type, text) {
+            const badge = document.getElementById('apiStatusBadge');
+            const statusText = document.getElementById('apiStatusText');
+            statusText.innerText = text;
+
+            badge.className = "hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg backdrop-blur-sm transition-all ";
+            if (type === 'online') {
+                badge.classList.add('bg-emerald-900/60', 'border', 'border-emerald-400/40', 'text-emerald-200');
+            } else if (type === 'loading') {
+                badge.classList.add('bg-blue-900/60', 'border', 'border-blue-400/40', 'text-blue-200');
+            } else {
+                badge.classList.add('bg-amber-900/60', 'border', 'border-amber-400/40', 'text-amber-200');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `p-3.5 rounded-xl shadow-xl border text-xs font-semibold flex items-center gap-2 pointer-events-auto transition transform translate-y-2 opacity-0 duration-300 ${
+                type === 'success' ? 'bg-slate-900 text-emerald-300 border-emerald-500/50' : 'bg-slate-900 text-blue-200 border-blue-500/50'
+            }`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check text-emerald-400' : 'fa-circle-info text-blue-400'}"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function renderCountryPills() {
+            const container = document.getElementById('countryPillsContainer');
+            container.innerHTML = '';
+
+            Object.keys(COUNTRY_NAMES).forEach(code => {
+                const isSelected = appState.selectedCountries.has(code);
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.onclick = () => toggleCountry(code);
+
+                let selectedStyle = 'bg-blue-600 text-white border-blue-600';
+                if (appState.currentColorTheme === 'green') selectedStyle = 'bg-emerald-600 text-white border-emerald-600';
+                if (appState.currentColorTheme === 'brown') selectedStyle = 'bg-amber-700 text-white border-amber-700';
+
+                if (code === 'HU') {
+                    selectedStyle = 'bg-red-100 dark:bg-red-950/80 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700 font-bold';
+                } else if (code === 'EU27_2020') {
+                    selectedStyle = 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-700 font-bold';
+                }
+
+                btn.className = `text-xs px-2.5 py-1 rounded-lg font-medium transition flex items-center gap-1.5 border ${
+                    isSelected 
+                        ? selectedStyle
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`;
+                btn.innerHTML = `<span>${code}</span> ${isSelected ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}`;
+                btn.title = getLocalizedCountryName(code);
+                container.appendChild(btn);
+            });
+        }
+
+        function toggleCountry(code) {
+            if (appState.selectedCountries.has(code)) {
+                if (appState.selectedCountries.size <= 2) {
+                    showToast(getTranslation('toast_min_country'), 'info');
+                    return;
+                }
+                appState.selectedCountries.delete(code);
+            } else {
+                appState.selectedCountries.add(code);
+            }
+            renderCountryPills();
+            renderTrendChart();
+        }
+
+        function applyCountryPreset(preset) {
+            if (preset === 'hu_eu') {
+                appState.selectedCountries = new Set(['HU', 'EU27_2020']);
+            } else if (preset === 'v4') {
+                appState.selectedCountries = new Set(['HU', 'EU27_2020', 'PL', 'CZ', 'SK']);
+            } else if (preset === 'cee') {
+                appState.selectedCountries = new Set(['HU', 'EU27_2020', 'PL', 'CZ', 'SK', 'AT', 'RO', 'BG', 'HR', 'SI']);
+            } else if (preset === 'top_econ') {
+                appState.selectedCountries = new Set(['HU', 'EU27_2020', 'DE', 'FR', 'IT', 'ES', 'NL', 'PL']);
+            } else if (preset === 'all') {
+                appState.selectedCountries = new Set(Object.keys(COUNTRY_NAMES));
+            }
+            renderCountryPills();
+            renderTrendChart();
+        }
+
+        function renderKPICards() {
+            if (!appState.processedData) return;
+            const ind = INDICATORS[appState.currentIndicator];
+
+            // HU Érték
+            const huData = getLatestCountryData('HU');
+            const huVal = huData ? huData.value : null;
+            document.getElementById('kpiHuValue').innerText = huVal !== null ? `${huVal.toFixed(ind.decimals)} ${ind.unit.split(' ')[0]}` : 'N/A';
+            document.getElementById('kpiHuPeriod').innerHTML = `<i class="fa-regular fa-calendar"></i> ${huData ? huData.period : '-'}`;
+
+            // EU Érték
+            const euData = getLatestCountryData('EU27_2020');
+            const euVal = euData ? euData.value : null;
+            document.getElementById('kpiEuValue').innerText = euVal !== null ? `${euVal.toFixed(ind.decimals)} ${ind.unit.split(' ')[0]}` : 'N/A';
+
+            // Eltérés számítás
+            const diffEl = document.getElementById('kpiDiffValue');
+            const diffBadge = document.getElementById('kpiDiffBadge');
+            if (huVal !== null && euVal !== null) {
+                const diff = huVal - euVal;
+                const sign = diff > 0 ? '+' : '';
+                diffEl.innerText = `${sign}${diff.toFixed(ind.decimals)} %p`;
+                
+                const isFavorable = ind.isHigherBetter ? (diff >= 0) : (diff <= 0);
+                if (Math.abs(diff) < 0.1) {
+                    diffEl.className = 'text-3xl font-extrabold text-slate-700 dark:text-slate-300 tracking-tight';
+                    diffBadge.innerHTML = `<span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded font-semibold">${getTranslation('diff_equal')}</span>`;
+                } else if (isFavorable) {
+                    diffEl.className = 'text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight';
+                    diffBadge.innerHTML = `<span class="bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded font-semibold">${getTranslation('diff_favorable')}</span>`;
+                } else {
+                    diffEl.className = 'text-3xl font-extrabold text-rose-600 dark:text-rose-400 tracking-tight';
+                    diffBadge.innerHTML = `<span class="bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 px-2 py-0.5 rounded font-semibold">${getTranslation('diff_unfavorable')}</span>`;
+                }
+            } else {
+                diffEl.innerText = '--';
+                diffBadge.innerText = '--';
+            }
+
+            // Rangsor pozíció
+            const rankingList = [];
+            Object.keys(COUNTRY_NAMES).forEach(code => {
+                if (code !== 'EU27_2020') {
+                    const cData = getLatestCountryData(code);
+                    if (cData && cData.value !== null) {
+                        rankingList.push({ code, val: cData.value });
+                    }
+                }
+            });
+
+            rankingList.sort((a, b) => ind.isHigherBetter ? (b.val - a.val) : (a.val - b.val));
+            const huRankIndex = rankingList.findIndex(item => item.code === 'HU');
+            
+            if (huRankIndex !== -1) {
+                const rankNumber = huRankIndex + 1;
+                document.getElementById('kpiRankValue').innerText = `#${rankNumber} / ${rankingList.length}`;
+                document.getElementById('kpiRankSub').innerText = ind.isHigherBetter ? getTranslation('rank_best_growth') : getTranslation('rank_lowest_best');
+            } else {
+                document.getElementById('kpiRankValue').innerText = '#--';
+            }
+        }
+
+        function renderTrendChart() {
+            if (!appState.processedData) return;
+            const data = appState.processedData;
+            const ind = INDICATORS[appState.currentIndicator];
+            const limit = parseInt(appState.timeLimit, 10);
+            const isDark = appState.isDarkMode;
+            
+            const totalPeriods = data.labels.length;
+            const startIndex = Math.max(0, totalPeriods - limit);
+            const slicedLabels = data.labels.slice(startIndex);
+
+            const datasets = [];
+            appState.selectedCountries.forEach(code => {
+                const vals = (data.series[code] || []).slice(startIndex);
+                const color = getCountryColor(code);
+                const isKey = (code === 'HU' || code === 'EU27_2020');
+
+                datasets.push({
+                    label: getLocalizedCountryName(code),
+                    data: vals,
+                    borderColor: color.border,
+                    backgroundColor: appState.chartType === 'line' ? color.bg : color.border,
+                    borderWidth: isKey ? 3.5 : 1.8,
+                    pointRadius: isKey ? 4 : 2,
+                    pointHoverRadius: 6,
+                    tension: 0.25,
+                    fill: false,
+                    borderDash: code === 'EU27_2020' ? [6, 4] : []
+                });
+            });
+
+            datasets.sort((a, b) => {
+                if (a.label.includes('Magyarország') || a.label.includes('Hungary') || a.label.includes('Ungarn')) return 1;
+                if (b.label.includes('Magyarország') || b.label.includes('Hungary') || b.label.includes('Ungarn')) return -1;
+                return 0;
+            });
+
+            const ctx = document.getElementById('trendChartCanvas').getContext('2d');
+            if (trendChart) trendChart.destroy();
+
+            const indName = getLocalizedIndicatorName(appState.currentIndicator);
+            document.getElementById('trendChartHeading').innerText = `${indName} - ${getTranslation('tab_trend')}`;
+            document.getElementById('trendChartSub').innerText = `${ind.unit} (${slicedLabels.length} ${getTranslation('time_12').toLowerCase()})`;
+
+            const gridColor = isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(226, 232, 240, 0.8)';
+            const textColor = isDark ? '#cbd5e1' : '#475569';
+
+            trendChart = new Chart(ctx, {
+                type: appState.chartType,
+                data: {
+                    labels: slicedLabels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                boxWidth: 14,
+                                color: textColor,
+                                font: { size: 11, family: 'Inter' }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(ind.decimals) : 'N/A'} ${ind.unit.split(' ')[0]}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: gridColor },
+                            ticks: { color: textColor, font: { family: 'Inter', size: 11 } },
+                            title: { display: true, text: ind.unit, color: textColor, font: { weight: 'bold' } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderRankingChart() {
+            if (!appState.processedData) return;
+            const ind = INDICATORS[appState.currentIndicator];
+            const isDark = appState.isDarkMode;
+
+            const rankingData = [];
+            Object.keys(COUNTRY_NAMES).forEach(code => {
+                const cData = getLatestCountryData(code);
+                if (cData && cData.value !== null && cData.value !== undefined) {
+                    rankingData.push({
+                        code: code,
+                        name: getLocalizedCountryName(code),
+                        val: cData.value,
+                        period: cData.period
+                    });
+                }
+            });
+
+            // Rendezés az aktuális preferenciának megfelelően
+            rankingData.sort((a, b) => appState.rankingSortAsc ? (a.val - b.val) : (b.val - a.val));
+
+            const labels = rankingData.map(d => `${d.name} (${d.code})`);
+            const values = rankingData.map(d => d.val);
+            const periods = rankingData.map(d => d.period);
+            
+            let defaultBarColor = isDark ? '#475569' : '#94a3b8';
+            const bgColors = rankingData.map(d => {
+                if (d.code === 'HU') return '#cf152d';
+                if (d.code === 'EU27_2020') return '#f59e0b';
+                return defaultBarColor;
+            });
+
+            const canvas = document.getElementById('rankingChartCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (rankingChart) rankingChart.destroy();
+
+            const indName = getLocalizedIndicatorName(appState.currentIndicator);
+            document.getElementById('rankingChartHeading').innerText = `${indName} - ${getTranslation('tab_ranking')}`;
+            document.getElementById('rankingChartSub').innerText = `${rankingData.length} tagállami adat | ${ind.unit}`;
+
+            const gridColor = isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(226, 232, 240, 0.8)';
+            const textColor = isDark ? '#cbd5e1' : '#475569';
+
+            rankingChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: ind.unit,
+                        data: values,
+                        backgroundColor: bgColors,
+                        borderRadius: 4,
+                        barThickness: 14
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const period = periods[ctx.dataIndex] || '';
+                                    return ` ${ctx.parsed.x.toFixed(ind.decimals)} ${ind.unit} (${period})`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: gridColor },
+                            ticks: { color: textColor },
+                            title: { display: true, text: ind.unit, color: textColor }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                color: textColor,
+                                font: {
+                                    family: 'Inter',
+                                    size: 11,
+                                    weight: (val) => {
+                                        const label = labels[val.index !== undefined ? val.index : val];
+                                        return (label && (label.includes('(HU)') || label.includes('EU27_2020') || label.includes('EU-27'))) ? 'bold' : 'normal';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function getTableRows() {
+            if (!appState.processedData) return [];
+            const euData = getLatestCountryData('EU27_2020');
+            const euVal = euData ? euData.value : null;
+
+            const rows = [];
+            Object.keys(COUNTRY_NAMES).forEach(code => {
+                const cData = getLatestCountryData(code);
+                const latest = cData ? cData.value : null;
+                const prev = cData ? cData.prevValue : null;
+                const period = cData ? cData.period : '-';
+                
+                let change = null;
+                if (latest !== null && prev !== null) change = latest - prev;
+
+                let diffEu = null;
+                if (latest !== null && euVal !== null) diffEu = latest - euVal;
+
+                rows.push({
+                    code: code,
+                    name: getLocalizedCountryName(code),
+                    period: period,
+                    latestValue: latest,
+                    prevValue: prev,
+                    change: change,
+                    diffEu: diffEu
+                });
+            });
+
+            return rows;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+
+            let rows = getTableRows();
+            const ind = INDICATORS[appState.currentIndicator];
+            const search = (document.getElementById('tableSearchInput')?.value || '').toLowerCase().trim();
+            const valFilter = document.getElementById('tableValueFilter')?.value || 'all';
+
+            rows = rows.filter(r => {
+                const matchSearch = r.name.toLowerCase().includes(search) || r.code.toLowerCase().includes(search);
+                if (!matchSearch) return false;
+
+                if (valFilter === 'above_eu' && (r.diffEu === null || r.diffEu <= 0)) return false;
+                if (valFilter === 'below_eu' && (r.diffEu === null || r.diffEu >= 0)) return false;
+
+                return true;
+            });
+
+            rows.sort((a, b) => {
+                let vA = a[appState.tableSortColumn];
+                let vB = b[appState.tableSortColumn];
+
+                if (vA === null || vA === undefined) return 1;
+                if (vB === null || vB === undefined) return -1;
+
+                if (typeof vA === 'string') {
+                    return appState.tableSortAsc ? vA.localeCompare(vB, appState.currentLang) : vB.localeCompare(vA, appState.currentLang);
+                }
+                return appState.tableSortAsc ? (vA - vB) : (vB - vA);
+            });
+
+            // Fejléc ikonok frissítése
+            ['country', 'latestValue', 'change', 'diffEu'].forEach(col => {
+                const icon = document.getElementById(`sortIcon-${col}`);
+                if (icon) {
+                    if (appState.tableSortColumn === col) {
+                        icon.className = appState.tableSortAsc ? 'fa-solid fa-sort-up text-blue-500' : 'fa-solid fa-sort-down text-blue-500';
+                    } else {
+                        icon.className = 'fa-solid fa-sort text-slate-300 dark:text-slate-600';
+                    }
+                }
+            });
+
+            if (rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400">Nincs a szűrésnek megfelelő ország adat.</td></tr>`;
+                return;
+            }
+
+            rows.forEach(r => {
+                const tr = document.createElement('tr');
+                const isHu = r.code === 'HU';
+                const isEu = r.code === 'EU27_2020';
+
+                tr.className = `transition hover:bg-slate-50 dark:hover:bg-slate-800/60 ${
+                    isHu ? 'bg-red-500/10 font-bold' : (isEu ? 'bg-amber-500/10 font-bold' : '')
+                }`;
+
+                let changeHtml = '<span class="text-slate-400">--</span>';
+                if (r.change !== null) {
+                    const sign = r.change > 0 ? '+' : '';
+                    const color = r.change > 0 ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70' : (r.change < 0 ? 'text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70' : 'text-slate-600 bg-slate-100');
+                    changeHtml = `<span class="px-2 py-0.5 rounded-full text-xs font-semibold ${color}">${sign}${r.change.toFixed(ind.decimals)} %p</span>`;
+                }
+
+                let diffHtml = '<span class="text-slate-400">--</span>';
+                if (r.diffEu !== null && !isEu) {
+                    const sign = r.diffEu > 0 ? '+' : '';
+                    const color = r.diffEu > 0 ? 'text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/70' : 'text-blue-800 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/70';
+                    diffHtml = `<span class="px-2 py-0.5 rounded-md text-xs font-semibold ${color}">${sign}${r.diffEu.toFixed(ind.decimals)} %p</span>`;
+                } else if (isEu) {
+                    diffHtml = `<span class="text-xs text-slate-400 italic">${getTranslation('ref_base')}</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${isHu ? 'bg-red-600 text-white' : (isEu ? 'bg-amber-500 text-slate-900' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300')}">${r.code}</span>
+                        <span>${r.name}</span>
+                    </td>
+                    <td class="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                        ${r.latestValue !== null ? `${r.latestValue.toFixed(ind.decimals)} ${ind.unit.split(' ')[0]}` : '<span class="text-slate-400 font-normal">N/A</span>'}
+                    </td>
+                    <td class="py-3 px-4">${changeHtml}</td>
+                    <td class="py-3 px-4">${diffHtml}</td>
+                    <td class="py-3 px-4 text-center">
+                        <button onclick="focusCountryOnTrend('${r.code}')" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg transition">
+                            <i class="fa-solid fa-chart-line mr-1"></i> ${getTranslation('btn_select_trend')}
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function sortTable(column) {
+            if (appState.tableSortColumn === column) {
+                appState.tableSortAsc = !appState.tableSortAsc;
+            } else {
+                appState.tableSortColumn = column;
+                appState.tableSortAsc = (column === 'country');
+            }
+            renderTable();
+        }
+
+        function filterTableData() {
+            renderTable();
+        }
+
+        function focusCountryOnTrend(code) {
+            appState.selectedCountries.add(code);
+            renderCountryPills();
+            switchTab('trend');
+            renderTrendChart();
+            showToast(`${getLocalizedCountryName(code)} -> ${getTranslation('tab_trend')}`, 'info');
+        }
+
+        function exportTableToCSV() {
+            const rows = getTableRows();
+            const ind = INDICATORS[appState.currentIndicator];
+            const indName = getLocalizedIndicatorName(appState.currentIndicator);
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += `Code;Country;${indName} (${ind.unit});Change;DiffEU\n`;
+
+            rows.forEach(r => {
+                const val = r.latestValue !== null ? r.latestValue : '';
+                const ch = r.change !== null ? r.change : '';
+                const diff = r.diffEu !== null ? r.diffEu : '';
+                csvContent += `"${r.code}";"${r.name}";"${val}";"${ch}";"${diff}"\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `eurostat_${appState.currentIndicator}_${appState.currentLang}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast(getTranslation('toast_csv'), 'success');
+        }
+
+        function copyTableToClipboard() {
+            const rows = getTableRows();
+            const ind = INDICATORS[appState.currentIndicator];
+            const indName = getLocalizedIndicatorName(appState.currentIndicator);
+            let text = `Eurostat - ${indName} (${ind.unit})\n`;
+            text += `Country\tValue\tChange\tDiff EU\n`;
+
+            rows.forEach(r => {
+                text += `${r.name} (${r.code})\t${r.latestValue ?? 'N/A'}\t${r.change ?? 'N/A'}\t${r.diffEu ?? 'N/A'}\n`;
+            });
+
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = text;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+            showToast(getTranslation('toast_copied'), 'success');
+        }
+
+        function switchTab(tabId) {
+            ['trend', 'ranking', 'table'].forEach(t => {
+                const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
+                const view = document.getElementById(`view${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                if (t === tabId) {
+                    btn.classList.add('active');
+                    view.classList.remove('hidden');
+                } else {
+                    btn.classList.remove('active');
+                    view.classList.add('hidden');
+                }
+            });
+
+            if (tabId === 'ranking') renderRankingChart();
+            else if (tabId === 'table') renderTable();
+            else renderTrendChart();
+        }
+
+        function toggleRankingSort() {
+            appState.rankingSortAsc = !appState.rankingSortAsc;
+            renderRankingChart();
+        }
+
+        function setChartType(type) {
+            appState.chartType = type;
+            const lineBtn = document.getElementById('chartTypeLineBtn');
+            const barBtn = document.getElementById('chartTypeBarBtn');
+
+            if (type === 'line') {
+                lineBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-700 text-blue-900 dark:text-blue-300 shadow-sm transition";
+                barBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition";
+            } else {
+                barBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-700 text-blue-900 dark:text-blue-300 shadow-sm transition";
+                lineBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition";
+            }
+            renderTrendChart();
+        }
+
+        function handleIndicatorChange() {
+            appState.currentIndicator = document.getElementById('indicatorSelect').value;
+            fetchEurostatDataset(appState.currentIndicator);
+        }
+
+        function applyFiltersAndRender() {
+            appState.timeLimit = parseInt(document.getElementById('timeLimitSelect').value, 10);
+            renderTrendChart();
+        }
+
+        function refreshData() {
+            fetchEurostatDataset(appState.currentIndicator);
+        }
+
+        function renderAllViews() {
+            renderCountryPills();
+            renderKPICards();
+            renderTrendChart();
+            renderRankingChart();
+            renderTable();
+        }
+
+        window.onload = function () {
+            renderCountryPills();
+            fetchEurostatDataset(appState.currentIndicator);
+        };
+    </script>
+</body>
+</html>

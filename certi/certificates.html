@@ -1,635 +1,427 @@
 <!DOCTYPE html>
 <html lang="hu">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tanúsítványok</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0e0e0f;
-    --surface: #161618;
-    --surface2: #1e1e21;
-    --border: #2a2a2e;
-    --border2: #38383d;
-    --text: #f0ede8;
-    --muted: #8a8790;
-    --faint: #4a4850;
-    --accent: #c8b87a;
-    --accent2: #7a9cb8;
-    --ai: #b8a0d4;
-    --data: #7abfa8;
-    --viz: #7ab8d4;
-    --cloud: #a0c4d4;
-    --cyber: #d47a7a;
-    --dev: #c4b87a;
-    --pm: #d4a07a;
-    --other: #9a9a9a;
-  }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 300;
-    font-size: 15px;
-    line-height: 1.6;
-    min-height: 100vh;
-  }
-
-  /* HEADER */
-  header {
-    border-bottom: 1px solid var(--border);
-    padding: 3.5rem 4rem 2.5rem;
-    position: relative;
-    overflow: hidden;
-  }
-  header::before {
-    content: '';
-    position: absolute;
-    top: -80px; left: -80px;
-    width: 360px; height: 360px;
-    background: radial-gradient(circle, rgba(200,184,122,0.07) 0%, transparent 70%);
-    pointer-events: none;
-  }
-  header::after {
-    content: '';
-    position: absolute;
-    bottom: -60px; right: 10%;
-    width: 280px; height: 280px;
-    background: radial-gradient(circle, rgba(122,156,184,0.06) 0%, transparent 70%);
-    pointer-events: none;
-  }
-  .header-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 0.75rem;
-  }
-  h1 {
-    font-family: 'DM Serif Display', serif;
-    font-size: clamp(2.2rem, 5vw, 3.8rem);
-    font-weight: 400;
-    line-height: 1.1;
-    color: var(--text);
-    margin-bottom: 0.5rem;
-  }
-  h1 em {
-    font-style: italic;
-    color: var(--accent);
-  }
-  .header-sub {
-    color: var(--muted);
-    font-size: 14px;
-    margin-top: 1rem;
-  }
-
-  /* STATS */
-  .stats-row {
-    display: flex;
-    gap: 2px;
-    flex-wrap: wrap;
-    padding: 1.5rem 4rem;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-  }
-  .stat-item {
-    flex: 1;
-    min-width: 100px;
-    padding: 0.75rem 1.25rem;
-    border-right: 1px solid var(--border);
-  }
-  .stat-item:last-child { border-right: none; }
-  .stat-n {
-    font-family: 'DM Serif Display', serif;
-    font-size: 2rem;
-    color: var(--accent);
-    line-height: 1;
-  }
-  .stat-l {
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.05em;
-    margin-top: 2px;
-  }
-
-  /* FILTERS */
-  .filters-wrap {
-    padding: 1.25rem 4rem;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    background: rgba(14,14,15,0.95);
-    backdrop-filter: blur(12px);
-    z-index: 100;
-  }
-  .filter-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    color: var(--faint);
-    text-transform: uppercase;
-    margin-right: 4px;
-  }
-  .filter-btn {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 2px;
-    padding: 4px 12px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.15s;
-    letter-spacing: 0.02em;
-  }
-  .filter-btn:hover { border-color: var(--border2); color: var(--text); }
-  .filter-btn.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #0e0e0f;
-    font-weight: 500;
-  }
-
-  /* MAIN CONTENT */
-  main { padding: 2rem 4rem 4rem; }
-
-  .year-section { margin-bottom: 3rem; }
-  .year-header {
-    display: flex;
-    align-items: baseline;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .year-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.6rem;
-    color: var(--text);
-  }
-  .year-count {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--faint);
-  }
-
-  .cert-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1px;
-    background: var(--border);
-  }
-
-  .cert-card {
-    background: var(--surface);
-    padding: 1rem 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    transition: background 0.15s;
-    position: relative;
-  }
-  .cert-card:hover { background: var(--surface2); }
-  .cert-card::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 2px;
-    background: transparent;
-    transition: background 0.15s;
-  }
-  .cert-card:hover::before { background: var(--accent); }
-
-  .cert-title {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text);
-    line-height: 1.4;
-  }
-
-  .cert-bottom {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .cert-issuer {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 0.04em;
-  }
-  .cert-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .cat-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .cert-link {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    color: var(--accent2);
-    text-decoration: none;
-    letter-spacing: 0.04em;
-    border-bottom: 1px solid transparent;
-    transition: border-color 0.15s, color 0.15s;
-  }
-  .cert-link:hover {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-  }
-  .cert-date {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    color: var(--faint);
-  }
-
-  /* LEGEND */
-  .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    padding: 1.25rem 4rem;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    margin-bottom: 2rem;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    color: var(--muted);
-    cursor: pointer;
-  }
-  .legend-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-  }
-
-  .hidden { display: none !important; }
-
-  @media (max-width: 768px) {
-    header, .stats-row, .filters-wrap, main, .legend { padding-left: 1.25rem; padding-right: 1.25rem; }
-    .cert-grid { grid-template-columns: 1fr; }
-  }
-
-  /* scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Szakmai Portfólió Analitika</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse CDN a távoli CSV feldolgozásához -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #020617; 
+            color: #f8fafc; 
+        }
+        .glass { 
+            background: rgba(15, 23, 42, 0.65); 
+            backdrop-filter: blur(14px); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+        }
+        .btn-filter.active { 
+            background-color: #3b82f6; 
+            color: white; 
+            border-color: #3b82f6; 
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+        .sort-icon { 
+            font-size: 0.72rem; 
+            margin-left: 5px; 
+            opacity: 0.45; 
+        }
+        th.sortable { 
+            cursor: pointer; 
+            user-select: none; 
+            transition: background-color 0.2s ease;
+        }
+        th.sortable:hover { 
+            background-color: rgba(51, 65, 85, 0.45); 
+        }
+        .category-badge { 
+            font-size: 0.7rem; 
+            padding: 2px 9px; 
+            border-radius: 9999px; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            letter-spacing: 0.025em; 
+            white-space: nowrap;
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0b1120; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
 </head>
-<body>
+<body class="p-4 md:p-8 min-h-screen">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div class="space-y-1">
+                <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 via-indigo-400 to-emerald-400 bg-clip-text text-transparent">
+                    Szakmai Tanúsítványok Elemzése
+                </h1>
+                <p class="text-slate-400 text-base md:text-lg font-medium">Dinamikus adatlekérés és vizualizáció közvetlen GitHub adattárból</p>
+            </div>
+            <div class="flex gap-4 w-full md:w-auto">
+                <div class="glass flex-1 md:w-36 p-4 rounded-2xl text-center border-l-4 border-l-blue-500 shadow-lg shadow-blue-500/10">
+                    <p class="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Összes kurzus</p>
+                    <p class="text-3xl font-black text-white" id="statTotal">-</p>
+                </div>
+                <div class="glass flex-1 md:w-36 p-4 rounded-2xl text-center border-l-4 border-l-emerald-500 shadow-lg shadow-emerald-500/10">
+                    <p class="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Időszak</p>
+                    <p class="text-2xl font-black text-white" id="statYears">-</p>
+                </div>
+            </div>
+        </header>
 
-<header>
-  <div class="header-label">Szakmai fejlődés — 2020–2026</div>
-  <h1>Tanúsítványok &amp; <em>képzések</em></h1>
-  <p class="header-sub">Összegyűjtött igazolások · Többféle platform és témakör</p>
-</header>
+        <!-- Loading State -->
+        <div id="loadingIndicator" class="glass p-12 rounded-3xl text-center mb-8">
+            <i class="fas fa-spinner fa-spin text-4xl text-blue-400 mb-4"></i>
+            <p class="text-slate-300 font-medium text-lg">Adatok letöltése a GitHub tárolóból...</p>
+            <p class="text-slate-500 text-xs mt-2 break-all">https://raw.githubusercontent.com/klajosw/mierdekel/refs/heads/main/certi/Certifications.csv</p>
+        </div>
 
-<div class="stats-row">
-  <div class="stat-item"><div class="stat-n" id="stat-total">168</div><div class="stat-l">Összesen</div></div>
-  <div class="stat-item"><div class="stat-n">2020</div><div class="stat-l">Első tanúsítvány</div></div>
-  <div class="stat-item"><div class="stat-n">2026</div><div class="stat-l">Legutóbbi</div></div>
-  <div class="stat-item"><div class="stat-n">18</div><div class="stat-l">Kibocsátó</div></div>
-  <div class="stat-item"><div class="stat-n">8</div><div class="stat-l">Szakterület</div></div>
-</div>
+        <!-- Dashboard Content (hidden while loading) -->
+        <div id="dashboardContent" class="hidden">
+            <!-- Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+                <!-- Category Chart -->
+                <div class="glass p-6 md:p-8 rounded-3xl shadow-xl">
+                    <h2 class="text-lg font-bold mb-6 flex items-center gap-2 text-slate-200">
+                        <i class="fas fa-layer-group text-blue-400"></i> Kategóriák Megoszlása
+                    </h2>
+                    <div class="h-[300px] relative">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
 
-<div class="legend" id="legend"></div>
+                <!-- Authority Chart -->
+                <div class="glass p-6 md:p-8 rounded-3xl shadow-xl">
+                    <h2 class="text-lg font-bold mb-6 flex items-center gap-2 text-slate-200">
+                        <i class="fas fa-building text-emerald-400"></i> Domináns Szervezetek
+                    </h2>
+                    <div class="h-[300px] relative">
+                        <canvas id="authorityChart"></canvas>
+                    </div>
+                </div>
+            </div>
 
-<div class="filters-wrap">
-  <span class="filter-label">Szűrő</span>
-  <button class="filter-btn active" data-cat="all">Mind</button>
-  <button class="filter-btn" data-cat="ai">AI &amp; LLM</button>
-  <button class="filter-btn" data-cat="data">Adattudomány</button>
-  <button class="filter-btn" data-cat="viz">Vizualizáció &amp; BI</button>
-  <button class="filter-btn" data-cat="cloud">Felhő</button>
-  <button class="filter-btn" data-cat="cyber">Kiberbiztonság</button>
-  <button class="filter-btn" data-cat="dev">Programozás</button>
-  <button class="filter-btn" data-cat="pm">Projektmenedzsment</button>
-</div>
+            <!-- Filters Section -->
+            <div class="mb-8 space-y-6">
+                <div class="flex flex-wrap gap-2" id="filterContainer">
+                    <button class="btn-filter active glass px-4 py-2 rounded-xl text-xs md:text-sm font-semibold border border-slate-700/80 hover:border-blue-500 transition-all" data-filter="all">Minden kategória</button>
+                    <button class="btn-filter glass px-4 py-2 rounded-xl text-xs md:text-sm font-semibold border border-slate-700/80 hover:border-blue-500 transition-all" data-filter="AI & LLM">AI & LLM</button>
+                    <button class="btn-filter glass px-4 py-2 rounded-xl text-xs md:text-sm font-semibold border border-slate-700/80 hover:border-blue-500 transition-all" data-filter="Adattudomány">Adattudomány</button>
+                    <button class="btn-filter glass px-4 py-2 rounded-xl text-xs md:text-sm font-semibold border border-slate-700/80 hover:border-blue-500 transition-all" data-filter="Vizualizáció & BI">Vizualizáció & BI</button>
+                    <button class="btn-filter glass px-4 py-2 rounded-xl text-xs md:text-sm font-semibold border border-slate-700/80 hover:border-blue-500 transition-all" data-filter="Felhő">Felhő</button>
+                    <button class="btn-filter glass px-4 py-2 rounded-xl text-xs md:text-sm font-semibold border border-slate-700/80 hover:border-blue-500 transition-all" data-filter="Kiberbiztonság">Kiberbiztonság</button>
+                    <button class="btn-filter glass px-4 py-2 rounded-xl text-xs md:text-sm font-semibold border border-slate-700/80 hover:border-blue-500 transition-all" data-filter="Programozás">Programozás</button>
+                    <button class="btn-filter glass px-4 py-2 rounded-xl text-xs md:text-sm font-semibold border border-slate-700/80 hover:border-blue-500 transition-all" data-filter="Projektmenedzsment">Projektmenedzsment</button>
+                    <button class="btn-filter glass px-4 py-2 rounded-xl text-xs md:text-sm font-semibold border border-slate-700/80 hover:border-blue-500 transition-all" data-filter="Egyéb">Egyéb</button>
+                </div>
 
-<main id="main"></main>
+                <div class="relative max-w-md">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                    <input type="text" id="searchInput" placeholder="Keresés kurzusnév vagy szervezet alapján..." 
+                           class="w-full bg-slate-900/80 border border-slate-700/60 rounded-2xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-slate-500 text-sm shadow-inner">
+                </div>
+            </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-const CAT_COLORS = {ai:'#b8a0d4',data:'#7abfa8',viz:'#7ab8d4',cloud:'#a0c4d4',cyber:'#d47a7a',dev:'#c4b87a',pm:'#d4a07a',other:'#9a9a9a'};
-const CAT_LABELS = {ai:'AI & LLM',data:'Adattudomány',viz:'Vizualizáció & BI',cloud:'Felhő',cyber:'Kiberbiztonság',dev:'Programozás',pm:'Projektmenedzsment',other:'Egyéb'};
+            <!-- Table Card -->
+            <div class="glass rounded-3xl overflow-hidden shadow-2xl border border-slate-800">
+                <div class="overflow-x-auto max-h-[650px]">
+                    <table class="w-full text-left" id="certsTable">
+                        <thead class="sticky top-0 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 z-10">
+                            <tr class="text-slate-400 text-xs uppercase tracking-widest font-bold">
+                                <th class="p-5 sortable" data-sort="Name">Megnevezés <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="p-5 sortable" data-sort="Category">Kategória <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="p-5 sortable" data-sort="Authority">Szervezet <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="p-5 sortable text-center" data-sort="Year">Év <i class="fas fa-sort sort-icon"></i></th>
+                                <th class="p-5 text-center w-20">Cert</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-800/50"></tbody>
+                    </table>
+                </div>
+                <div id="noResults" class="hidden py-20 text-center">
+                    <div class="text-slate-600 mb-2"><i class="fas fa-magnifying-glass text-4xl"></i></div>
+                    <p class="text-slate-400 font-medium">Nincs a szűrésnek megfelelő találat.</p>
+                </div>
+            </div>
+        </div>
 
-const MONTHS = {1:'Jan',2:'Feb',3:'Már',4:'Ápr',5:'Máj',6:'Jún',7:'Júl',8:'Aug',9:'Sze',10:'Okt',11:'Nov',12:'Dec'};
-function fmt(d){const[y,m]=d.split('-');return MONTHS[+m]+' '+y;}
+        <footer class="mt-12 mb-10 text-center text-slate-600 text-[11px] uppercase tracking-widest font-bold">
+            Tanúsítvány Elemző Portál &bull; Frissítve a távoli GitHub forrásból
+        </footer>
+    </div>
 
-const certs = [
-  // ANTHROPIC 2026-03
-  {title:"Teaching the AI Fluency Framework",issuer:"Anthropic",date:"2026-03",cat:"ai",cred:"3i4vafvbdq6c",url:"https://www.credential.net/3i4vafvbdq6c"},
-  {title:"Introduction to Subagents",issuer:"Anthropic",date:"2026-03",cat:"ai",cred:"bnj47tgmjo93",url:"https://www.credential.net/bnj47tgmjo93"},
-  {title:"Introduction to Claude Cowork",issuer:"Anthropic",date:"2026-03",cat:"ai",cred:"ekk9vdhjzada",url:"https://www.credential.net/ekk9vdhjzada"},
-  {title:"AI Fluency for Educators",issuer:"Anthropic",date:"2026-03",cat:"ai",cred:"sq6b9t8ye2f4",url:"https://www.credential.net/sq6b9t8ye2f4"},
-  {title:"Building with the Claude API",issuer:"Anthropic",date:"2026-03",cat:"ai",cred:"zkxff7yhusk7",url:"https://www.credential.net/zkxff7yhusk7"},
-  {title:"Claude with Google Cloud's Vertex AI",issuer:"Anthropic",date:"2026-03",cat:"cloud",cred:"3q4u9kcb4sq5",url:"https://www.credential.net/3q4u9kcb4sq5"},
-  {title:"Model Context Protocol: Advanced Topics",issuer:"Anthropic",date:"2026-03",cat:"ai",cred:"pcqpgb2wf5yj",url:"https://www.credential.net/pcqpgb2wf5yj"},
-  {title:"Introduction to Model Context Protocol",issuer:"Anthropic",date:"2026-03",cat:"ai",cred:"8p24eojkqbi4",url:"https://www.credential.net/8p24eojkqbi4"},
-  {title:"Introduction to Agent Skills",issuer:"Anthropic",date:"2026-03",cat:"ai",cred:"9yfnrq2py3nh",url:"https://www.credential.net/9yfnrq2py3nh"},
-  {title:"AI Fluency Framework & Foundations",issuer:"Anthropic",date:"2026-03",cat:"ai",cred:"t8yz3cw76o3p",url:"https://www.credential.net/t8yz3cw76o3p"},
-  {title:"AI Fluency for Nonprofits",issuer:"Anthropic",date:"2026-03",cat:"ai",cred:"e4v5zrf2ty7d",url:"https://www.credential.net/e4v5zrf2ty7d"},
-  {title:"Claude 101",issuer:"Anthropic",date:"2026-03",cat:"ai",cred:"c9eruryqa3zj",url:"https://www.credential.net/c9eruryqa3zj"},
-  {title:"Claude Code in Action",issuer:"Anthropic",date:"2026-03",cat:"ai",cred:"yiritx3pq9ax",url:"https://www.credential.net/yiritx3pq9ax"},
-  // GOOGLE 2025-12
-  {title:"Gemini Certified Educator",issuer:"Google",date:"2025-12",cat:"ai",cred:"170326037",url:"https://skillshop.credential.net/170326037"},
-  {title:"Gemini Certified Faculty",issuer:"Google",date:"2025-12",cat:"ai",cred:"170324146",url:"https://skillshop.credential.net/170324146"},
-  {title:"Gemini Certified University Student",issuer:"Google",date:"2025-12",cat:"ai",cred:"170324830",url:"https://skillshop.credential.net/170324830"},
-  // 365 DS 2025-11
-  {title:"SQL + Tableau",issuer:"365 Data Science",date:"2025-11",cat:"viz",cred:"CC-1134B2CB48",url:"https://365datascience.com/verify/CC-1134B2CB48"},
-  {title:"Power BI Data Visualization Hero",issuer:"365 Data Science",date:"2025-11",cat:"viz",cred:"CC-467A1C6008",url:"https://365datascience.com/verify/CC-467A1C6008"},
-  {title:"Data Strategy",issuer:"365 Data Science",date:"2025-11",cat:"data",cred:"CC-09E54154BD",url:"https://365datascience.com/verify/CC-09E54154BD"},
-  {title:"Intermediate Python Programming",issuer:"365 Data Science",date:"2025-11",cat:"dev",cred:"CC-5CDCFD13A0",url:"https://365datascience.com/verify/CC-5CDCFD13A0"},
-  {title:"Intro to Data Engineering",issuer:"365 Data Science",date:"2025-11",cat:"data",cred:"CC-7C3EDE2774",url:"https://365datascience.com/verify/CC-7C3EDE2774"},
-  {title:"Data Cleaning and Preprocessing with pandas",issuer:"365 Data Science",date:"2025-11",cat:"data",cred:"CC-7F3A14C5CD",url:"https://365datascience.com/verify/CC-7F3A14C5CD"},
-  {title:"ChatGPT at Work: Ethical and Secure Use",issuer:"365 Data Science",date:"2025-11",cat:"ai",cred:"CC-BAA53CE2B3",url:"https://365datascience.com/verify/CC-BAA53CE2B3"},
-  {title:"The Machine Learning Process A-Z",issuer:"365 Data Science",date:"2025-11",cat:"data",cred:"CC-C0F6A667A7",url:"https://365datascience.com/verify/CC-C0F6A667A7"},
-  {title:"Data-Driven Business Growth",issuer:"365 Data Science",date:"2025-11",cat:"data",cred:"CC-C6AE5F5839",url:"https://365datascience.com/verify/CC-C6AE5F5839"},
-  {title:"Introduction to Business Analytics",issuer:"365 Data Science",date:"2025-11",cat:"data",cred:"CC-7D9F8DAE6F",url:"https://365datascience.com/verify/CC-7D9F8DAE6F"},
-  {title:"Introduction to Data and Data Science",issuer:"365 Data Science",date:"2025-11",cat:"data",cred:"CC-BA2A70E1CA",url:"https://365datascience.com/verify/CC-BA2A70E1CA"},
-  {title:"Communication and Presentation Skills for Analysts",issuer:"365 Data Science",date:"2025-11",cat:"pm",cred:"CC-247216E123",url:"https://365datascience.com/verify/CC-247216E123"},
-  {title:"Machine Learning Deep Dive: Business Applications",issuer:"365 Data Science",date:"2025-11",cat:"data",cred:"CC-1B9ECD8B69",url:"https://365datascience.com/verify/CC-1B9ECD8B69"},
-  {title:"Intro to Microsoft Azure",issuer:"365 Data Science",date:"2025-11",cat:"cloud",cred:"CC-25339D5DC5",url:"https://365datascience.com/verify/CC-25339D5DC5"},
-  // UNIATHENA 2025-10
-  {title:"Basics of Pandas",issuer:"UniAthena",date:"2025-10",cat:"dev",cred:"1119_1761754910",url:"https://www.uniathena.com/verify/1119_1761754910"},
-  {title:"Basics of Data Cleaning",issuer:"UniAthena",date:"2025-10",cat:"data",cred:"1120_1761754623",url:"https://www.uniathena.com/verify/1120_1761754623"},
-  {title:"Essentials of Data Visualization using MS Excel",issuer:"UniAthena",date:"2025-10",cat:"viz",cred:"124_1761751241",url:"https://www.uniathena.com/verify/124_1761751241"},
-  {title:"Basics of NumPy",issuer:"UniAthena",date:"2025-10",cat:"dev",cred:"1107_1761751484",url:"https://www.uniathena.com/verify/1107_1761751484"},
-  {title:"Basics of Matplotlib",issuer:"UniAthena",date:"2025-10",cat:"viz",cred:"1108_1761751739",url:"https://www.uniathena.com/verify/1108_1761751739"},
-  // UDEMY 2025-10
-  {title:"CoPilot & AI Agents for Data Science Bootcamp",issuer:"Udemy",date:"2025-10",cat:"ai",cred:"UC-283e9cad",url:"https://www.udemy.com/certificate/UC-283e9cad-3f90-4b1b-858d-32fd377a988e/"},
-  {title:"Complete N8N and AI Automation Masterclass",issuer:"Udemy",date:"2025-10",cat:"ai",cred:"UC-ff49e138",url:"https://www.udemy.com/certificate/UC-ff49e138-6e34-4522-b233-1da164be4b1e/"},
-  {title:"Certified AI Engineering Masterclass",issuer:"Udemy",date:"2025-10",cat:"ai",cred:"UC-3e96a88e",url:"https://www.udemy.com/certificate/UC-3e96a88e-a9da-4317-b80e-13d23fa6310a/"},
-  // UNIATHENA 2025-09
-  {title:"Basics of Data Science",issuer:"UniAthena",date:"2025-09",cat:"data",cred:"117_1757224280",url:"https://www.uniathena.com/verify/117_1757224280"},
-  {title:"Basics of Artificial Intelligence",issuer:"UniAthena",date:"2025-09",cat:"ai",cred:"894_1757224326",url:"https://www.uniathena.com/verify/894_1757224326"},
-  {title:"Basics of Data Visualization Using Python",issuer:"UniAthena",date:"2025-09",cat:"viz",cred:"685_1757224430",url:"https://www.uniathena.com/verify/685_1757224430"},
-  {title:"Basics of Python",issuer:"UniAthena",date:"2025-09",cat:"dev",cred:"323_1757224520",url:"https://www.uniathena.com/verify/323_1757224520"},
-  {title:"Basics of Machine Learning Algorithms",issuer:"UniAthena",date:"2025-09",cat:"data",cred:"322_1757191761",url:"https://www.uniathena.com/verify/322_1757191761"},
-  {title:"Basics of AI: Learning Models",issuer:"UniAthena",date:"2025-09",cat:"ai",cred:"896_1757191630",url:"https://www.uniathena.com/verify/896_1757191630"},
-  {title:"Essentials of AI Learning Frameworks & Advanced Models",issuer:"UniAthena",date:"2025-09",cat:"ai",cred:"897_1757188044",url:"https://www.uniathena.com/verify/897_1757188044"},
-  {title:"Basics of Agents & Environments in AI",issuer:"UniAthena",date:"2025-09",cat:"ai",cred:"895_1757184223",url:"https://www.uniathena.com/verify/895_1757184223"},
-  {title:"Master ChatGPT",issuer:"UniAthena",date:"2025-09",cat:"ai",cred:"810_1757180920",url:"https://www.uniathena.com/verify/810_1757180920"},
-  // FREECODECAMP 2025-08
-  {title:"Foundational C# with Microsoft",issuer:"freeCodeCamp",date:"2025-08",cat:"dev",cred:"klajosw-fcswm",url:"https://www.freecodecamp.org/certification/klajosw/foundational-c-sharp-with-microsoft"},
-  {title:"Data Visualization",issuer:"freeCodeCamp",date:"2025-08",cat:"viz",cred:"klajosw-dv",url:"https://www.freecodecamp.org/certification/klajosw/data-visualization"},
-  // KNIME 2025-07
-  {title:"Databricks & KNIME for Machine Learning",issuer:"KNIME",date:"2025-07",cat:"data",cred:"",url:"https://www.knime.com/learning"},
-  {title:"Data-Aware Agentic AI",issuer:"KNIME",date:"2025-07",cat:"ai",cred:"",url:"https://www.knime.com/learning"},
-  // CISCO 2025-07
-  {title:"Etikus Hacker",issuer:"Cisco Networking Academy",date:"2025-07",cat:"cyber",cred:"a0c6-45dfa08a6025",url:"https://www.credly.com/badges/a0c6-45dfa08a6025"},
-  {title:"Introduction to Cybersecurity",issuer:"Cisco Networking Academy",date:"2025-07",cat:"cyber",cred:"",url:"https://www.netacad.com"},
-  // ALISON 2025-06
-  {title:"Diploma in Data Analytics with Python",issuer:"Alison",date:"2025-06",cat:"data",cred:"2429-19762137",url:"https://alison.com/certification/check/2y+GJBiHWd7..."},
-  {title:"Diploma in Six Sigma",issuer:"Alison",date:"2025-06",cat:"pm",cred:"1289-19762137",url:"https://alison.com/certification/check/2y+GJBiHWd7..."},
-  {title:"Advanced Diploma in Computer Vision",issuer:"Alison",date:"2025-06",cat:"data",cred:"2240-19762137",url:"https://alison.com/certification/check/2y+GJBiHWd7..."},
-  {title:"Ethical Hacking; Network Analysis & Vulnerability Scanning",issuer:"Alison",date:"2025-06",cat:"cyber",cred:"2278-19762137",url:"https://alison.com/certification/check/2y+GJBiHWd7..."},
-  // COURSERA 2025-03
-  {title:"Automate Tasks and Processes with Jira",issuer:"Coursera",date:"2025-03",cat:"pm",cred:"TVSUK9CJIX3P",url:"https://www.coursera.org/verify/TVSUK9CJIX3P"},
-  // AWS 2025-01
-  {title:"AWS Cloud Alapok",issuer:"AWS Training Online",date:"2025-01",cat:"cloud",cred:"klajosw",url:"https://www.aws.training/"},
-  // COURSERA 2025-01
-  {title:"Build and Operate ML Solutions with Azure",issuer:"Coursera",date:"2025-01",cat:"cloud",cred:"LRXLNRP6DTVJ",url:"https://www.coursera.org/verify/LRXLNRP6DTVJ"},
-  {title:"Microsoft Azure Data Scientist Associate (DP-100) Exam Prep",issuer:"Coursera",date:"2025-01",cat:"cloud",cred:"9T9LUCH6GRI1",url:"https://www.coursera.org/verify/9T9LUCH6GRI1"},
-  {title:"ISC2 Certified in Cybersecurity (CC) Training",issuer:"ISC2",date:"2025-01",cat:"cyber",cred:"af6ceed9-beed-450e-95ad-9136eb82b55b",url:"https://www.isc2.org/"},
-  {title:"Computer Networks and Network Security",issuer:"Coursera",date:"2025-01",cat:"cyber",cred:"OO52H5KM1JO6",url:"https://www.coursera.org/verify/OO52H5KM1JO6"},
-  {title:"Cybersecurity Compliance Framework, Standards & Regulations",issuer:"Coursera",date:"2025-01",cat:"cyber",cred:"PO9ON7P1XW9N",url:"https://www.coursera.org/verify/PO9ON7P1XW9N"},
-  {title:"Generative AI: Elevate Your Business Intelligence Career",issuer:"Coursera",date:"2025-01",cat:"ai",cred:"QDVJQKR61X9X",url:"https://www.coursera.org/verify/QDVJQKR61X9X"},
-  {title:"Generative AI for BI Analysts",issuer:"Coursera",date:"2025-01",cat:"ai",cred:"BIU4XKBFAB07",url:"https://www.coursera.org/verify/BIU4XKBFAB07"},
-  {title:"IBM Generative AI for Cybersecurity Professionals",issuer:"Coursera",date:"2025-01",cat:"ai",cred:"EUJQAN1I71QP",url:"https://www.coursera.org/verify/EUJQAN1I71QP"},
-  {title:"Generative AI: Boost Your Cybersecurity Career",issuer:"Coursera",date:"2025-01",cat:"ai",cred:"PGKOZH4ABN5O",url:"https://www.coursera.org/verify/PGKOZH4ABN5O"},
-  {title:"Perform Data Science with Azure Databricks",issuer:"Coursera",date:"2025-01",cat:"cloud",cred:"KBSYCTA02S06",url:"https://www.coursera.org/verify/KBSYCTA02S06"},
-  {title:"Cybersecurity Assessment: CompTIA Security+ & CYSA+",issuer:"Coursera",date:"2025-01",cat:"cyber",cred:"WCHA5UN3HL8W",url:"https://www.coursera.org/verify/WCHA5UN3HL8W"},
-  // COURSERA 2024-12
-  {title:"Foundations of Cybersecurity",issuer:"Coursera",date:"2024-12",cat:"cyber",cred:"N89X3LS34PIS",url:"https://www.coursera.org/verify/N89X3LS34PIS"},
-  {title:"Cybersecurity Architecture",issuer:"Coursera",date:"2024-12",cat:"cyber",cred:"I07JD3E5WS19",url:"https://www.coursera.org/verify/I07JD3E5WS19"},
-  {title:"Incident Response and Digital Forensics",issuer:"Coursera",date:"2024-12",cat:"cyber",cred:"409U6FGIKTM9",url:"https://www.coursera.org/verify/409U6FGIKTM9"},
-  {title:"Generative AI for Data Scientists Specializáció",issuer:"Coursera",date:"2024-12",cat:"ai",cred:"DPJ2FYEM8WJL",url:"https://www.coursera.org/verify/DPJ2FYEM8WJL"},
-  {title:"Generative AI: Elevate Your Data Science Career",issuer:"Coursera",date:"2024-12",cat:"ai",cred:"B5Q65UFBN6JN",url:"https://www.coursera.org/verify/B5Q65UFBN6JN"},
-  {title:"Generatív AI: Prompt Engineering Alapjai",issuer:"Coursera",date:"2024-12",cat:"ai",cred:"V5DPIY2SPRBZ",url:"https://www.coursera.org/verify/V5DPIY2SPRBZ"},
-  {title:"Introduction to Cybersecurity Essentials",issuer:"Coursera",date:"2024-12",cat:"cyber",cred:"QFG3685KUMR0",url:"https://www.coursera.org/verify/QFG3685KUMR0"},
-  {title:"Create Machine Learning Models in Microsoft Azure",issuer:"Coursera",date:"2024-12",cat:"cloud",cred:"41O1HFVHQGIG",url:"https://www.coursera.org/verify/41O1HFVHQGIG"},
-  {title:"Introduction to Cybersecurity Careers",issuer:"Coursera",date:"2024-12",cat:"cyber",cred:"3AI9HMITQT4S",url:"https://www.coursera.org/verify/3AI9HMITQT4S"},
-  {title:"Generative AI: Introduction and Applications",issuer:"Coursera",date:"2024-12",cat:"ai",cred:"4HZ3JF3QOJ12",url:"https://www.coursera.org/verify/4HZ3JF3QOJ12"},
-  {title:"Introduction to CIP",issuer:"OPSWAT Academy",date:"2024-12",cat:"cyber",cred:"ZYzP1MN3jg",url:"https://www.opswat.com/"},
-  {title:"Microsoft Azure Machine Learning for Data Scientists",issuer:"Coursera",date:"2024-12",cat:"cloud",cred:"CC1OHMGN6PDI",url:"https://www.coursera.org/verify/CC1OHMGN6PDI"},
-  {title:"Prepare for DP-100: Data Science on Microsoft Azure",issuer:"Coursera",date:"2024-12",cat:"cloud",cred:"OMHW64AJVDBU",url:"https://www.coursera.org/verify/OMHW64AJVDBU"},
-  // COURSERA 2024-11
-  {title:"Data Integration, Storage & Migration",issuer:"Coursera",date:"2024-11",cat:"data",cred:"GGWSDYDV1GTK",url:"https://www.coursera.org/verify/GGWSDYDV1GTK"},
-  {title:"Excel Basics for Data Analysis",issuer:"Coursera",date:"2024-11",cat:"data",cred:"7N5OZXSU16ZZ",url:"https://www.coursera.org/verify/7N5OZXSU16ZZ"},
-  {title:"Exploratory Data Analysis for Machine Learning",issuer:"Coursera",date:"2024-11",cat:"data",cred:"YO37OPHSS6S7",url:"https://www.coursera.org/verify/YO37OPHSS6S7"},
-  {title:"Agile Project Management",issuer:"Coursera",date:"2024-11",cat:"pm",cred:"L1RXT04EAQRZ",url:"https://www.coursera.org/verify/L1RXT04EAQRZ"},
-  {title:"Project Planning: Putting It All Together",issuer:"Coursera",date:"2024-11",cat:"pm",cred:"7VJ7WKMKXEII",url:"https://www.coursera.org/verify/7VJ7WKMKXEII"},
-  {title:"Introduction to Databases",issuer:"Coursera",date:"2024-11",cat:"data",cred:"0Q4QCMC1H5XJ",url:"https://www.coursera.org/verify/0Q4QCMC1H5XJ"},
-  {title:"Project Initiation: Starting a Successful Project",issuer:"Coursera",date:"2024-11",cat:"pm",cred:"FGEZYQG0W5YN",url:"https://www.coursera.org/verify/FGEZYQG0W5YN"},
-  {title:"Introduction to Scrum Master Profession",issuer:"Coursera",date:"2024-11",cat:"pm",cred:"5W2KLOFKO2YZ",url:"https://www.coursera.org/verify/5W2KLOFKO2YZ"},
-  {title:"Foundations of Project Management",issuer:"Coursera",date:"2024-11",cat:"pm",cred:"IWEVUBSQ068Q",url:"https://www.coursera.org/verify/IWEVUBSQ068Q"},
-  {title:"What is Data Science?",issuer:"Coursera",date:"2024-11",cat:"data",cred:"UKM5OROU532N",url:"https://www.coursera.org/verify/UKM5OROU532N"},
-  {title:"Data Visualization and Dashboards with Excel and Cognos",issuer:"Coursera",date:"2024-11",cat:"viz",cred:"EOQ1GKBSGO99",url:"https://www.coursera.org/verify/EOQ1GKBSGO99"},
-  {title:"SQL: A Practical Introduction for Querying Databases",issuer:"Coursera",date:"2024-11",cat:"data",cred:"2PD293XOH2OV",url:"https://www.coursera.org/verify/2PD293XOH2OV"},
-  // COURSERA 2024-10
-  {title:"Introduction to Data Analytics in Google Cloud",issuer:"Coursera",date:"2024-10",cat:"cloud",cred:"JGHANWOWNKSG",url:"https://www.coursera.org/verify/JGHANWOWNKSG"},
-  {title:"Introduction to Information Technology and AWS Cloud",issuer:"Coursera",date:"2024-10",cat:"cloud",cred:"68RLQX8BEE8T",url:"https://www.coursera.org/verify/68RLQX8BEE8T"},
-  {title:"Google Foundations: Data, Data, Everywhere",issuer:"Coursera",date:"2024-10",cat:"data",cred:"4935GKSTNXX8",url:"https://www.coursera.org/verify/4935GKSTNXX8"},
-  {title:"Introduction to Data Engineering",issuer:"Coursera",date:"2024-10",cat:"data",cred:"0HBUVUHU46SQ",url:"https://www.coursera.org/verify/0HBUVUHU46SQ"},
-  {title:"Machine Learning with Python",issuer:"Coursera",date:"2024-10",cat:"data",cred:"MVALX2XWU5M7",url:"https://www.coursera.org/verify/MVALX2XWU5M7"},
-  {title:"From Excel to Power BI",issuer:"Coursera",date:"2024-10",cat:"viz",cred:"420URZZ5AXB3",url:"https://www.coursera.org/verify/420URZZ5AXB3"},
-  {title:"Introduction to Artificial Intelligence (AI)",issuer:"Coursera",date:"2024-10",cat:"ai",cred:"QW1YM7D0O99F",url:"https://www.coursera.org/verify/QW1YM7D0O99F"},
-  // UDEMY 2024-02
-  {title:"ChatGPT Masterclass - The Ultimate Guide",issuer:"Udemy",date:"2024-02",cat:"ai",cred:"UC-f0b70551",url:"https://www.udemy.com/certificate/UC-f0b70551-8e55-469e-aa33-3b63bcff5e3f/"},
-  {title:"Talend + SQL + Datawarehousing",issuer:"Udemy",date:"2024-02",cat:"data",cred:"UC-7f12dbf6",url:"https://www.udemy.com/certificate/UC-7f12dbf6-4c1f-4ba8-a937-e031ccbc5c44/"},
-  {title:"Tableau A-Z: Hands-On Tableau Training",issuer:"Udemy",date:"2024-02",cat:"viz",cred:"UC-d9a20b43",url:"https://www.udemy.com/certificate/UC-d9a20b43-41d2-4e88-9bdb-f5fe93e49a3b/"},
-  {title:"2024 Tableau Certified Data Analyst Training",issuer:"Udemy",date:"2024-02",cat:"viz",cred:"UC-b349c066",url:"https://www.udemy.com/certificate/UC-b349c066-d90f-4bc8-8d4c-f85fe3b5aa83/"},
-  {title:"ChatGPT Masters: Generative AI, Prompt Engineering",issuer:"Udemy",date:"2024-02",cat:"ai",cred:"UC-908ede20",url:"https://www.udemy.com/certificate/UC-908ede20-d8b7-466a-862a-7556855ca409/"},
-  {title:"ChatGPT Masterclass - Build Solutions and Apps",issuer:"Udemy",date:"2024-02",cat:"ai",cred:"UC-c4148750",url:"https://www.udemy.com/certificate/UC-c4148750-ccde-41f6-8ac8-73b364b240f7/"},
-  {title:"ChatGPT Accelerated Python",issuer:"Udemy",date:"2024-02",cat:"dev",cred:"UC-3689eb21",url:"https://www.udemy.com/certificate/UC-3689eb21-74e7-42b6-8dd3-941495542a63/"},
-  {title:"AI Chatbots Development with ChatGPT",issuer:"Udemy",date:"2024-02",cat:"ai",cred:"UC-86b801b7",url:"https://www.udemy.com/certificate/UC-86b801b7-f5c3-4cb9-9240-478c11960326/"},
-  {title:"Executive Briefing: AI + ChatGPT",issuer:"Udemy",date:"2024-02",cat:"ai",cred:"UC-c14140ab",url:"https://www.udemy.com/certificate/UC-c14140ab-b34e-45da-a2c0-f331fa908a8b/"},
-  {title:"ChatGPT: Complete Course For Work",issuer:"Udemy",date:"2024-02",cat:"ai",cred:"UC-c113d260",url:"https://www.udemy.com/certificate/UC-c113d260-c302-4070-bf5e-bbceada097ba/"},
-  {title:"Product Management for AI & Data Science",issuer:"Udemy",date:"2024-02",cat:"pm",cred:"UC-276996fe",url:"https://www.udemy.com/certificate/UC-276996fe-56e0-40c8-8492-faa9c918cd2f/"},
-  {title:"GitHub Copilot: Use AI to Write Code",issuer:"Udemy",date:"2024-02",cat:"ai",cred:"UC-0e070236",url:"https://www.udemy.com/certificate/UC-0e070236-b10d-4309-83dc-ce70bd3040ec/"},
-  {title:"Modern Artificial Intelligence with Zero Coding",issuer:"Udemy",date:"2024-02",cat:"ai",cred:"UC-01ae5603",url:"https://www.udemy.com/certificate/UC-01ae5603-fbaa-49e9-8fc9-4eed88910f21/"},
-  {title:"Artificial Intelligence A-Z: Build 5 AI + LLM & ChatGPT",issuer:"Udemy",date:"2024-02",cat:"ai",cred:"UC-8f1feddc",url:"https://www.udemy.com/certificate/UC-8f1feddc-31e2-4654-bfab-5a5f3bb92fa3/"},
-  {title:"ChatGPT Complete Guide: Midjourney, ChatGPT 4 & More",issuer:"Udemy",date:"2024-02",cat:"ai",cred:"UC-3386af0e",url:"https://www.udemy.com/certificate/UC-3386af0e-c508-439e-a10e-2c1ca79c5e2a/"},
-  {title:"Data Programming",issuer:"Sololearn",date:"2024-02",cat:"dev",cred:"CC-NB27IXS8",url:"https://www.sololearn.com/certificates/CC-NB27IXS8"},
-  {title:"Angular",issuer:"Sololearn",date:"2024-02",cat:"dev",cred:"CC-KGX5B8ZD",url:"https://www.sololearn.com/certificates/CC-KGX5B8ZD"},
-  // PRAGMATIC WORKS 2024-01
-  {title:"Data Modeling for Power BI Workshop",issuer:"Pragmatic Works",date:"2024-01",cat:"viz",cred:"",url:"https://pragmaticworks.com"},
-  {title:"Power BI Beginner to Pro Workshop",issuer:"Pragmatic Works",date:"2024-01",cat:"viz",cred:"",url:"https://pragmaticworks.com"},
-  // 365 DS 2023-11
-  {title:"Git and GitHub",issuer:"365 Data Science",date:"2023-11",cat:"dev",cred:"CC-4AFF0C74EF",url:"https://365datascience.com/verify/CC-4AFF0C74EF"},
-  {title:"Data Analysis with ChatGPT",issuer:"365 Data Science",date:"2023-11",cat:"ai",cred:"CC-1EA45F0EC9",url:"https://365datascience.com/verify/CC-1EA45F0EC9"},
-  {title:"Power Query and Data Modeling",issuer:"365 Data Science",date:"2023-11",cat:"viz",cred:"CC-AE117A7CAB",url:"https://365datascience.com/verify/CC-AE117A7CAB"},
-  {title:"Power BI",issuer:"365 Data Science",date:"2023-11",cat:"viz",cred:"CC-1C0F421CDE",url:"https://365datascience.com/verify/CC-1C0F421CDE"},
-  {title:"AI Applications for Business Success",issuer:"365 Data Science",date:"2023-11",cat:"ai",cred:"CC-858055587D",url:"https://365datascience.com/verify/CC-858055587D"},
-  {title:"Intro to NLP for AI",issuer:"365 Data Science",date:"2023-11",cat:"ai",cred:"CC-150230922C",url:"https://365datascience.com/verify/CC-150230922C"},
-  {title:"Web Scraping and API Fundamentals in Python",issuer:"365 Data Science",date:"2023-11",cat:"dev",cred:"CC-2A747FCE5B",url:"https://365datascience.com/verify/CC-2A747FCE5B"},
-  {title:"Advanced SQL",issuer:"365 Data Science",date:"2023-11",cat:"data",cred:"CC-A610B342C1",url:"https://365datascience.com/verify/CC-A610B342C1"},
-  {title:"Product Management for AI & Data Science",issuer:"365 Data Science",date:"2023-11",cat:"pm",cred:"CC-2C4B8D9B4B",url:"https://365datascience.com/verify/CC-2C4B8D9B4B"},
-  {title:"Introduction to Tableau",issuer:"365 Data Science",date:"2023-11",cat:"viz",cred:"CC-4DDDF7ADCB",url:"https://365datascience.com/verify/CC-4DDDF7ADCB"},
-  {title:"Building Business Reports Using Power BI",issuer:"365 Data Science",date:"2023-11",cat:"viz",cred:"CC-A6958A0533",url:"https://365datascience.com/verify/CC-A6958A0533"},
-  {title:"Introduction to DAX",issuer:"365 Data Science",date:"2023-11",cat:"viz",cred:"CC-7FFD7A81B5",url:"https://365datascience.com/verify/CC-7FFD7A81B5"},
-  {title:"Intro to ChatGPT and Generative AI",issuer:"365 Data Science",date:"2023-11",cat:"ai",cred:"CC-92D332D2ED",url:"https://365datascience.com/verify/CC-92D332D2ED"},
-  {title:"Advanced SQL for Data Engineering",issuer:"365 Data Science",date:"2023-11",cat:"data",cred:"CC-65B97BF7BC",url:"https://365datascience.com/verify/CC-65B97BF7BC"},
-  {title:"Data Analysis in Power BI with ChatGPT",issuer:"365 Data Science",date:"2023-11",cat:"viz",cred:"CC-92CEA640AB",url:"https://365datascience.com/verify/CC-92CEA640AB"},
-  // UDEMY 2023-02
-  {title:"Python for Data Science and Machine Learning Bootcamp",issuer:"Udemy",date:"2023-02",cat:"data",cred:"UC-936082e9",url:"https://www.udemy.com/certificate/UC-936082e9-81c8-4558-814f-f56e8f9babcd/"},
-  {title:"Data Warehouse - The Ultimate Guide",issuer:"Udemy",date:"2023-02",cat:"data",cred:"UC-9571ca91",url:"https://www.udemy.com/certificate/UC-9571ca91-52fc-45cf-8d4b-cddc6e2f795d/"},
-  {title:"Excel Power Query, Power Pivot, Power Map & DAX",issuer:"Udemy",date:"2023-02",cat:"viz",cred:"UC-f60941f7",url:"https://www.udemy.com/certificate/UC-f60941f7-1984-4f7c-92f0-85388c22f2f6/"},
-  {title:"Modeling Data Warehouse with Data Vault 2.0",issuer:"Udemy",date:"2023-02",cat:"data",cred:"UC-88a03a9f",url:"https://www.udemy.com/certificate/UC-88a03a9f-a67a-4a35-b5d2-d620b9248cd0/"},
-  {title:"Python and Flask Bootcamp",issuer:"Udemy",date:"2023-02",cat:"dev",cred:"UC-97d7ba70",url:"https://www.udemy.com/certificate/UC-97d7ba70-6138-4a6b-a897-469584a7191e/"},
-  {title:"Automate the Boring Stuff with Python",issuer:"Udemy",date:"2023-02",cat:"dev",cred:"UC-3992d78a",url:"https://www.udemy.com/certificate/UC-3992d78a-6f5e-4925-b749-b4af6b242635/"},
-  // SIMPLILEARN 2022-12
-  {title:"Power BI for Beginners",issuer:"Simplilearn",date:"2022-12",cat:"viz",cred:"4037440",url:"https://simplilearn.com/skillup-certificate-landing"},
-  // KNIME 2022-03
-  {title:"Basic Proficiency in KNIME Analytics Platform",issuer:"KNIME",date:"2022-03",cat:"data",cred:"20220326-46",url:"https://www.knime.com/learning"},
-  // SOLOLEARN 2022-01
-  {title:"Web Development",issuer:"Sololearn",date:"2022-01",cat:"dev",cred:"1141-19704734",url:"https://www.sololearn.com/certificates/1141-19704734"},
-  {title:"Python for Finance",issuer:"Sololearn",date:"2021-12",cat:"dev",cred:"1139-19704734",url:"https://www.sololearn.com/certificates/1139-19704734"},
-  {title:"R Programming",issuer:"Sololearn",date:"2021-12",cat:"dev",cred:"19704734/1147",url:"https://www.sololearn.com/certificates/19704734/1147"},
-  {title:"Python for Data Science",issuer:"Sololearn",date:"2021-05",cat:"dev",cred:"19704734/1161",url:"https://www.sololearn.com/certificates/19704734/1161"},
-  {title:"Go Programming",issuer:"Sololearn",date:"2021-05",cat:"dev",cred:"19704734/1164",url:"https://www.sololearn.com/certificates/19704734/1164"},
-  {title:"Responsive Web Design",issuer:"Sololearn",date:"2021-04",cat:"dev",cred:"1162-19704734",url:"https://www.sololearn.com/certificates/1162-19704734"},
-  // ALISON 2021-03
-  {title:"Diploma in Databases and T-SQL",issuer:"Alison",date:"2021-03",cat:"data",cred:"1448-19762137",url:"https://alison.com/certification/check/2y+GJBiHWd7..."},
-  {title:"Diploma in Software Project Management",issuer:"Alison",date:"2021-03",cat:"pm",cred:"2589-19762137",url:"https://alison.com/certification/check/2y+GJBiHWd7..."},
-  {title:"Diploma in Python Programming",issuer:"Alison",date:"2021-03",cat:"dev",cred:"1535-19762137",url:"https://alison.com/certification/check/2y+GJBiHWd7..."},
-  // FREECODECAMP 2021-03
-  {title:"Data Analysis with Python",issuer:"freeCodeCamp",date:"2021-03",cat:"data",cred:"1089-1970473415",url:"https://www.freecodecamp.org/certification/klajosw/data-analysis-with-python-v7"},
-  {title:"Scientific Computing with Python",issuer:"freeCodeCamp",date:"2021-03",cat:"dev",cred:"1089-1970473411",url:"https://www.freecodecamp.org/certification/klajosw/scientific-computing-with-python-v7"},
-  // KAGGLE 2021-03
-  {title:"Feature Engineering",issuer:"Kaggle",date:"2021-03",cat:"data",cred:"",url:"https://www.kaggle.com/learn/feature-engineering"},
-  // ALISON 2021-02
-  {title:"Diploma in DevOps Engineering (Kubernetes, Docker, GCP)",issuer:"Alison",date:"2021-02",cat:"cloud",cred:"1696-19762137",url:"https://alison.com/certification/check/2y+GJBiHWd7..."},
-  {title:"Advanced Diploma in Database Systems",issuer:"Alison",date:"2021-02",cat:"data",cred:"2131-19762137",url:"https://alison.com/certification/check/2y+GJBiHWd7..."},
-  {title:"Diploma in Modern Project Management",issuer:"Alison",date:"2021-02",cat:"pm",cred:"1511-19762137",url:"https://alison.com/certification/check/2y+GJBiHWd7..."},
-  {title:"Data Analytics - Mining and Analysis of Big Data",issuer:"Alison",date:"2021-02",cat:"data",cred:"1663-19762137",url:"https://alison.com/certification/check/2y+GJBiHWd7..."},
-  {title:"Diploma in Project Management",issuer:"Alison",date:"2021-02",cat:"pm",cred:"1266-19762137",url:"https://alison.com/certification/check/2y+GJBiHWd7..."},
-  // SOLOLEARN 2021-02
-  {title:"Intermediate Python",issuer:"Sololearn",date:"2021-02",cat:"dev",cred:"19704734/1158",url:"https://www.sololearn.com/certificates/19704734/1158"},
-  {title:"Python Data Structures",issuer:"Sololearn",date:"2021-02",cat:"dev",cred:"19704734/1159",url:"https://www.sololearn.com/certificates/19704734/1159"},
-  {title:"Python Core",issuer:"Sololearn",date:"2021-02",cat:"dev",cred:"19704734/1073",url:"https://www.sololearn.com/certificates/19704734/1073"},
-  {title:"Kotlin",issuer:"Sololearn",date:"2021-02",cat:"dev",cred:"19704734/1160",url:"https://www.sololearn.com/certificates/19704734/1160"},
-  // SOLOLEARN 2021-01
-  {title:"Angular + NestJS",issuer:"Sololearn",date:"2021-01",cat:"dev",cred:"1092-19704734",url:"https://www.sololearn.com/certificates/1092-19704734"},
-  // SOLOLEARN 2020-12
-  {title:"C++",issuer:"Sololearn",date:"2020-12",cat:"dev",cred:"1051-19704734",url:"https://www.sololearn.com/certificates/1051-19704734"},
-  {title:"React + Redux",issuer:"Sololearn",date:"2020-12",cat:"dev",cred:"1097-19704734",url:"https://www.sololearn.com/certificates/1097-19704734"},
-  {title:"C",issuer:"Sololearn",date:"2020-12",cat:"dev",cred:"1089-19704734",url:"https://www.sololearn.com/certificates/1089-19704734"},
-  // KAGGLE 2020-12
-  {title:"Computer Vision",issuer:"Kaggle",date:"2020-12",cat:"data",cred:"",url:"https://www.kaggle.com/learn/computer-vision"},
-  // SOLOLEARN 2020-11
-  {title:"Java",issuer:"Sololearn",date:"2020-11",cat:"dev",cred:"1068-19704734",url:"https://www.sololearn.com/certificates/1068-19704734"},
-  {title:"C#",issuer:"Sololearn",date:"2020-11",cat:"dev",cred:"1080-19704734",url:"https://www.sololearn.com/certificates/1080-19704734"},
-  {title:"Machine Learning",issuer:"Sololearn",date:"2020-11",cat:"data",cred:"1094-19704734",url:"https://www.sololearn.com/certificates/1094-19704734"},
-  {title:"PHP",issuer:"Sololearn",date:"2020-11",cat:"dev",cred:"1059-19704734",url:"https://www.sololearn.com/certificates/1059-19704734"},
-  {title:"JQuery",issuer:"Sololearn",date:"2020-11",cat:"dev",cred:"1082-19704734",url:"https://www.sololearn.com/certificates/1082-19704734"},
-  // DATACAMP 2020-11
-  {title:"SQL Tutorial for Marketers",issuer:"DataCamp",date:"2020-11",cat:"data",cred:"16878926",url:"https://www.datacamp.com/statement-of-accomplishment/course/16878926"},
-  // SOLOLEARN 2020-10
-  {title:"CSS",issuer:"Sololearn",date:"2020-10",cat:"dev",cred:"1023-19704734",url:"https://www.sololearn.com/certificates/1023-19704734"},
-  {title:"JavaScript",issuer:"Sololearn",date:"2020-10",cat:"dev",cred:"1024-19704734",url:"https://www.sololearn.com/certificates/1024-19704734"},
-  {title:"HTML",issuer:"Sololearn",date:"2020-10",cat:"dev",cred:"1014-19704734",url:"https://www.sololearn.com/certificates/1014-19704734"},
-  {title:"Data Science with Python",issuer:"Sololearn",date:"2020-10",cat:"data",cred:"1093-19704734",url:"https://www.sololearn.com/certificates/1093-19704734"},
-  // KAGGLE 2020-10
-  {title:"Machine Learning Explainability",issuer:"Kaggle",date:"2020-10",cat:"data",cred:"",url:"https://www.kaggle.com/learn/machine-learning-explainability"},
-  {title:"Machine Learning Feature Engineering",issuer:"Kaggle",date:"2020-10",cat:"data",cred:"",url:"https://www.kaggle.com/learn/feature-engineering"},
-  {title:"Intermediate Machine Learning",issuer:"Kaggle",date:"2020-10",cat:"data",cred:"",url:"https://www.kaggle.com/learn/intermediate-machine-learning"},
-  {title:"Natural Language Processing",issuer:"Kaggle",date:"2020-10",cat:"data",cred:"",url:"https://www.kaggle.com/learn/natural-language-processing"},
-  {title:"Geospatial Analysis",issuer:"Kaggle",date:"2020-10",cat:"data",cred:"",url:"https://www.kaggle.com/learn/geospatial-analysis"},
-  // SOLOLEARN 2020-09
-  {title:"SQL",issuer:"Sololearn",date:"2020-09",cat:"data",cred:"1060-19704734",url:"https://www.sololearn.com/certificates/1060-19704734"},
-  {title:"Python 3",issuer:"Sololearn",date:"2020-09",cat:"dev",cred:"1073-19704734",url:"https://www.sololearn.com/certificates/1073-19704734"},
-  // KAGGLE 2020-09
-  {title:"Data Cleaning",issuer:"Kaggle",date:"2020-09",cat:"data",cred:"",url:"https://www.kaggle.com/learn/data-cleaning"},
-  {title:"Pandas (Python)",issuer:"Kaggle",date:"2020-09",cat:"dev",cred:"",url:"https://www.kaggle.com/learn/pandas"},
-  {title:"Data Visualization",issuer:"Kaggle",date:"2020-09",cat:"viz",cred:"",url:"https://www.kaggle.com/learn/data-visualization"},
-  {title:"Advanced SQL",issuer:"Kaggle",date:"2020-09",cat:"data",cred:"",url:"https://www.kaggle.com/learn/advanced-sql"},
-  {title:"Python",issuer:"Kaggle",date:"2020-09",cat:"dev",cred:"",url:"https://www.kaggle.com/learn/python"},
-  // DATACAMP 2020-09
-  {title:"Python Data Science Toolbox Part 1",issuer:"DataCamp",date:"2020-09",cat:"dev",cred:"15732364",url:"https://www.datacamp.com/statement-of-accomplishment/course/15732364"},
-  {title:"Python Data Science Toolbox Part 2",issuer:"DataCamp",date:"2020-09",cat:"dev",cred:"15774778",url:"https://www.datacamp.com/statement-of-accomplishment/course/15774778"},
-  {title:"Python Fundamentals Track",issuer:"DataCamp",date:"2020-09",cat:"dev",cred:"171955",url:"https://www.datacamp.com/statement-of-accomplishment/track/171955"},
-  {title:"Intermediate SQL",issuer:"DataCamp",date:"2020-09",cat:"data",cred:"15873410",url:"https://www.datacamp.com/statement-of-accomplishment/course/15873410"},
-  {title:"Database Design",issuer:"DataCamp",date:"2020-09",cat:"data",cred:"15732812",url:"https://www.datacamp.com/statement-of-accomplishment/course/15732812"},
-  {title:"Intermediate Python",issuer:"DataCamp",date:"2020-09",cat:"dev",cred:"15695155",url:"https://www.datacamp.com/statement-of-accomplishment/course/15695155"},
-];
+    <script>
+        // Távoli CSV forrás URL-je
+        const CSV_URL = "https://raw.githubusercontent.com/klajosw/mierdekel/refs/heads/main/certi/Certifications.csv";
 
-// Build legend
-const legend = document.getElementById('legend');
-Object.entries(CAT_LABELS).forEach(([cat,label])=>{
-  const el = document.createElement('div');
-  el.className='legend-item';
-  el.dataset.cat=cat;
-  el.innerHTML=`<span class="legend-dot" style="background:${CAT_COLORS[cat]}"></span>${label}`;
-  el.addEventListener('click',()=>{
-    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-    const btn = document.querySelector(`.filter-btn[data-cat="${cat}"]`);
-    if(btn){ btn.classList.add('active'); }
-    render(cat);
-  });
-  legend.appendChild(el);
-});
+        let rawData = [];
+        let currentFilter = 'all';
+        let sortCol = 'Year';
+        let sortAsc = false;
+        let categoryChartInstance = null;
+        let authorityChartInstance = null;
 
-function render(activeCat){
-  const filtered = activeCat==='all' ? certs : certs.filter(c=>c.cat===activeCat);
-  document.getElementById('stat-total').textContent = filtered.length;
-  const byYear = {};
-  filtered.forEach(c=>{ const y=c.date.split('-')[0]; if(!byYear[y]) byYear[y]=[]; byYear[y].push(c); });
-  const years = Object.keys(byYear).sort((a,b)=>b-a);
-  const container = document.getElementById('main');
-  container.innerHTML='';
-  years.forEach(y=>{
-    const sec=document.createElement('div'); sec.className='year-section';
-    sec.innerHTML=`<div class="year-header"><span class="year-title">${y}</span><span class="year-count">${byYear[y].length} tanúsítvány</span></div><div class="cert-grid"></div>`;
-    const grid=sec.querySelector('.cert-grid');
-    byYear[y].forEach(c=>{
-      const card=document.createElement('div'); card.className='cert-card';
-      const linkHtml = c.url
-        ? `<a class="cert-link" href="${c.url}" target="_blank" rel="noopener">Megtekint ↗</a>`
-        : `<span class="cert-date">${fmt(c.date)}</span>`;
-      card.innerHTML=`
-        <div class="cert-title">${c.title}</div>
-        <div class="cert-bottom">
-          <span class="cert-issuer">${c.issuer}</span>
-          <div class="cert-right">
-            <span class="cat-dot" style="background:${CAT_COLORS[c.cat]||CAT_COLORS.other}"></span>
-            ${linkHtml}
-          </div>
-        </div>`;
-      grid.appendChild(card);
-    });
-    container.appendChild(sec);
-  });
-}
+        // Színkódok kategóriánként
+        const categoryColors = {
+            'AI & LLM': 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+            'Adattudomány': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+            'Vizualizáció & BI': 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+            'Felhő': 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+            'Kiberbiztonság': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+            'Programozás': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+            'Projektmenedzsment': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+            'Egyéb': 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+        };
 
-document.getElementById('filters').addEventListener('click',e=>{
-  if(!e.target.classList.contains('filter-btn')) return;
-  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  e.target.classList.add('active');
-  render(e.target.dataset.cat);
-});
+        // Automatikus kategória-besorolási logika
+        function categorize(name, authority) {
+            const text = `${name || ''} ${authority || ''}`.toLowerCase();
+            
+            if (['claude', 'anthropic', 'generative ai', 'llm', 'openai', 'gpt', 'neural', 'deep learning', 'agent skills', 'model context', 'gemini'].some(k => text.includes(k))) {
+                return 'AI & LLM';
+            }
+            if (['data science', 'machine learning', 'sql', 'database', 'pandas', 'numpy', 'scikit', 'statistics', 'knime', '365 data science', 'data analytics'].some(k => text.includes(k))) {
+                return 'Adattudomány';
+            }
+            if (['visualization', 'power bi', 'tableau', 'excel', 'matplotlib', 'seaborn', 'dashboards'].some(k => text.includes(k))) {
+                return 'Vizualizáció & BI';
+            }
+            if (['aws', 'google cloud', 'vertex ai', 'azure', 'gcp', 'cloud', 'devops', 'kubernetes', 'docker'].some(k => text.includes(k))) {
+                return 'Felhő';
+            }
+            if (['security', 'cyber', 'isc2', 'opswat', 'cisco', 'networking', 'hacker', 'forensics'].some(k => text.includes(k))) {
+                return 'Kiberbiztonság';
+            }
+            if (['python', 'java', 'javascript', 'programming', 'html', 'css', 'sololearn', 'c#', 'c++', 'angular', 'react', 'git'].some(k => text.includes(k))) {
+                return 'Programozás';
+            }
+            if (['project management', 'agile', 'scrum', 'uniathena', 'six sigma', 'scrum master'].some(k => text.includes(k))) {
+                return 'Projektmenedzsment';
+            }
+            return 'Egyéb';
+        }
 
-render('all');
-}); // DOMContentLoaded
-</script>
+        function extractYear(startedOn) {
+            if (!startedOn) return '-';
+            const match = startedOn.match(/\d{4}/);
+            return match ? match[0] : '-';
+        }
+
+        // CSV betöltése és feldolgozása
+        function loadData() {
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processData(results.data);
+                },
+                error: function(err) {
+                    document.getElementById('loadingIndicator').innerHTML = `
+                        <i class="fas fa-triangle-exclamation text-4xl text-rose-500 mb-4"></i>
+                        <p class="text-rose-400 font-medium">Hiba történt a távoli CSV állomány beolvasásakor: ${err.message}</p>
+                    `;
+                }
+            });
+        }
+
+        function processData(data) {
+            rawData = data.map(item => {
+                const name = item['Name'] || '';
+                const authority = item['Authority'] || '';
+                const startedOn = item['Started On'] || '';
+                const url = item['Url'] || '#';
+                const year = extractYear(startedOn);
+                const category = categorize(name, authority);
+
+                return {
+                    Name: name,
+                    Authority: authority,
+                    StartedOn: startedOn,
+                    Url: url,
+                    Year: year,
+                    Category: category
+                };
+            }).filter(d => d.Name.trim() !== '');
+
+            // Statisztikák frissítése
+            document.getElementById('statTotal').innerText = rawData.length;
+            const validYears = rawData.map(d => parseInt(d.Year)).filter(y => !isNaN(y));
+            if (validYears.length > 0) {
+                document.getElementById('statYears').innerText = `${Math.min(...validYears)} - ${Math.max(...validYears)}`;
+            }
+
+            document.getElementById('loadingIndicator').classList.add('hidden');
+            document.getElementById('dashboardContent').classList.remove('hidden');
+
+            initCharts();
+            renderTable();
+        }
+
+        // Diagramok kirajzolása Chart.js segítségével
+        function initCharts() {
+            // Kategória kördiagram
+            const cats = {};
+            rawData.forEach(d => cats[d.Category] = (cats[d.Category] || 0) + 1);
+            const sortedCats = Object.entries(cats).sort((a,b) => b[1] - a[1]);
+
+            if (categoryChartInstance) categoryChartInstance.destroy();
+            categoryChartInstance = new Chart(document.getElementById('categoryChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: sortedCats.map(x => x[0]),
+                    datasets: [{
+                        data: sortedCats.map(x => x[1]),
+                        backgroundColor: ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#64748b'],
+                        borderWidth: 0,
+                        hoverOffset: 12
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { 
+                            position: 'right', 
+                            labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11, family: 'Plus Jakarta Sans' } } 
+                        }
+                    },
+                    cutout: '68%'
+                }
+            });
+
+            // Szervezetek oszlopdiagram
+            const auths = {};
+            rawData.forEach(d => {
+                if (d.Authority) auths[d.Authority] = (auths[d.Authority] || 0) + 1;
+            });
+            const sortedAuths = Object.entries(auths).sort((a,b) => b[1] - a[1]).slice(0, 7);
+
+            if (authorityChartInstance) authorityChartInstance.destroy();
+            authorityChartInstance = new Chart(document.getElementById('authorityChart'), {
+                type: 'bar',
+                data: {
+                    labels: sortedAuths.map(x => x[0]),
+                    datasets: [{
+                        data: sortedAuths.map(x => x[1]),
+                        backgroundColor: '#10b981',
+                        hoverBackgroundColor: '#34d399',
+                        borderRadius: 8,
+                        barThickness: 18
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { 
+                            grid: { color: '#1e293b' }, 
+                            ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans' } } 
+                        },
+                        y: { 
+                            grid: { display: false }, 
+                            ticks: { color: '#f1f5f9', font: { weight: '600', family: 'Plus Jakarta Sans' } } 
+                        }
+                    }
+                }
+            });
+        }
+
+        // Táblázat renderelése szűréssel és rendezéssel
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const noResults = document.getElementById('noResults');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            let displayData = rawData.filter(item => {
+                const matchesFilter = currentFilter === 'all' || item.Category === currentFilter;
+                const matchesSearch = item.Name.toLowerCase().includes(searchTerm) || item.Authority.toLowerCase().includes(searchTerm);
+                return matchesFilter && matchesSearch;
+            });
+
+            displayData.sort((a, b) => {
+                let valA = (a[sortCol] || '').toString().toLowerCase();
+                let valB = (b[sortCol] || '').toString().toLowerCase();
+                if (sortAsc) return valA > valB ? 1 : -1;
+                else return valA < valB ? 1 : -1;
+            });
+
+            if (displayData.length === 0) {
+                tbody.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
+            }
+
+            noResults.classList.add('hidden');
+            tbody.innerHTML = displayData.map(item => `
+                <tr class="transition-colors hover:bg-slate-800/30 group">
+                    <td class="p-5">
+                        <div class="font-bold text-slate-100 text-sm group-hover:text-blue-400 transition-colors">${item.Name}</div>
+                    </td>
+                    <td class="p-5">
+                        <span class="category-badge border ${categoryColors[item.Category] || categoryColors['Egyéb']}">${item.Category}</span>
+                    </td>
+                    <td class="p-5 text-slate-400 text-sm font-medium">${item.Authority}</td>
+                    <td class="p-5 text-center text-slate-400 text-sm tabular-nums">${item.Year}</td>
+                    <td class="p-5 text-center">
+                        <a href="${item.Url}" target="_blank" rel="noopener noreferrer" class="w-8 h-8 inline-flex items-center justify-center rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-blue-500 transition-all shadow-sm">
+                            <i class="fas fa-external-link-alt text-xs"></i>
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Kereső eseménykezelő
+        document.getElementById('searchInput').addEventListener('input', renderTable);
+
+        // Kategóriaszűrő gombok eseménykezelői
+        document.querySelectorAll('.btn-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                renderTable();
+            });
+        });
+
+        // Oszlopfejléc szerinti rendezés
+        document.querySelectorAll('th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sort;
+                if (sortCol === col) {
+                    sortAsc = !sortAsc;
+                } else { 
+                    sortCol = col; 
+                    sortAsc = true; 
+                }
+
+                // Ikonok frissítése
+                document.querySelectorAll('th.sortable i').forEach(icon => {
+                    icon.className = 'fas fa-sort sort-icon';
+                });
+                const icon = th.querySelector('i');
+                icon.className = sortAsc ? 'fas fa-sort-up sort-icon text-blue-400 opacity-100' : 'fas fa-sort-down sort-icon text-blue-400 opacity-100';
+
+                renderTable();
+            });
+        });
+
+        // Inicializálás az oldal betöltésekor
+        window.onload = loadData;
+    </script>
 </body>
 </html>

@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rendezési algoritmusok – teljes verzió</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 18px;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 6px;
+    font-weight: 600;
+    background: linear-gradient(90deg, #38bdf8, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    text-align: center;
+    color: #94a3b8;
+    margin-bottom: 18px;
+    font-size: 0.9rem;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    background: var(--card);
+    padding: 14px 16px;
+    border-radius: 14px;
+    margin-bottom: 18px;
+  }
+  select, button {
+    background: #334155;
+    color: white;
+    border: none;
+    padding: 9px 14px;
+    border-radius: 9px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  select:hover, button:hover { background: #475569; }
+  button.primary { background: linear-gradient(135deg, #0ea5e9, #6366f1); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .slider-group {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: #334155;
+    padding: 5px 12px;
+    border-radius: 9px;
+    font-size: 0.85rem;
+  }
+  #array-container {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: 400px;
+    gap: 2px;
+    padding: 16px 8px;
+    background: var(--card);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .bar {
+    background: linear-gradient(to top, #0ea5e9, #38bdf8);
+    border-radius: 3px 3px 0 0;
+    transition: height 0.1s, background 0.1s;
+    min-width: 3px;
+  }
+  .bar.compare { background: linear-gradient(to top, #ea580c, #f97316) !important; }
+  .bar.swap    { background: linear-gradient(to top, #dc2626, #ef4444) !important; }
+  .bar.sorted  { background: linear-gradient(to top, #16a34a, #22c55e) !important; }
+  .bar.pivot   { background: linear-gradient(to top, #7e22ce, #a855f7) !important; }
+  .info {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 14px;
+    font-size: 0.9rem;
+    color: #94a3b8;
+  }
+  .info span { color: #e2e8f0; font-weight: 600; }
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-color { width: 12px; height: 12px; border-radius: 3px; }
+  .step-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 12px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Rendezési algoritmusok vizualizáció</h1>
+<p class="subtitle">13 algoritmus + hang + lépésenkénti mód</p>
+
+<div class="controls">
+  <select id="algorithm">
+    <option value="bubble">1. Buborékrendezés</option>
+    <option value="selection">2. Kiválasztásos</option>
+    <option value="insertion">3. Beszúrásos</option>
+    <option value="quick">4. Gyorsrendezés</option>
+    <option value="merge">5. Összefésülő</option>
+    <option value="heap">6. Kupacrendezés</option>
+    <option value="shell">7. Shell Sort</option>
+    <option value="counting">8. Számláló</option>
+    <option value="cocktail">9. Cocktail Sort</option>
+    <option value="gnome">10. Gnome Sort</option>
+    <option value="radix">11. Radix Sort</option>
+    <option value="bucket">12. Bucket Sort</option>
+    <option value="tim">13. Tim Sort (egyszerűsített)</option>
+  </select>
+
+  <div class="slider-group">
+    <label>Méret:</label>
+    <input type="range" id="size" min="8" max="100" value="40">
+    <span id="sizeValue">40</span>
+  </div>
+
+  <div class="slider-group">
+    <label>Sebesség:</label>
+    <input type="range" id="speed" min="1" max="100" value="55">
+  </div>
+
+  <label style="display:flex;align-items:center;gap:6px;background:#334155;padding:6px 12px;border-radius:9px;font-size:0.85rem;">
+    <input type="checkbox" id="sound" checked> Hang
+  </label>
+
+  <label style="display:flex;align-items:center;gap:6px;background:#334155;padding:6px 12px;border-radius:9px;font-size:0.85rem;">
+    <input type="checkbox" id="stepMode"> Lépésenkénti
+  </label>
+
+  <button id="generate">Új tömb</button>
+  <button id="start" class="primary">Indítás</button>
+  <button id="stop" disabled>Megállítás</button>
+</div>
+
+<div id="array-container"></div>
+
+<div class="info">
+  <div>Összehasonlítások: <span id="comparisons">0</span></div>
+  <div>Cserék: <span id="swaps">0</span></div>
+  <div>Állapot: <span id="status">Kész</span></div>
+</div>
+
+<div class="step-controls" id="stepControls" style="display:none;">
+  <button id="stepBtn">Következő lépés →</button>
+  <button id="autoBtn">Automatikus folytatás</button>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-color" style="background:#38bdf8"></div> Alap</div>
+  <div class="legend-item"><div class="legend-color" style="background:#f97316"></div> Összehasonlítás</div>
+  <div class="legend-item"><div class="legend-color" style="background:#ef4444"></div> Csere</div>
+  <div class="legend-item"><div class="legend-color" style="background:#a855f7"></div> Pivot</div>
+  <div class="legend-item"><div class="legend-color" style="background:#22c55e"></div> Rendezett</div>
+</div>
+
+<script>
+const container = document.getElementById('array-container');
+const sizeSlider = document.getElementById('size');
+const sizeValue = document.getElementById('sizeValue');
+const speedSlider = document.getElementById('speed');
+const algoSelect = document.getElementById('algorithm');
+const generateBtn = document.getElementById('generate');
+const startBtn = document.getElementById('start');
+const stopBtn = document.getElementById('stop');
+const soundCheck = document.getElementById('sound');
+const stepModeCheck = document.getElementById('stepMode');
+const stepControls = document.getElementById('stepControls');
+const stepBtn = document.getElementById('stepBtn');
+const autoBtn = document.getElementById('autoBtn');
+const comparisonsEl = document.getElementById('comparisons');
+const swapsEl = document.getElementById('swaps');
+const statusEl = document.getElementById('status');
+
+let array = [];
+let bars = [];
+let isRunning = false;
+let comparisons = 0;
+let swaps = 0;
+let stopRequested = false;
+let stepResolve = null;
+let audioCtx = null;
+
+sizeSlider.oninput = () => {
+  sizeValue.textContent = sizeSlider.value;
+  if (!isRunning) generateArray();
+};
+
+stepModeCheck.onchange = () => {
+  stepControls.style.display = stepModeCheck.checked ? 'flex' : 'none';
+};
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playTone(freq, duration = 0.06, type = 'sine') {
+  if (!soundCheck.checked) return;
+  initAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.value = 0.08;
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function soundCompare() { playTone(420, 0.04); }
+function soundSwap()    { playTone(280, 0.07, 'square'); }
+function soundDone()    { playTone(660, 0.15); playTone(880, 0.2); }
+
+function delay(ms) {
+  return new Promise(resolve => {
+    if (stepModeCheck.checked && isRunning) {
+      stepResolve = resolve;
+      // várunk a step gombra
+    } else {
+      setTimeout(resolve, ms);
+    }
+  });
+}
+
+function getDelay() {
+  return Math.max(5, 300 - speedSlider.value * 2.9);
+}
+
+function generateArray() {
+  const size = +sizeSlider.value;
+  array = Array.from({length: size}, () => Math.floor(Math.random() * 90) + 10);
+  renderBars();
+  resetStats();
+  statusEl.textContent = 'Kész';
+}
+
+function renderBars() {
+  container.innerHTML = '';
+  bars = [];
+  const maxVal = Math.max(...array);
+  array.forEach(val => {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.height = `${(val / maxVal) * 100}%`;
+    bar.style.width = `${Math.max(3, 780 / array.length - 2)}px`;
+    container.appendChild(bar);
+    bars.push(bar);
+  });
+}
+
+function resetStats() {
+  comparisons = swaps = 0;
+  comparisonsEl.textContent = swapsEl.textContent = 0;
+}
+
+function updateStats() {
+  comparisonsEl.textContent = comparisons;
+  swapsEl.textContent = swaps;
+}
+
+function setBarClass(i, cls) {
+  if (bars[i]) bars[i].className = 'bar ' + cls;
+}
+
+function clearClasses() {
+  bars.forEach(b => b.className = 'bar');
+}
+
+function markSorted(from = 0, to = array.length - 1) {
+  for (let i = from; i <= to; i++) setBarClass(i, 'sorted');
+}
+
+async function swap(i, j) {
+  if (stopRequested) return;
+  setBarClass(i, 'swap');
+  setBarClass(j, 'swap');
+  soundSwap();
+  await delay(getDelay());
+
+  [array[i], array[j]] = [array[j], array[i]];
+  const maxV = Math.max(...array);
+  bars[i].style.height = `${(array[i] / maxV) * 100}%`;
+  bars[j].style.height = `${(array[j] / maxV) * 100}%`;
+  swaps++;
+  updateStats();
+  await delay(getDelay());
+  setBarClass(i, '');
+  setBarClass(j, '');
+}
+
+// ========== ALAP ALGORITMUSOK (rövidítve a hely miatt, de teljes) ==========
+async function bubbleSort() {
+  const n = array.length;
+  for (let i = 0; i < n-1; i++) {
+    for (let j = 0; j < n-i-1; j++) {
+      if (stopRequested) return;
+      setBarClass(j, 'compare'); setBarClass(j+1, 'compare');
+      soundCompare(); comparisons++; updateStats();
+      await delay(getDelay());
+      if (array[j] > array[j+1]) await swap(j, j+1);
+      else { setBarClass(j,''); setBarClass(j+1,''); }
+    }
+    setBarClass(n-i-1, 'sorted');
+  }
+  setBarClass(0, 'sorted');
+}
+
+async function selectionSort() {
+  const n = array.length;
+  for (let i = 0; i < n-1; i++) {
+    let min = i;
+    setBarClass(i, 'compare');
+    for (let j = i+1; j < n; j++) {
+      if (stopRequested) return;
+      setBarClass(j, 'compare'); soundCompare(); comparisons++; updateStats();
+      await delay(getDelay());
+      if (array[j] < array[min]) {
+        if (min !== i) setBarClass(min, '');
+        min = j; setBarClass(min, 'swap');
+      } else setBarClass(j, '');
+    }
+    if (min !== i) await swap(i, min);
+    setBarClass(i, 'sorted');
+  }
+  setBarClass(n-1, 'sorted');
+}
+
+async function insertionSort(start = 0, end = array.length-1) {
+  for (let i = start+1; i <= end; i++) {
+    if (stopRequested) return;
+    let key = array[i], j = i-1;
+    setBarClass(i, 'compare');
+    await delay(getDelay());
+    while (j >= start && array[j] > key) {
+      if (stopRequested) return;
+      setBarClass(j, 'compare'); soundCompare(); comparisons++; updateStats();
+      array[j+1] = array[j];
+      bars[j+1].style.height = bars[j].style.height;
+      swaps++; updateStats();
+      await delay(getDelay());
+      setBarClass(j, 'sorted');
+      j--;
+    }
+    array[j+1] = key;
+    const maxV = Math.max(...array);
+    bars[j+1].style.height = `${(key / maxV) * 100}%`;
+    for (let k = start; k <= i; k++) setBarClass(k, 'sorted');
+  }
+}
+
+async function quickSort(low = 0, high = array.length-1) {
+  if (stopRequested || low >= high) {
+    if (low === high) setBarClass(low, 'sorted');
+    return;
+  }
+  const pi = await partition(low, high);
+  await quickSort(low, pi-1);
+  await quickSort(pi+1, high);
+}
+
+async function partition(low, high) {
+  const pivot = array[high];
+  setBarClass(high, 'pivot');
+  let i = low-1;
+  for (let j = low; j < high; j++) {
+    if (stopRequested) return i+1;
+    setBarClass(j, 'compare'); soundCompare(); comparisons++; updateStats();
+    await delay(getDelay());
+    if (array[j] < pivot) { i++; await swap(i, j); }
+    setBarClass(j, '');
+  }
+  await swap(i+1, high);
+  setBarClass(i+1, 'sorted');
+  return i+1;
+}
+
+async function mergeSort(l = 0, r = array.length-1) {
+  if (stopRequested || l >= r) {
+    if (l === r) setBarClass(l, 'sorted');
+    return;
+  }
+  const m = Math.floor((l+r)/2);
+  await mergeSort(l, m);
+  await mergeSort(m+1, r);
+  await merge(l, m, r);
+}
+
+async function merge(l, m, r) {
+  const left = array.slice(l, m+1);
+  const right = array.slice(m+1, r+1);
+  let i=0, j=0, k=l;
+  const maxV = Math.max(...array);
+  while (i < left.length && j < right.length) {
+    if (stopRequested) return;
+    setBarClass(k, 'compare'); soundCompare(); comparisons++; updateStats();
+    await delay(getDelay());
+    if (left[i] <= right[j]) array[k] = left[i++];
+    else array[k] = right[j++];
+    bars[k].style.height = `${(array[k]/maxV)*100}%`;
+    swaps++; updateStats();
+    setBarClass(k, 'sorted');
+    k++;
+  }
+  while (i < left.length) {
+    array[k] = left[i++];
+    bars[k].style.height = `${(array[k]/maxV)*100}%`;
+    setBarClass(k, 'sorted'); k++;
+    await delay(getDelay()/2);
+  }
+  while (j < right.length) {
+    array[k] = right[j++];
+    bars[k].style.height = `${(array[k]/maxV)*100}%`;
+    setBarClass(k, 'sorted'); k++;
+    await delay(getDelay()/2);
+  }
+}
+
+async function heapSort() {
+  const n = array.length;
+  for (let i = Math.floor(n/2)-1; i >= 0; i--) await heapify(n, i);
+  for (let i = n-1; i > 0; i--) {
+    if (stopRequested) return;
+    await swap(0, i);
+    setBarClass(i, 'sorted');
+    await heapify(i, 0);
+  }
+  setBarClass(0, 'sorted');
+}
+
+async function heapify(n, i) {
+  let largest = i;
+  const l = 2*i+1, r = 2*i+2;
+  if (l < n) {
+    setBarClass(l, 'compare'); soundCompare(); comparisons++; updateStats();
+    await delay(getDelay());
+    if (array[l] > array[largest]) largest = l;
+    setBarClass(l, '');
+  }
+  if (r < n) {
+    setBarClass(r, 'compare'); soundCompare(); comparisons++; updateStats();
+    await delay(getDelay());
+    if (array[r] > array[largest]) largest = r;
+    setBarClass(r, '');
+  }
+  if (largest !== i) {
+    await swap(i, largest);
+    await heapify(n, largest);
+  }
+}
+
+async function shellSort() {
+  const n = array.length;
+  for (let gap = Math.floor(n/2); gap > 0; gap = Math.floor(gap/2)) {
+    for (let i = gap; i < n; i++) {
+      if (stopRequested) return;
+      let temp = array[i], j = i;
+      setBarClass(i, 'compare');
+      while (j >= gap && array[j-gap] > temp) {
+        if (stopRequested) return;
+        setBarClass(j-gap, 'compare'); soundCompare(); comparisons++; updateStats();
+        array[j] = array[j-gap];
+        const maxV = Math.max(...array);
+        bars[j].style.height = `${(array[j]/maxV)*100}%`;
+        swaps++; updateStats();
+        await delay(getDelay());
+        setBarClass(j-gap, '');
+        j -= gap;
+      }
+      array[j] = temp;
+      const maxV = Math.max(...array);
+      bars[j].style.height = `${(temp/maxV)*100}%`;
+      setBarClass(i, '');
+    }
+  }
+  markSorted();
+}
+
+async function countingSort() {
+  const n = array.length;
+  const max = Math.max(...array), min = Math.min(...array);
+  const range = max - min + 1;
+  const count = new Array(range).fill(0);
+  const output = new Array(n);
+
+  for (let i = 0; i < n; i++) {
+    if (stopRequested) return;
+    setBarClass(i, 'compare'); soundCompare();
+    count[array[i]-min]++; comparisons++; updateStats();
+    await delay(getDelay()/2);
+    setBarClass(i, '');
+  }
+  for (let i = 1; i < range; i++) count[i] += count[i-1];
+  for (let i = n-1; i >= 0; i--) {
+    output[count[array[i]-min]-1] = array[i];
+    count[array[i]-min]--;
+  }
+  const maxV = Math.max(...array);
+  for (let i = 0; i < n; i++) {
+    if (stopRequested) return;
+    array[i] = output[i];
+    bars[i].style.height = `${(array[i]/maxV)*100}%`;
+    setBarClass(i, 'sorted');
+    swaps++; updateStats();
+    await delay(getDelay());
+  }
+}
+
+async function cocktailSort() {
+  let start = 0, end = array.length-1, swapped = true;
+  while (swapped) {
+    if (stopRequested) return;
+    swapped = false;
+    for (let i = start; i < end; i++) {
+      if (stopRequested) return;
+      setBarClass(i,'compare'); setBarClass(i+1,'compare');
+      soundCompare(); comparisons++; updateStats();
+      await delay(getDelay());
+      if (array[i] > array[i+1]) { await swap(i,i+1); swapped = true; }
+      else { setBarClass(i,''); setBarClass(i+1,''); }
+    }
+    setBarClass(end, 'sorted'); end--;
+    if (!swapped) break;
+    swapped = false;
+    for (let i = end; i > start; i--) {
+      if (stopRequested) return;
+      setBarClass(i,'compare'); setBarClass(i-1,'compare');
+      soundCompare(); comparisons++; updateStats();
+      await delay(getDelay());
+      if (array[i] < array[i-1]) { await swap(i,i-1); swapped = true; }
+      else { setBarClass(i,''); setBarClass(i-1,''); }
+    }
+    setBarClass(start, 'sorted'); start++;
+  }
+  markSorted();
+}
+
+async function gnomeSort() {
+  let i = 0;
+  while (i < array.length) {
+    if (stopRequested) return;
+    if (i === 0) { i++; continue; }
+    setBarClass(i,'compare'); setBarClass(i-1,'compare');
+    soundCompare(); comparisons++; updateStats();
+    await delay(getDelay());
+    if (array[i] >= array[i-1]) {
+      setBarClass(i,''); setBarClass(i-1,'');
+      i++;
+    } else {
+      await swap(i, i-1);
+      i--;
+    }
+  }
+  markSorted();
+}
+
+// ========== 11. RADIX SORT (LSD) ==========
+async function radixSort() {
+  const max = Math.max(...array);
+  let exp = 1;
+  while (Math.floor(max / exp) > 0) {
+    if (stopRequested) return;
+    await countingSortByDigit(exp);
+    exp *= 10;
+  }
+  markSorted();
+}
+
+async function countingSortByDigit(exp) {
+  const n = array.length;
+  const output = new Array(n);
+  const count = new Array(10).fill(0);
+
+  for (let i = 0; i < n; i++) {
+    if (stopRequested) return;
+    const digit = Math.floor(array[i] / exp) % 10;
+    count[digit]++;
+    setBarClass(i, 'compare');
+    soundCompare();
+    await delay(getDelay()/2);
+    setBarClass(i, '');
+  }
+  for (let i = 1; i < 10; i++) count[i] += count[i-1];
+  for (let i = n-1; i >= 0; i--) {
+    const digit = Math.floor(array[i] / exp) % 10;
+    output[count[digit]-1] = array[i];
+    count[digit]--;
+  }
+  const maxV = Math.max(...array);
+  for (let i = 0; i < n; i++) {
+    if (stopRequested) return;
+    array[i] = output[i];
+    bars[i].style.height = `${(array[i]/maxV)*100}%`;
+    setBarClass(i, 'pivot');
+    swaps++; updateStats();
+    await delay(getDelay());
+    setBarClass(i, '');
+  }
+}
+
+// ========== 12. BUCKET SORT ==========
+async function bucketSort() {
+  const n = array.length;
+  if (n <= 1) return;
+  const max = Math.max(...array);
+  const min = Math.min(...array);
+  const bucketCount = Math.floor(Math.sqrt(n)) || 1;
+  const buckets = Array.from({length: bucketCount}, () => []);
+
+  // szétosztás
+  for (let i = 0; i < n; i++) {
+    if (stopRequested) return;
+    const idx = Math.floor(((array[i] - min) / (max - min + 1)) * bucketCount);
+    buckets[Math.min(idx, bucketCount-1)].push(array[i]);
+    setBarClass(i, 'compare');
+    soundCompare();
+    await delay(getDelay()/2);
+    setBarClass(i, '');
+  }
+
+  // bucket-ek rendezése (insertion)
+  let idx = 0;
+  const maxV = Math.max(...array);
+  for (let b = 0; b < bucketCount; b++) {
+    buckets[b].sort((a,c) => a-c); // gyors belső rendezés
+    for (const val of buckets[b]) {
+      if (stopRequested) return;
+      array[idx] = val;
+      bars[idx].style.height = `${(val/maxV)*100}%`;
+      setBarClass(idx, 'sorted');
+      swaps++; updateStats();
+      await delay(getDelay());
+      idx++;
+    }
+  }
+}
+
+// ========== 13. TIM SORT (egyszerűsített) ==========
+async function timSort() {
+  const n = array.length;
+  const RUN = 32; // kis futamok mérete
+
+  // 1. Insertion Sort a kis futamokon
+  for (let i = 0; i < n; i += RUN) {
+    if (stopRequested) return;
+    await insertionSort(i, Math.min(i + RUN - 1, n - 1));
+  }
+
+  // 2. Merge a futamok
+  for (let size = RUN; size < n; size *= 2) {
+    for (let left = 0; left < n; left += 2 * size) {
+      if (stopRequested) return;
+      const mid = Math.min(left + size - 1, n - 1);
+      const right = Math.min(left + 2 * size - 1, n - 1);
+      if (mid < right) await merge(left, mid, right);
+    }
+  }
+  markSorted();
+}
+
+// ========== VEZÉRLÉS ==========
+async function startSort() {
+  if (isRunning) return;
+  isRunning = true;
+  stopRequested = false;
+  startBtn.disabled = true;
+  generateBtn.disabled = true;
+  stopBtn.disabled = false;
+  resetStats();
+  clearClasses();
+  statusEl.textContent = 'Fut...';
+  initAudio();
+
+  const algo = algoSelect.value;
+  try {
+    switch (algo) {
+      case 'bubble':    await bubbleSort(); break;
+      case 'selection': await selectionSort(); break;
+      case 'insertion': await insertionSort(); break;
+      case 'quick':     await quickSort(); markSorted(); break;
+      case 'merge':     await mergeSort(); markSorted(); break;
+      case 'heap':      await heapSort(); break;
+      case 'shell':     await shellSort(); break;
+      case 'counting':  await countingSort(); break;
+      case 'cocktail':  await cocktailSort(); break;
+      case 'gnome':     await gnomeSort(); break;
+      case 'radix':     await radixSort(); break;
+      case 'bucket':    await bucketSort(); break;
+      case 'tim':       await timSort(); break;
+    }
+  } catch(e) { console.error(e); }
+
+  if (!stopRequested) {
+    statusEl.textContent = 'Kész ✓';
+    soundDone();
+  } else {
+    statusEl.textContent = 'Megállítva';
+  }
+  isRunning = false;
+  startBtn.disabled = false;
+  generateBtn.disabled = false;
+  stopBtn.disabled = true;
+  stepResolve = null;
+}
+
+function stopSort() {
+  stopRequested = true;
+  if (stepResolve) {
+    stepResolve();
+    stepResolve = null;
+  }
+  statusEl.textContent = 'Megállítás...';
+}
+
+stepBtn.onclick = () => {
+  if (stepResolve) {
+    stepResolve();
+    stepResolve = null;
+  }
+};
+
+autoBtn.onclick = () => {
+  stepModeCheck.checked = false;
+  stepControls.style.display = 'none';
+  if (stepResolve) {
+    stepResolve();
+    stepResolve = null;
+  }
+};
+
+generateBtn.onclick = generateArray;
+startBtn.onclick = startSort;
+stopBtn.onclick = stopSort;
+
+generateArray();
+</script>
+</body>
+</html>

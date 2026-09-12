@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sorting Algorithm Visualizer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <div class="eyebrow">ALGORITHM LAB</div>
+      <h1>Sorting Algorithm Visualizer</h1>
+      <p>Fedezd fel lépésről lépésre, hogyan lesz egy véletlen számsorból rendezett sorozat.</p>
+    </div>
+    <div class="status-pill"><span id="statusDot"></span><span id="statusText">Készen áll</span></div>
+  </header>
+
+  <main class="container">
+    <section class="controls card">
+      <div class="control-grid">
+        <label>
+          <span>Algoritmus</span>
+          <select id="algorithm">
+            <option value="bubble">Buborékrendezés · Bubble Sort</option>
+            <option value="exchange">Egyszerű cserés rendezés</option>
+            <option value="insertion">Beszúrásos rendezés · Insertion Sort</option>
+            <option value="selection">Kiválasztásos rendezés · Selection Sort</option>
+            <option value="quick">Gyorsrendezés · QuickSort</option>
+            <option value="merge">Összefésüléses rendezés · Merge Sort</option>
+            <option value="heap">Kupacrendezés · Heap Sort</option>
+            <option value="shell">Shell Sort</option>
+            <option value="counting">Számláló rendezés · Counting Sort</option>
+            <option value="cocktail">Kétirányú buborékrendezés · Cocktail Sort</option>
+            <option value="gnome">Gnome Sort</option>
+            <option value="radix">Radix Sort</option>
+            <option value="bucket">Bucket Sort</option>
+            <option value="tim">Tim Sort · egyszerűsített</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Elemszám <b id="sizeValue">35</b></span>
+          <input id="size" type="range" min="8" max="100" value="35">
+        </label>
+
+        <label>
+          <span>Sebesség <b id="speedValue">50%</b></span>
+          <input id="speed" type="range" min="1" max="100" value="50">
+        </label>
+
+        <label>
+          <span>Adatgenerálás</span>
+          <select id="distribution">
+            <option value="random">Véletlen</option>
+            <option value="nearly">Majdnem rendezett</option>
+            <option value="reversed">Fordított</option>
+            <option value="few">Kevés csere</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="button-row">
+        <button id="start" class="primary">▶ Indítás</button>
+        <button id="pause">⏸ Szünet</button>
+        <button id="step">⏭ Következő lépés</button>
+        <button id="shuffle">🔀 Újrakeverés</button>
+        <button id="reset">↺ Alaphelyzet</button>
+        <button id="sound" class="sound-on">🔊 Hang: BE</button>
+      </div>
+    </section>
+
+    <section class="visual-card card">
+      <div class="visual-header">
+        <div>
+          <h2 id="algorithmTitle">Buborékrendezés</h2>
+          <p id="algorithmSubtitle">A szomszédos elemeket hasonlítja össze és szükség esetén felcseréli.</p>
+        </div>
+        <div class="legend">
+          <span><i class="legend-box comparing"></i> összehasonlítás</span>
+          <span><i class="legend-box swapping"></i> csere</span>
+          <span><i class="legend-box pivot"></i> pivot</span>
+          <span><i class="legend-box sorted"></i> rendezett</span>
+        </div>
+      </div>
+
+      <div id="bars" class="bars" aria-label="Rendezési vizualizáció"></div>
+
+      <div class="step-info">
+        <div class="step-message" id="stepMessage">Kattints az Indítás gombra, vagy lépj egyet a ⏭ gombbal.</div>
+        <div class="progress"><div id="progressBar"></div></div>
+      </div>
+    </section>
+
+    <section class="stats-grid">
+      <div class="stat card"><span>Összehasonlítás</span><strong id="comparisons">0</strong></div>
+      <div class="stat card"><span>Cserék / mozgatások</span><strong id="swaps">0</strong></div>
+      <div class="stat card"><span>Algoritmuslépések</span><strong id="steps">0</strong></div>
+      <div class="stat card"><span>Eltelt idő</span><strong id="elapsed">0.00 s</strong></div>
+    </section>
+
+    <section class="info-grid">
+      <article class="card info-card">
+        <div class="section-label">Hogyan működik?</div>
+        <h2 id="infoTitle">Buborékrendezés</h2>
+        <p id="infoText"></p>
+        <div class="complexity">
+          <div><span>Legjobb</span><b id="best">O(n)</b></div>
+          <div><span>Átlagos</span><b id="average">O(n²)</b></div>
+          <div><span>Legrosszabb</span><b id="worst">O(n²)</b></div>
+          <div><span>Memória</span><b id="memory">O(1)</b></div>
+        </div>
+      </article>
+
+      <article class="card code-card">
+        <div class="section-label">Algoritmus lényege</div>
+        <pre id="pseudo"></pre>
+      </article>
+    </section>
+  </main>
+
+  <footer>Sorting Algorithm Visualizer · HTML + CSS + JavaScript · oktatási célú demonstráció</footer>
+  <script src="sorting.js"></script>
+</body>
+</html>

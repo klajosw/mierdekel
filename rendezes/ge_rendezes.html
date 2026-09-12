@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rendezési Algoritmusok Szemléltetője és Laboratóriuma</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .glass-panel {
+      background: rgba(17, 24, 39, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .bar-node {
+      transition: height 0.09s cubic-bezier(0.4, 0, 0.2, 1), background 0.08s ease, transform 0.08s ease, box-shadow 0.08s ease;
+      will-change: height, background-color, transform;
+    }
+    .bar-default {
+      background: linear-gradient(180deg, #818cf8 0%, #4f46e5 100%);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+    }
+    .bar-compare {
+      background: linear-gradient(180deg, #fde047 0%, #eab308 100%) !important;
+      box-shadow: 0 0 16px rgba(234, 179, 8, 0.65) !important;
+      transform: scaleY(1.02);
+      z-index: 20;
+    }
+    .bar-swap {
+      background: linear-gradient(180deg, #fb7185 0%, #e11d48 100%) !important;
+      box-shadow: 0 0 18px rgba(225, 29, 72, 0.8) !important;
+      transform: scaleY(1.03);
+      z-index: 30;
+    }
+    .bar-pivot {
+      background: linear-gradient(180deg, #c084fc 0%, #9333ea 100%) !important;
+      box-shadow: 0 0 16px rgba(147, 51, 234, 0.7) !important;
+      z-index: 25;
+    }
+    .bar-sorted {
+      background: linear-gradient(180deg, #34d399 0%, #059669 100%) !important;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.35) !important;
+    }
+    .bar-aux {
+      background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%) !important;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.45) !important;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.4);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(99, 102, 241, 0.8);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <header class="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-xl shadow-lg shadow-indigo-500/25">
+          <i data-lucide="bar-chart-3" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">
+            Rendezési Algoritmusok Laboratóriuma
+          </h1>
+          <p class="text-xs text-slate-400 font-medium hidden sm:block">14 vizualizált algoritmus &bull; Valós idejű állapotkövetés és szintetizált hang</p>
+        </div>
+      </div>
+
+      <!-- Quick Audio Toggle and Volume Controls -->
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center bg-slate-800/80 border border-slate-700 px-3 py-1.5 rounded-lg gap-2">
+          <button id="soundToggleBtn" class="flex items-center gap-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors" title="Hang be/ki kapcsolása">
+            <i id="soundIcon" data-lucide="volume-2" class="w-4 h-4"></i>
+            <span id="soundLabel" class="hidden md:inline">Hang: Be</span>
+          </button>
+          <input id="volumeSlider" type="range" min="0" max="1" step="0.05" value="0.25" class="w-16 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500" title="Hangerő">
+        </div>
+        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hidden sm:flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Audio Motor Kész
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+
+    <!-- Direct Algorithm Selection Hub -->
+    <section class="glass-panel rounded-2xl p-4 sm:p-5 shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <div class="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400">
+            <i data-lucide="layout-grid" class="w-4 h-4"></i>
+          </div>
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-200">Algoritmus Közvetlen Kiválasztása</span>
+          <span id="activeAlgoBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono font-bold border border-indigo-500/30">Buborékrendezés</span>
+        </div>
+        
+        <!-- Category Filter Tabs -->
+        <div class="flex flex-wrap gap-1.5" id="algoCategoryTabs">
+          <button data-cat="all" class="algo-cat-btn px-2.5 py-1 text-xs font-medium rounded-lg bg-indigo-600 text-white transition-all shadow-sm">Összes (14)</button>
+          <button data-cat="n2" class="algo-cat-btn px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-400 hover:text-slate-200 transition-all">Alap O(n²)</button>
+          <button data-cat="nlogn" class="algo-cat-btn px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-400 hover:text-slate-200 transition-all">Gyors O(n log n)</button>
+          <button data-cat="special" class="algo-cat-btn px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-400 hover:text-slate-200 transition-all">Speciális / Nem-összehasonlító</button>
+        </div>
+      </div>
+
+      <!-- Interactive Grid of All 14 Sorting Algorithms -->
+      <div id="algoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
+        <button data-algo="bubble" data-cat="n2" class="algo-card p-2 rounded-xl border border-indigo-500/80 bg-indigo-950/40 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-indigo-200 block truncate">Buborék</span>
+          <span class="text-[10px] font-mono text-indigo-400">O(n²)</span>
+        </button>
+        <button data-algo="exchange" data-cat="n2" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">Egyszerű csere</span>
+          <span class="text-[10px] font-mono text-slate-500">O(n²)</span>
+        </button>
+        <button data-algo="insertion" data-cat="n2" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">Beszúrásos</span>
+          <span class="text-[10px] font-mono text-slate-500">O(n²)</span>
+        </button>
+        <button data-algo="selection" data-cat="n2" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">Kiválasztásos</span>
+          <span class="text-[10px] font-mono text-slate-500">O(n²)</span>
+        </button>
+        <button data-algo="cocktail" data-cat="n2" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">Koktél</span>
+          <span class="text-[10px] font-mono text-slate-500">O(n²)</span>
+        </button>
+        <button data-algo="gnome" data-cat="n2" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">Kerti törpe</span>
+          <span class="text-[10px] font-mono text-slate-500">O(n²)</span>
+        </button>
+        <button data-algo="quick" data-cat="nlogn" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">Gyorsrendezés</span>
+          <span class="text-[10px] font-mono text-emerald-400">O(n log n)</span>
+        </button>
+        <button data-algo="merge" data-cat="nlogn" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">Összefésülő</span>
+          <span class="text-[10px] font-mono text-emerald-400">O(n log n)</span>
+        </button>
+        <button data-algo="heap" data-cat="nlogn" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">Kupacrendezés</span>
+          <span class="text-[10px] font-mono text-emerald-400">O(n log n)</span>
+        </button>
+        <button data-algo="shell" data-cat="nlogn" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">Shell</span>
+          <span class="text-[10px] font-mono text-amber-400">O(n log² n)</span>
+        </button>
+        <button data-algo="tim" data-cat="nlogn" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">TimSort</span>
+          <span class="text-[10px] font-mono text-emerald-400">O(n log n)</span>
+        </button>
+        <button data-algo="counting" data-cat="special" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">Számláló</span>
+          <span class="text-[10px] font-mono text-cyan-400">O(n + k)</span>
+        </button>
+        <button data-algo="radix" data-cat="special" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">Számjegyes (Radix)</span>
+          <span class="text-[10px] font-mono text-cyan-400">O(d·n)</span>
+        </button>
+        <button data-algo="bucket" data-cat="special" class="algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between">
+          <span class="text-xs font-bold text-slate-300 block truncate">Vödörrendezés</span>
+          <span class="text-[10px] font-mono text-cyan-400">O(n + k)</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="glass-panel rounded-2xl p-4 sm:p-5 shadow-xl">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+        
+        <!-- Algorithm Selector Dropdown (Synchronized with above Hub) -->
+        <div>
+          <label for="algoSelect" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i data-lucide="cpu" class="w-3.5 h-3.5 text-indigo-400"></i> Algoritmus lista (Legördülő)
+          </label>
+          <div class="relative">
+            <select id="algoSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-medium text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer">
+              <optgroup label="Alapvető rendezések (O(n²))">
+                <option value="bubble" selected>Buborékrendezés (Bubble Sort)</option>
+                <option value="exchange">Egyszerű cserés rendezés (Exchange Sort)</option>
+                <option value="insertion">Beszúrásos rendezés (Insertion Sort)</option>
+                <option value="selection">Kiválasztásos rendezés (Selection Sort)</option>
+                <option value="cocktail">Koktélrendezés (Cocktail Shaker Sort)</option>
+                <option value="gnome">Kerti törpe rendezés (Gnome Sort)</option>
+              </optgroup>
+              <optgroup label="Hatékony logaritmikus eljárások (O(n log n))">
+                <option value="quick">Gyorsrendezés (QuickSort)</option>
+                <option value="merge">Összefésülő rendezés (Merge Sort)</option>
+                <option value="heap">Kupacrendezés (Heap Sort)</option>
+                <option value="shell">Shell-rendezés (Shell Sort)</option>
+                <option value="tim">TimSort (Hibrid beszúró-összefésülő)</option>
+              </optgroup>
+              <optgroup label="Nem-összehasonlító & Speciális eljárások">
+                <option value="counting">Számláló rendezés (Counting Sort)</option>
+                <option value="radix">Számjegyes rendezés (Radix Sort - LSD)</option>
+                <option value="bucket">Vödörrendezés (Bucket Sort)</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+
+        <!-- Array Generation Pattern -->
+        <div>
+          <label for="patternSelect" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i data-lucide="shuffle" class="w-3.5 h-3.5 text-indigo-400"></i> Bemeneti adateloszlás
+          </label>
+          <div class="relative">
+            <select id="patternSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-medium text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all appearance-none cursor-pointer">
+              <option value="random" selected>Teljesen véletlenszerű (Random)</option>
+              <option value="reversed">Fordítottan rendezett (Legrosszabb eset)</option>
+              <option value="nearly">Majdnem rendezett (~85% helyén)</option>
+              <option value="few_unique">Kevés egyedi érték (Sok duplikátum)</option>
+            </select>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-3.5 pointer-events-none"></i>
+          </div>
+        </div>
+
+        <!-- Array Size Slider -->
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <label for="sizeSlider" class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="hash" class="w-3.5 h-3.5 text-indigo-400"></i> Elemek: <span id="sizeValue" class="text-indigo-400 font-mono text-sm ml-1 font-bold">32</span>
+            </label>
+          </div>
+          <input id="sizeSlider" type="range" min="10" max="80" value="32" step="2" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+        </div>
+
+        <!-- Simulation Speed Slider -->
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <label for="speedSlider" class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="gauge" class="w-3.5 h-3.5 text-indigo-400"></i> Sebesség: <span id="speedValue" class="text-indigo-400 font-mono text-sm ml-1 font-bold">Közepes</span>
+            </label>
+          </div>
+          <input id="speedSlider" type="range" min="1" max="100" value="50" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+        </div>
+
+      </div>
+
+      <div class="mt-5 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button id="playBtn" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 transition-all transform active:scale-95">
+            <i id="playIcon" data-lucide="play" class="w-4 h-4 fill-white"></i>
+            <span id="playText">Indítás</span>
+          </button>
+
+          <button id="stepBtn" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-sm transition-all active:scale-95" title="Egyetlen vizsgálati vagy csere lépés végrehajtása">
+            <i data-lucide="step-forward" class="w-4 h-4 text-indigo-400"></i>
+            <span>Egy lépés</span>
+          </button>
+
+          <button id="resetBtn" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-sm transition-all active:scale-95">
+            <i data-lucide="rotate-ccw" class="w-4 h-4 text-slate-400"></i>
+            <span>Új adatsor</span>
+          </button>
+
+          <button id="soundTestBtn" class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-700/80 text-xs text-slate-300 border border-slate-700/60 transition-all" title="Akusztikus teszthang lejátszása">
+            <i data-lucide="bell" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span class="hidden sm:inline">Hangteszt</span>
+          </button>
+        </div>
+
+        <!-- Color Legend Indicators -->
+        <div class="flex flex-wrap items-center gap-3 text-xs text-slate-300 bg-slate-900/70 px-3.5 py-2 rounded-xl border border-slate-800">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-indigo-500 inline-block shadow-sm"></span> Alap</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-yellow-400 inline-block shadow-sm"></span> Összehasonlítás</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-rose-500 inline-block shadow-sm"></span> Csere / Mozgatás</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-purple-500 inline-block shadow-sm"></span> Pivot / Kulcs</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-500 inline-block shadow-sm"></span> Helyén / Rendezett</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="glass-panel rounded-2xl p-5 flex flex-col shadow-2xl relative overflow-hidden">
+      
+      <!-- Live Status & Counters Bar -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800/80 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+            <i data-lucide="activity" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] uppercase font-bold text-slate-400 tracking-wider">Folyamat:</span>
+              <span id="progressBadge" class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.2 rounded-full">Rendezve: 0%</span>
+            </div>
+            <p id="stepDescription" class="text-sm font-medium text-slate-200">Kész az indításra. Nyomj az „Indítás” gombra a szemléltetéshez!</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 text-xs font-mono">
+          <div class="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
+            <span class="text-slate-400">Összehasonlítás:</span>
+            <span id="compareCount" class="text-yellow-400 font-bold text-sm">0</span>
+          </div>
+          <div class="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
+            <span class="text-slate-400">Csere / Írás:</span>
+            <span id="swapCount" class="text-rose-400 font-bold text-sm">0</span>
+          </div>
+          <div class="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
+            <span class="text-slate-400">Idő:</span>
+            <span id="timerValue" class="text-emerald-400 font-bold text-sm">0.00s</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-time progress bar across the entire array -->
+      <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden mb-4 border border-slate-800">
+        <div id="progressFill" class="h-full bg-gradient-to-r from-indigo-500 via-emerald-400 to-emerald-500 transition-all duration-150" style="width: 0%;"></div>
+      </div>
+
+      <!-- Explicitly dimensioned Bars Display Stage -->
+      <div class="relative w-full h-[320px] sm:h-[360px] md:h-[390px] flex items-end justify-center gap-[2px] sm:gap-1 px-3 pt-8 pb-3 bg-slate-950/70 rounded-xl border border-slate-800/90 shadow-inner overflow-hidden" id="barsContainer">
+        <!-- Persistent Bar Elements dynamically managed here -->
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Algorithm Details & Intuition -->
+      <div class="glass-panel rounded-2xl p-5 lg:col-span-2 shadow-xl">
+        <div class="flex items-center justify-between mb-3">
+          <h2 id="infoTitle" class="text-lg font-bold text-white flex items-center gap-2">
+            <i data-lucide="book-open" class="w-5 h-5 text-indigo-400"></i>
+            Buborékrendezés (Bubble Sort)
+          </h2>
+          <span id="infoStability" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            Stabil algoritmus
+          </span>
+        </div>
+        <p id="infoDescription" class="text-sm text-slate-300 leading-relaxed mb-4">
+          A buborékrendezés az egymás melletti elemek összehasonlításán és szükség szerinti cseréjén alapul.
+        </p>
+
+        <div class="bg-slate-900/70 rounded-xl p-3.5 border border-slate-800 text-xs font-mono text-slate-300">
+          <span class="text-slate-400 font-sans font-semibold block mb-1">Működési pszeudókód:</span>
+          <pre id="infoPseudocode" class="whitespace-pre-wrap overflow-x-auto text-indigo-300 leading-5"></pre>
+        </div>
+      </div>
+
+      <!-- Complexity Card -->
+      <div class="glass-panel rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+        <div>
+          <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+            <i data-lucide="gauge" class="w-4 h-4 text-indigo-400"></i>
+            Bonyolultsági Elemzés
+          </h3>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center py-2 px-3 bg-slate-900/60 rounded-xl border border-slate-800/80">
+              <span class="text-xs text-slate-400">Legjobb eset:</span>
+              <span id="compBest" class="text-emerald-400 font-mono font-bold text-sm">O(n)</span>
+            </div>
+            <div class="flex justify-between items-center py-2 px-3 bg-slate-900/60 rounded-xl border border-slate-800/80">
+              <span class="text-xs text-slate-400">Átlagos eset:</span>
+              <span id="compAvg" class="text-amber-400 font-mono font-bold text-sm">O(n²)</span>
+            </div>
+            <div class="flex justify-between items-center py-2 px-3 bg-slate-900/60 rounded-xl border border-slate-800/80">
+              <span class="text-xs text-slate-400">Legrosszabb eset:</span>
+              <span id="compWorst" class="text-rose-400 font-mono font-bold text-sm">O(n²)</span>
+            </div>
+            <div class="flex justify-between items-center py-2 px-3 bg-slate-900/60 rounded-xl border border-slate-800/80">
+              <span class="text-xs text-slate-400">Kiegészítő memória:</span>
+              <span id="compSpace" class="text-indigo-400 font-mono font-bold text-sm">O(1)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-slate-800 text-xs text-slate-400">
+          <p>💡 <span class="text-slate-300 font-medium">Megfigyelési tipp:</span> Az „Egy lépés” gombbal bármikor manuálisan lépkedhetsz, így lassított felvételként elemezheted a rendezetlen &rarr; rendezett fázisokat!</p>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-800/80 py-4 text-center text-xs text-slate-500">
+    Interaktív Algoritmus Laboratórium &bull; Web Audio API Szintetizátor és Reaktív Vizualizáció
+  </footer>
+
+  <script>
+    const ALGORITHMS = {
+      bubble: {
+        name: 'Buborékrendezés (Bubble Sort)',
+        stability: 'Stabil algoritmus',
+        desc: 'A buborékrendezés az egymás melletti elemek párhuzamos összehasonlításán és szükség szerinti felcserélésén alapul. Minden menet során a még rendezetlen szakasz legnagyobb eleme a tömb legvégére úszik.',
+        best: 'O(n)',
+        avg: 'O(n²)',
+        worst: 'O(n²)',
+        space: 'O(1) (helyben rendez)',
+        pseudo: `ciklus i = 0-tól n-2-ig:
+  cserélve = hamis
+  ciklus j = 0-tól n-i-2-ig:
+    ha tömb[j] > tömb[j + 1]:
+      csere(tömb[j], tömb[j + 1])
+      cserélve = igaz
+  ha nem történt csere: kész`
+      },
+      exchange: {
+        name: 'Egyszerű cserés rendezés (Exchange Sort)',
+        stability: 'Instabil algoritmus',
+        desc: 'Az aktuális i-edik pozícióban lévő értéket összehasonlítja az összes utána következő elemmel. Ha nála kisebbet talál, azonnal felcseréli őket. Így lépésről lépésre a soron következő legkisebb érték kerül az i-edik helyre.',
+        best: 'O(n²)',
+        avg: 'O(n²)',
+        worst: 'O(n²)',
+        space: 'O(1) (helyben rendez)',
+        pseudo: `ciklus i = 0-tól n-2-ig:
+  ciklus j = i + 1-től n-1-ig:
+    ha tömb[i] > tömb[j]:
+      csere(tömb[i], tömb[j])`
+      },
+      insertion: {
+        name: 'Beszúrásos rendezés (Insertion Sort)',
+        stability: 'Stabil algoritmus',
+        desc: 'Úgy rendezi a sorozatot, mint ahogy a kezünkben lévő játékkártyákat rendezzük: a még rendezetlen részből kiemeli a következő elemet, és a már korábban rendezett szakaszban jobbra tolja a nála nagyobbakat, hogy beszúrhassa a helyére.',
+        best: 'O(n)',
+        avg: 'O(n²)',
+        worst: 'O(n²)',
+        space: 'O(1) (helyben rendez)',
+        pseudo: `ciklus i = 1-től n-1-ig:
+  kulcs = tömb[i], j = i - 1
+  amíg j >= 0 és tömb[j] > kulcs:
+    tömb[j + 1] = tömb[j]
+    j = j - 1
+  tömb[j + 1] = kulcs`
+      },
+      selection: {
+        name: 'Kiválasztásos rendezés (Selection Sort)',
+        stability: 'Instabil algoritmus',
+        desc: 'Minden menetben végigpásztázza a rendezetlen részt, megkeresi a legkisebb elemet, majd ezt a rendezetlen szakasz legelső elemével egyetlen közvetlen cserével felcseréli.',
+        best: 'O(n²)',
+        avg: 'O(n²)',
+        worst: 'O(n²)',
+        space: 'O(1) (helyben rendez)',
+        pseudo: `ciklus i = 0-tól n-2-ig:
+  min_idx = i
+  ciklus j = i + 1-től n-1-ig:
+    ha tömb[j] < tömb[min_idx]:
+      min_idx = j
+  ha min_idx != i:
+    csere(tömb[i], tömb[min_idx])`
+      },
+      cocktail: {
+        name: 'Koktélrendezés (Cocktail Shaker Sort)',
+        stability: 'Stabil algoritmus',
+        desc: 'A buborékrendezés kétirányú változata. Egy ciklusban először balról jobbra mozogva a legnagyobb elem úszik a végére, majd azonnal jobbról balra mozogva a legkisebb elem úszik a lista elejére, gyorsan eliminálva a végén ragadt kis értékeket.',
+        best: 'O(n)',
+        avg: 'O(n²)',
+        worst: 'O(n²)',
+        space: 'O(1) (helyben rendez)',
+        pseudo: `ismételd:
+  balról jobbra pásztázás (max felúszik a végére)
+  ha nem volt csere: kész
+  jobbról balra pásztázás (min leúszik az elejére)
+amíg történt csere`
+      },
+      gnome: {
+        name: 'Kerti törpe rendezés (Gnome Sort)',
+        stability: 'Stabil algoritmus',
+        desc: 'Nevét egy kerti virágcserepeket rendező törpéről kapta: összehasonlítja az előtte és mögötte lévő elemet. Ha helyes a sorrend, lép egyet előre. Ha rossz, megcseréli őket és visszalép egyet balra, amíg helyre nem áll a rend.',
+        best: 'O(n)',
+        avg: 'O(n²)',
+        worst: 'O(n²)',
+        space: 'O(1) (helyben rendez)',
+        pseudo: `pos = 0
+amíg pos < n:
+  ha pos == 0 vagy tömb[pos] >= tömb[pos - 1]:
+    pos++
+  különben:
+    csere(tömb[pos], tömb[pos - 1])
+    pos--`
+      },
+      quick: {
+        name: 'Gyorsrendezés (QuickSort)',
+        stability: 'Instabil algoritmus',
+        desc: 'Oszd meg és uralkodj elv. Kiválaszt egy támaszelemet (pivot), átrendezi a tömböt úgy, hogy a nála kisebbek balra, a nagyobbak jobbra essenek, majd a két részt rekurzívan megrendezi. Átlagosan az egyik leggyorsabb általános algoritmus.',
+        best: 'O(n log n)',
+        avg: 'O(n log n)',
+        worst: 'O(n²)',
+        space: 'O(log n) veremtár',
+        pseudo: `függvény QuickSort(bal, jobb):
+  ha bal < jobb:
+    p = Particionál(bal, jobb)
+    QuickSort(bal, p - 1)
+    QuickSort(p + 1, jobb)`
+      },
+      merge: {
+        name: 'Összefésülő rendezés (Merge Sort)',
+        stability: 'Stabil algoritmus',
+        desc: 'A tömböt folyamatosan megfelezi egészen az 1 elemű részekig, majd a szomszédos, már rendezett rész-sorozatokat növekvő sorrendben párhuzamosan összefésüli egy segédtömb segítségével.',
+        best: 'O(n log n)',
+        avg: 'O(n log n)',
+        worst: 'O(n log n)',
+        space: 'O(n) segédtömb',
+        pseudo: `függvény MergeSort(bal, jobb):
+  ha bal < jobb:
+    közép = (bal + jobb) / 2
+    MergeSort(bal, közép)
+    MergeSort(közép + 1, jobb)
+    Összefésül(bal, közép, jobb)`
+      },
+      heap: {
+        name: 'Kupacrendezés (Heap Sort)',
+        stability: 'Instabil algoritmus',
+        desc: 'Először egy Max-Kupac bináris fa adatszerkezetet épít a tömbből, ahol a gyökér mindig a maximális elem. Ezután a gyökeret rendre kicseréli a tömb utolsó rendezetlen elemével, majd a maradék fán helyreállítja a kupac tulajdonságot (sift-down).',
+        best: 'O(n log n)',
+        avg: 'O(n log n)',
+        worst: 'O(n log n)',
+        space: 'O(1) (helyben rendez)',
+        pseudo: `MaxKupacÉpítés(tömb)
+ciklus i = n - 1-től 1-ig:
+  csere(tömb[0], tömb[i])
+  KupacHelyreállítás(0, i)`
+      },
+      shell: {
+        name: 'Shell-rendezés (Shell Sort)',
+        stability: 'Instabil algoritmus',
+        desc: 'A beszúrásos rendezés általánosítása. Először egymástól távol lévő elemeket hasonlít össze és rendez (egyre feleződő lépésközzel / gap), így a nagyon rossz helyen álló elemek óriási lépésekkel ugranak a végső pozíciójuk felé.',
+        best: 'O(n log n)',
+        avg: 'O(n^(4/3)) - O(n log² n)',
+        worst: 'O(n²)',
+        space: 'O(1) (helyben rendez)',
+        pseudo: `rés = n / 2
+amíg rés > 0:
+  ciklus i = rés-től n - 1-ig:
+    temp = tömb[i], j = i
+    amíg j >= rés és tömb[j - rés] > temp:
+      tömb[j] = tömb[j - rés]
+      j = j - rés
+    tömb[j] = temp
+  rés = rés / 2`
+      },
+      tim: {
+        name: 'TimSort (Hibrid Python/Java)',
+        stability: 'Stabil algoritmus',
+        desc: 'A modern programozási nyelvek beépített rendezője (Python, Java, V8 JS). A tömböt kis (pl. 8 elemű) futamokra bontja, ezeket gyors beszúrásos rendezéssel megrendezi, majd a futamokat összefésüléssel egyesíti.',
+        best: 'O(n)',
+        avg: 'O(n log n)',
+        worst: 'O(n log n)',
+        space: 'O(n) segédtár',
+        pseudo: `RUN = 8
+minden RUN méretű blokkra:
+  BeszúrásosRendezés(blokk)
+méret = RUN
+amíg méret < n:
+  minden 2*méret blokkpárra:
+    Összefésül(blokkpár)
+  méret = 2 * méret`
+      },
+      counting: {
+        name: 'Számláló rendezés (Counting Sort)',
+        stability: 'Stabil algoritmus',
+        desc: 'Nem összehasonlító rendezés. Megszámolja, hogy az egyes értékek hányszor fordulnak elő a sorozatban, majd a gyakorisági eloszlás alapján közvetlenül a megfelelő helyre másolja az elemeket.',
+        best: 'O(n + k)',
+        avg: 'O(n + k)',
+        worst: 'O(n + k)',
+        space: 'O(k) gyakorisági tömb',
+        pseudo: `számláló = k méretű tömb [0-kal]
+minden elemre: számláló[elem]++
+index = 0
+minden értékre i = 0-tól k-ig:
+  amíg számláló[i] > 0:
+    tömb[index] = i
+    index++, számláló[i]--`
+      },
+      radix: {
+        name: 'Számjegyes rendezés (Radix Sort - LSD)',
+        stability: 'Stabil algoritmus',
+        desc: 'Számjegyenként halad a legkisebb helyiértéktől (LSD) a legnagyobb felé. Minden számjegypozícióra egy stabil számláló rendezést hajt végre, amíg az összes számjegy a helyére nem kerül.',
+        best: 'O(d · (n + b))',
+        avg: 'O(d · (n + b))',
+        worst: 'O(d · (n + b))',
+        space: 'O(n + b)',
+        pseudo: `max = max(tömb)
+exp = 1
+amíg max / exp > 0:
+  SzámlálóRendezésSzámjegyre(exp)
+  exp = exp * 10`
+      },
+      bucket: {
+        name: 'Vödörrendezés (Bucket Sort)',
+        stability: 'Stabil algoritmus',
+        desc: 'Az értéktartományt különálló rekeszekre („vödrökre”) osztja. Az elemeket besorolja a megfelelő rekeszbe, a rekeszeket egyenként megrendezi (beszúrással), majd a tartalmukat egymás után visszamásolja.',
+        best: 'O(n + k)',
+        avg: 'O(n + k)',
+        worst: 'O(n²)',
+        space: 'O(n + k)',
+        pseudo: `vödrök = k darab lista
+minden elemre:
+  idx = floor(k * elem / max)
+  vödrök[idx].beszúr(elem)
+minden vödörre: Rendezés(vödör)
+tömb = összefűz(vödrök)`
+      }
+    };
+
+    let currentAlgo = 'bubble';
+    let array = [];
+    let barElements = [];
+    let isRunning = false;
+    let isPaused = false;
+    let shouldCancel = false;
+    let stepRequested = false;
+    let comparisons = 0;
+    let swaps = 0;
+    let startTime = null;
+    let timerInterval = null;
+    let audioContext = null;
+    let soundEnabled = true;
+    let sortedSet = new Set();
+
+    // DOM Elements
+    const barsContainer = document.getElementById('barsContainer');
+    const algoSelect = document.getElementById('algoSelect');
+    const activeAlgoBadge = document.getElementById('activeAlgoBadge');
+    const patternSelect = document.getElementById('patternSelect');
+    const sizeSlider = document.getElementById('sizeSlider');
+    const sizeValue = document.getElementById('sizeValue');
+    const speedSlider = document.getElementById('speedSlider');
+    const speedValue = document.getElementById('speedValue');
+    const playBtn = document.getElementById('playBtn');
+    const playIcon = document.getElementById('playIcon');
+    const playText = document.getElementById('playText');
+    const stepBtn = document.getElementById('stepBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const soundToggleBtn = document.getElementById('soundToggleBtn');
+    const soundIcon = document.getElementById('soundIcon');
+    const soundLabel = document.getElementById('soundLabel');
+    const volumeSlider = document.getElementById('volumeSlider');
+    const soundTestBtn = document.getElementById('soundTestBtn');
+    const stepDescription = document.getElementById('stepDescription');
+    const compareCountEl = document.getElementById('compareCount');
+    const swapCountEl = document.getElementById('swapCount');
+    const timerValueEl = document.getElementById('timerValue');
+    const progressBadge = document.getElementById('progressBadge');
+    const progressFill = document.getElementById('progressFill');
+
+    const infoTitle = document.getElementById('infoTitle');
+    const infoStability = document.getElementById('infoStability');
+    const infoDescription = document.getElementById('infoDescription');
+    const infoPseudocode = document.getElementById('infoPseudocode');
+    const compBest = document.getElementById('compBest');
+    const compAvg = document.getElementById('compAvg');
+    const compWorst = document.getElementById('compWorst');
+    const compSpace = document.getElementById('compSpace');
+
+    function selectAlgorithm(algoKey) {
+      if (!ALGORITHMS[algoKey]) return;
+
+      // Stop previous simulation cleanly if in progress
+      if (isRunning) {
+        shouldCancel = true;
+        isRunning = false;
+        isPaused = false;
+        stopTimer();
+        updatePlayButtonState(false);
+      }
+
+      currentAlgo = algoKey;
+
+      // Synchronize native select
+      if (algoSelect && algoSelect.value !== algoKey) {
+        algoSelect.value = algoKey;
+      }
+
+      // Update active card highlights in the visual grid
+      const cards = document.querySelectorAll('.algo-card');
+      cards.forEach(card => {
+        const key = card.getAttribute('data-algo');
+        const titleSpan = card.querySelector('span:first-child');
+        const metaSpan = card.querySelector('span:last-child');
+        if (key === algoKey) {
+          card.className = 'algo-card p-2 rounded-xl border border-indigo-500/80 bg-indigo-950/60 shadow-lg shadow-indigo-500/20 text-left transition-all scale-[1.03] active:scale-95 flex flex-col justify-between ring-1 ring-indigo-500';
+          if (titleSpan) titleSpan.className = 'text-xs font-bold text-white block truncate';
+          if (metaSpan) metaSpan.className = 'text-[10px] font-mono text-indigo-300 font-bold';
+        } else {
+          card.className = 'algo-card p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-between hover:border-slate-700';
+          if (titleSpan) titleSpan.className = 'text-xs font-bold text-slate-300 block truncate';
+          if (metaSpan) metaSpan.className = 'text-[10px] font-mono text-slate-500';
+        }
+      });
+
+      // Update top active badge
+      if (activeAlgoBadge) {
+        activeAlgoBadge.innerText = ALGORITHMS[algoKey].name.split(' (')[0];
+      }
+
+      updateInfoPanel();
+      generateArray();
+    }
+
+    // Category filter tabs logic
+    function setupCategoryTabs() {
+      const tabs = document.querySelectorAll('.algo-cat-btn');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => {
+            t.className = 'algo-cat-btn px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-400 hover:text-slate-200 transition-all';
+          });
+          tab.className = 'algo-cat-btn px-2.5 py-1 text-xs font-medium rounded-lg bg-indigo-600 text-white transition-all shadow-sm';
+
+          const cat = tab.getAttribute('data-cat');
+          const cards = document.querySelectorAll('.algo-card');
+          cards.forEach(card => {
+            if (cat === 'all' || card.getAttribute('data-cat') === cat) {
+              card.style.display = 'flex';
+            } else {
+              card.style.display = 'none';
+            }
+          });
+        });
+      });
+    }
+
+    function initAudio() {
+      if (!audioContext) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          audioContext = new AudioCtx();
+        }
+      }
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+    }
+
+    function playTone(val, type = 'sine', duration = 0.06, maxVal = 100) {
+      if (!soundEnabled) return;
+      try {
+        initAudio();
+        if (!audioContext) return;
+
+        const volume = parseFloat(volumeSlider.value);
+        if (volume <= 0.001) return;
+
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        const safeVal = Math.max(5, Math.min(val, maxVal));
+        // Exponential audible scaling between 180 Hz and 980 Hz
+        const freq = 180 + Math.pow(safeVal / maxVal, 1.2) * 800;
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+
+        const peakGain = Math.min(0.28, volume * 0.35);
+        gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+        gain.gain.linearRampToValueAtTime(peakGain, audioContext.currentTime + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+
+        osc.start();
+        osc.stop(audioContext.currentTime + duration);
+      } catch (e) {
+        // Safe fallback
+      }
+    }
+
+    async function playVictoryChime() {
+      if (!soundEnabled) return;
+      initAudio();
+      const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
+      for (const freq of notes) {
+        try {
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          const volume = parseFloat(volumeSlider.value);
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(volume * 0.25, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.18);
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+          osc.start();
+          osc.stop(audioContext.currentTime + 0.18);
+          await new Promise(r => setTimeout(r, 55));
+        } catch (e) {}
+      }
+    }
+
+    function getBarHeightPct(val) {
+      // Calculate height percentage so shortest bar is visibly identifiable (min 8%, max 98%)
+      return Math.round(8 + (val / 100) * 90);
+    }
+
+    function createBarsDOM() {
+      barsContainer.innerHTML = '';
+      barElements = [];
+      const n = array.length;
+      const showLabels = n <= 32;
+
+      for (let i = 0; i < n; i++) {
+        const val = array[i];
+        const bar = document.createElement('div');
+        bar.className = 'bar-node bar-default flex-1 flex flex-col justify-end items-center rounded-t-md relative select-none';
+        bar.style.height = `${getBarHeightPct(val)}%`;
+
+        if (showLabels) {
+          const label = document.createElement('span');
+          label.className = 'bar-label text-[10px] font-mono text-slate-100 font-bold mb-1 pointer-events-none drop-shadow';
+          label.innerText = val;
+          bar.appendChild(label);
+        }
+
+        barsContainer.appendChild(bar);
+        barElements.push(bar);
+      }
+      updateProgressDisplay();
+    }
+
+    function updateBarValue(idx, val) {
+      if (!barElements[idx]) return;
+      const bar = barElements[idx];
+      bar.style.height = `${getBarHeightPct(val)}%`;
+      const label = bar.querySelector('.bar-label');
+      if (label) label.innerText = val;
+    }
+
+    function setBarVisualState(idx, state) {
+      if (!barElements[idx]) return;
+      const bar = barElements[idx];
+      // Strip dynamic classes
+      bar.classList.remove('bar-default', 'bar-compare', 'bar-swap', 'bar-pivot', 'bar-sorted', 'bar-aux');
+      
+      if (state === 'compare') bar.classList.add('bar-compare');
+      else if (state === 'swap') bar.classList.add('bar-swap');
+      else if (state === 'pivot') bar.classList.add('bar-pivot');
+      else if (state === 'sorted') bar.classList.add('bar-sorted');
+      else if (state === 'aux') bar.classList.add('bar-aux');
+      else {
+        if (sortedSet.has(idx)) {
+          bar.classList.add('bar-sorted');
+        } else {
+          bar.classList.add('bar-default');
+        }
+      }
+    }
+
+    function markAsSorted(idx) {
+      sortedSet.add(idx);
+      setBarVisualState(idx, 'sorted');
+      updateProgressDisplay();
+    }
+
+    function resetVisualHighlights(indices) {
+      for (const idx of indices) {
+        setBarVisualState(idx, 'default');
+      }
+    }
+
+    function updateProgressDisplay() {
+      const n = array.length;
+      if (n === 0) return;
+      const pct = Math.round((sortedSet.size / n) * 100);
+      progressBadge.innerText = `Rendezve: ${pct}%`;
+      progressFill.style.width = `${pct}%`;
+    }
+
+    function updateStatusText(html) {
+      stepDescription.innerHTML = html;
+    }
+
+    function resetStatistics() {
+      comparisons = 0;
+      swaps = 0;
+      compareCountEl.innerText = '0';
+      swapCountEl.innerText = '0';
+      timerValueEl.innerText = '0.00s';
+      sortedSet.clear();
+      updateProgressDisplay();
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      startTime = null;
+    }
+
+    function startTimer() {
+      if (!startTime) {
+        startTime = performance.now();
+        timerInterval = setInterval(() => {
+          if (!isRunning || isPaused) return;
+          const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+          timerValueEl.innerText = `${elapsed}s`;
+        }, 50);
+      }
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    function getSleepDelay() {
+      const val = parseInt(speedSlider.value);
+      // Value 1: ~420ms (slow motion), Value 50: ~45ms, Value 100: ~3ms (ultra fast)
+      return Math.round(420 * Math.pow(0.012, (val - 1) / 99));
+    }
+
+    async function waitStep() {
+      if (shouldCancel) return false;
+
+      if (isPaused) {
+        while (isPaused && !stepRequested && !shouldCancel) {
+          await new Promise(r => setTimeout(r, 30));
+        }
+        stepRequested = false;
+        if (shouldCancel) return false;
+        return true;
+      }
+
+      const delay = getSleepDelay();
+      if (delay > 0) {
+        await new Promise(r => setTimeout(r, delay));
+      }
+      return !shouldCancel;
+    }
+
+    function generateArray() {
+      if (isRunning) {
+        shouldCancel = true;
+      }
+
+      const size = parseInt(sizeSlider.value);
+      const pattern = patternSelect.value;
+      array = [];
+
+      if (pattern === 'random') {
+        for (let i = 0; i < size; i++) {
+          array.push(Math.floor(Math.random() * 92) + 8);
+        }
+      } else if (pattern === 'reversed') {
+        for (let i = 0; i < size; i++) {
+          const val = Math.round(100 - (i / (size - 1)) * 90);
+          array.push(val);
+        }
+      } else if (pattern === 'nearly') {
+        for (let i = 0; i < size; i++) {
+          array.push(Math.round(10 + (i / size) * 85));
+        }
+        const swapsCount = Math.max(2, Math.floor(size * 0.12));
+        for (let s = 0; s < swapsCount; s++) {
+          const i1 = Math.floor(Math.random() * size);
+          const i2 = Math.floor(Math.random() * size);
+          [array[i1], array[i2]] = [array[i2], array[i1]];
+        }
+      } else if (pattern === 'few_unique') {
+        const uniqueValues = [15, 35, 55, 75, 95];
+        for (let i = 0; i < size; i++) {
+          const pick = uniqueValues[Math.floor(Math.random() * uniqueValues.length)];
+          array.push(pick);
+        }
+      }
+
+      resetStatistics();
+      createBarsDOM();
+      updateStatusText("Új bemeneti sorozat készen áll. Nyomj az „Indítás” gombra a szemléltetéshez!");
+    }
+
+    // 1. Bubble Sort
+    async function bubbleSort() {
+      const n = array.length;
+      for (let i = 0; i < n - 1; i++) {
+        let swapped = false;
+        for (let j = 0; j < n - i - 1; j++) {
+          if (shouldCancel) return;
+          comparisons++;
+          compareCountEl.innerText = comparisons;
+          playTone(array[j], 'sine', 0.05);
+
+          setBarVisualState(j, 'compare');
+          setBarVisualState(j + 1, 'compare');
+          updateStatusText(`Összehasonlítás: <span class="text-yellow-400 font-mono font-bold">${array[j]}</span> és <span class="text-yellow-400 font-mono font-bold">${array[j + 1]}</span>`);
+          if (!(await waitStep())) return;
+
+          if (array[j] > array[j + 1]) {
+            swaps++;
+            swapCountEl.innerText = swaps;
+            swapped = true;
+            [array[j], array[j + 1]] = [array[j + 1], array[j]];
+            updateBarValue(j, array[j]);
+            updateBarValue(j + 1, array[j + 1]);
+            playTone(array[j + 1], 'triangle', 0.08);
+
+            setBarVisualState(j, 'swap');
+            setBarVisualState(j + 1, 'swap');
+            updateStatusText(`Csere: nagyobb elem feljebb úszik (<span class="text-rose-400 font-mono font-bold">${array[j + 1]}</span> &gt; <span class="text-rose-400 font-mono font-bold">${array[j]}</span>)`);
+            if (!(await waitStep())) return;
+          }
+
+          resetVisualHighlights([j, j + 1]);
+        }
+        markAsSorted(n - i - 1);
+        if (!swapped) {
+          for (let k = 0; k < n - i - 1; k++) markAsSorted(k);
+          updateStatusText("Már nincsenek cserélendő elemek, a sorozat teljesen rendezett!");
+          break;
+        }
+      }
+      markAsSorted(0);
+    }
+
+    // 2. Exchange Sort
+    async function exchangeSort() {
+      const n = array.length;
+      for (let i = 0; i < n - 1; i++) {
+        for (let j = i + 1; j < n; j++) {
+          if (shouldCancel) return;
+          comparisons++;
+          compareCountEl.innerText = comparisons;
+          playTone(array[j], 'sine', 0.05);
+
+          setBarVisualState(i, 'compare');
+          setBarVisualState(j, 'compare');
+          updateStatusText(`Aktuális hely (${i}): <span class="text-yellow-400 font-mono font-bold">${array[i]}</span> tesztelése a <span class="text-yellow-400 font-mono font-bold">${array[j]}</span> értékkel`);
+          if (!(await waitStep())) return;
+
+          if (array[i] > array[j]) {
+            swaps++;
+            swapCountEl.innerText = swaps;
+            [array[i], array[j]] = [array[j], array[i]];
+            updateBarValue(i, array[i]);
+            updateBarValue(j, array[j]);
+            playTone(array[i], 'triangle', 0.08);
+
+            setBarVisualState(i, 'swap');
+            setBarVisualState(j, 'swap');
+            updateStatusText(`Azonnali csere a ${i}. helyre: új minimum <span class="text-rose-400 font-mono font-bold">${array[i]}</span>`);
+            if (!(await waitStep())) return;
+          }
+
+          resetVisualHighlights([i, j]);
+        }
+        markAsSorted(i);
+      }
+      markAsSorted(n - 1);
+    }
+
+    // 3. Insertion Sort
+    async function insertionSort() {
+      const n = array.length;
+      markAsSorted(0);
+      for (let i = 1; i < n; i++) {
+        if (shouldCancel) return;
+        let key = array[i];
+        let j = i - 1;
+
+        setBarVisualState(i, 'pivot');
+        updateStatusText(`Kiemelt kulcselem: <span class="text-purple-400 font-mono font-bold">${key}</span>`);
+        playTone(key, 'triangle', 0.07);
+        if (!(await waitStep())) return;
+
+        while (j >= 0) {
+          if (shouldCancel) return;
+          comparisons++;
+          compareCountEl.innerText = comparisons;
+          playTone(array[j], 'sine', 0.05);
+
+          setBarVisualState(j, 'compare');
+          if (!(await waitStep())) return;
+
+          if (array[j] > key) {
+            swaps++;
+            swapCountEl.innerText = swaps;
+            array[j + 1] = array[j];
+            updateBarValue(j + 1, array[j + 1]);
+            playTone(array[j + 1], 'triangle', 0.06);
+
+            setBarVisualState(j + 1, 'swap');
+            updateStatusText(`Nagyobb elem jobbra tolása: <span class="text-rose-400 font-mono font-bold">${array[j]}</span>`);
+            if (!(await waitStep())) return;
+
+            resetVisualHighlights([j, j + 1]);
+            j--;
+          } else {
+            resetVisualHighlights([j]);
+            break;
+          }
+        }
+
+        array[j + 1] = key;
+        updateBarValue(j + 1, key);
+        for (let k = 0; k <= i; k++) markAsSorted(k);
+        updateStatusText(`Kulcs elhelyezve a rendezett alszakaszba: <span class="text-emerald-400 font-mono font-bold">${key}</span>`);
+        if (!(await waitStep())) return;
+      }
+    }
+
+    // 4. Selection Sort
+    async function selectionSort() {
+      const n = array.length;
+      for (let i = 0; i < n - 1; i++) {
+        if (shouldCancel) return;
+        let minIdx = i;
+        setBarVisualState(minIdx, 'pivot');
+        updateStatusText(`Minimumkeresés indul. Kezdőérték (${i}. index): <span class="text-purple-400 font-mono font-bold">${array[minIdx]}</span>`);
+        if (!(await waitStep())) return;
+
+        for (let j = i + 1; j < n; j++) {
+          if (shouldCancel) return;
+          comparisons++;
+          compareCountEl.innerText = comparisons;
+          playTone(array[j], 'sine', 0.04);
+
+          setBarVisualState(j, 'compare');
+          if (!(await waitStep())) return;
+
+          if (array[j] < array[minIdx]) {
+            if (minIdx !== i) resetVisualHighlights([minIdx]);
+            minIdx = j;
+            setBarVisualState(minIdx, 'pivot');
+            updateStatusText(`Új minimum találva a még rendezetlen részen: <span class="text-purple-400 font-mono font-bold">${array[minIdx]}</span>`);
+          } else {
+            resetVisualHighlights([j]);
+          }
+        }
+
+        if (minIdx !== i) {
+          swaps++;
+          swapCountEl.innerText = swaps;
+          [array[i], array[minIdx]] = [array[minIdx], array[i]];
+          updateBarValue(i, array[i]);
+          updateBarValue(minIdx, array[minIdx]);
+          playTone(array[i], 'triangle', 0.09);
+
+          setBarVisualState(i, 'swap');
+          setBarVisualState(minIdx, 'swap');
+          updateStatusText(`Minimum behelyezése a(z) ${i}. pozícióra: <span class="text-emerald-400 font-mono font-bold">${array[i]}</span>`);
+          if (!(await waitStep())) return;
+          resetVisualHighlights([minIdx]);
+        }
+        markAsSorted(i);
+      }
+      markAsSorted(n - 1);
+    }
+
+    // 5. Cocktail Shaker Sort
+    async function cocktailSort() {
+      let start = 0;
+      let end = array.length - 1;
+      let swapped = true;
+
+      while (swapped) {
+        swapped = false;
+        updateStatusText(`1. Fázis: Balról jobbra &rarr; a legnagyobb elem végre úsztatása`);
+        for (let i = start; i < end; i++) {
+          if (shouldCancel) return;
+          comparisons++;
+          compareCountEl.innerText = comparisons;
+          playTone(array[i], 'sine', 0.05);
+
+          setBarVisualState(i, 'compare');
+          setBarVisualState(i + 1, 'compare');
+          if (!(await waitStep())) return;
+
+          if (array[i] > array[i + 1]) {
+            swaps++;
+            swapCountEl.innerText = swaps;
+            [array[i], array[i + 1]] = [array[i + 1], array[i]];
+            updateBarValue(i, array[i]);
+            updateBarValue(i + 1, array[i + 1]);
+            swapped = true;
+            playTone(array[i + 1], 'triangle', 0.07);
+
+            setBarVisualState(i, 'swap');
+            setBarVisualState(i + 1, 'swap');
+            if (!(await waitStep())) return;
+          }
+          resetVisualHighlights([i, i + 1]);
+        }
+        markAsSorted(end);
+        end--;
+
+        if (!swapped) break;
+        swapped = false;
+
+        updateStatusText(`2. Fázis: Jobbról balra &larr; a legkisebb elem elejére úsztatása`);
+        for (let i = end - 1; i >= start; i--) {
+          if (shouldCancel) return;
+          comparisons++;
+          compareCountEl.innerText = comparisons;
+          playTone(array[i], 'sine', 0.05);
+
+          setBarVisualState(i, 'compare');
+          setBarVisualState(i + 1, 'compare');
+          if (!(await waitStep())) return;
+
+          if (array[i] > array[i + 1]) {
+            swaps++;
+            swapCountEl.innerText = swaps;
+            [array[i], array[i + 1]] = [array[i + 1], array[i]];
+            updateBarValue(i, array[i]);
+            updateBarValue(i + 1, array[i + 1]);
+            swapped = true;
+            playTone(array[i], 'triangle', 0.07);
+
+            setBarVisualState(i, 'swap');
+            setBarVisualState(i + 1, 'swap');
+            if (!(await waitStep())) return;
+          }
+          resetVisualHighlights([i, i + 1]);
+        }
+        markAsSorted(start);
+        start++;
+      }
+      for (let k = 0; k < array.length; k++) markAsSorted(k);
+    }
+
+    // 6. Gnome Sort
+    async function gnomeSort() {
+      const n = array.length;
+      let pos = 0;
+      while (pos < n) {
+        if (shouldCancel) return;
+        if (pos === 0) {
+          pos++;
+        }
+        comparisons++;
+        compareCountEl.innerText = comparisons;
+        playTone(array[pos], 'sine', 0.05);
+
+        setBarVisualState(pos - 1, 'compare');
+        setBarVisualState(pos, 'compare');
+        updateStatusText(`Kerti törpe a pozíciónál (${pos}): <span class="text-yellow-400 font-mono font-bold">${array[pos]}</span> és elődje: <span class="text-yellow-400 font-mono font-bold">${array[pos - 1]}</span>`);
+        if (!(await waitStep())) return;
+
+        if (array[pos] >= array[pos - 1]) {
+          resetVisualHighlights([pos - 1, pos]);
+          pos++;
+        } else {
+          swaps++;
+          swapCountEl.innerText = swaps;
+          [array[pos], array[pos - 1]] = [array[pos - 1], array[pos]];
+          updateBarValue(pos, array[pos]);
+          updateBarValue(pos - 1, array[pos - 1]);
+          playTone(array[pos - 1], 'triangle', 0.08);
+
+          setBarVisualState(pos - 1, 'swap');
+          setBarVisualState(pos, 'swap');
+          updateStatusText(`Rossz sorrend! Csere és visszalépés balra (${pos - 1})`);
+          if (!(await waitStep())) return;
+
+          resetVisualHighlights([pos - 1, pos]);
+          pos--;
+        }
+      }
+      for (let k = 0; k < n; k++) markAsSorted(k);
+    }
+
+    // 7. QuickSort
+    async function quickSort() {
+      async function partition(low, high) {
+        let pivot = array[high];
+        setBarVisualState(high, 'pivot');
+        updateStatusText(`Pivot (támaszelem): <span class="text-purple-400 font-mono font-bold">${pivot}</span> a(z) ${high}. indexen`);
+        playTone(pivot, 'triangle', 0.07);
+        if (!(await waitStep())) return -1;
+
+        let i = low - 1;
+        for (let j = low; j < high; j++) {
+          if (shouldCancel) return -1;
+          comparisons++;
+          compareCountEl.innerText = comparisons;
+          playTone(array[j], 'sine', 0.04);
+
+          setBarVisualState(j, 'compare');
+          if (!(await waitStep())) return -1;
+
+          if (array[j] < pivot) {
+            i++;
+            if (i !== j) {
+              swaps++;
+              swapCountEl.innerText = swaps;
+              [array[i], array[j]] = [array[j], array[i]];
+              updateBarValue(i, array[i]);
+              updateBarValue(j, array[j]);
+              playTone(array[i], 'triangle', 0.06);
+
+              setBarVisualState(i, 'swap');
+              setBarVisualState(j, 'swap');
+              if (!(await waitStep())) return -1;
+            }
+          }
+          resetVisualHighlights([j]);
+          if (i >= low) setBarVisualState(i, 'aux');
+        }
+
+        swaps++;
+        swapCountEl.innerText = swaps;
+        [array[i + 1], array[high]] = [array[high], array[i + 1]];
+        updateBarValue(i + 1, array[i + 1]);
+        updateBarValue(high, array[high]);
+        playTone(array[i + 1], 'triangle', 0.08);
+
+        resetVisualHighlights([high]);
+        for (let k = low; k <= high; k++) {
+          if (!sortedSet.has(k)) resetVisualHighlights([k]);
+        }
+        return i + 1;
+      }
+
+      async function quickSortRecursive(low, high) {
+        if (low < high) {
+          const pi = await partition(low, high);
+          if (pi === -1 || shouldCancel) return;
+          markAsSorted(pi);
+          await quickSortRecursive(low, pi - 1);
+          if (shouldCancel) return;
+          await quickSortRecursive(pi + 1, high);
+        } else if (low === high) {
+          markAsSorted(low);
+        }
+      }
+
+      await quickSortRecursive(0, array.length - 1);
+    }
+
+    // 8. Merge Sort
+    async function mergeSort() {
+      async function merge(start, mid, end) {
+        let left = array.slice(start, mid + 1);
+        let right = array.slice(mid + 1, end + 1);
+        let i = 0, j = 0, k = start;
+
+        for (let x = start; x <= end; x++) setBarVisualState(x, 'aux');
+        updateStatusText(`Összefésülés: [${start}..${mid}] és [${mid + 1}..${end}] rendezett alszakaszok`);
+        if (!(await waitStep())) return;
+
+        while (i < left.length && j < right.length) {
+          if (shouldCancel) return;
+          comparisons++;
+          compareCountEl.innerText = comparisons;
+          playTone(left[i], 'sine', 0.04);
+
+          setBarVisualState(k, 'compare');
+          if (!(await waitStep())) return;
+
+          if (left[i] <= right[j]) {
+            swaps++;
+            swapCountEl.innerText = swaps;
+            array[k] = left[i];
+            i++;
+          } else {
+            swaps++;
+            swapCountEl.innerText = swaps;
+            array[k] = right[j];
+            j++;
+          }
+          updateBarValue(k, array[k]);
+          setBarVisualState(k, 'swap');
+          playTone(array[k], 'triangle', 0.07);
+          if (!(await waitStep())) return;
+
+          resetVisualHighlights([k]);
+          k++;
+        }
+
+        while (i < left.length) {
+          if (shouldCancel) return;
+          swaps++;
+          swapCountEl.innerText = swaps;
+          array[k] = left[i];
+          updateBarValue(k, array[k]);
+          setBarVisualState(k, 'swap');
+          playTone(array[k], 'triangle', 0.07);
+          if (!(await waitStep())) return;
+          resetVisualHighlights([k]);
+          i++; k++;
+        }
+
+        while (j < right.length) {
+          if (shouldCancel) return;
+          swaps++;
+          swapCountEl.innerText = swaps;
+          array[k] = right[j];
+          updateBarValue(k, array[k]);
+          setBarVisualState(k, 'swap');
+          playTone(array[k], 'triangle', 0.07);
+          if (!(await waitStep())) return;
+          resetVisualHighlights([k]);
+          j++; k++;
+        }
+
+        for (let x = start; x <= end; x++) {
+          if (start === 0 && end === array.length - 1) markAsSorted(x);
+          else resetVisualHighlights([x]);
+        }
+      }
+
+      async function mergeSortRecursive(start, end) {
+        if (start < end) {
+          let mid = Math.floor((start + end) / 2);
+          await mergeSortRecursive(start, mid);
+          if (shouldCancel) return;
+          await mergeSortRecursive(mid + 1, end);
+          if (shouldCancel) return;
+          await merge(start, mid, end);
+        }
+      }
+
+      await mergeSortRecursive(0, array.length - 1);
+    }
+
+    // 9. Heap Sort
+    async function heapSort() {
+      const n = array.length;
+
+      async function heapify(size, root) {
+        let largest = root;
+        let left = 2 * root + 1;
+        let right = 2 * root + 2;
+
+        if (left < size) {
+          comparisons++;
+          compareCountEl.innerText = comparisons;
+          playTone(array[left], 'sine', 0.04);
+          setBarVisualState(left, 'compare');
+          setBarVisualState(largest, 'compare');
+          if (!(await waitStep())) return;
+          if (array[left] > array[largest]) largest = left;
+          resetVisualHighlights([left, largest]);
+        }
+
+        if (right < size) {
+          comparisons++;
+          compareCountEl.innerText = comparisons;
+          playTone(array[right], 'sine', 0.04);
+          setBarVisualState(right, 'compare');
+          setBarVisualState(largest, 'compare');
+          if (!(await waitStep())) return;
+          if (array[right] > array[largest]) largest = right;
+          resetVisualHighlights([right, largest]);
+        }
+
+        if (largest !== root) {
+          swaps++;
+          swapCountEl.innerText = swaps;
+          [array[root], array[largest]] = [array[largest], array[root]];
+          updateBarValue(root, array[root]);
+          updateBarValue(largest, array[largest]);
+          playTone(array[root], 'triangle', 0.08);
+
+          setBarVisualState(root, 'swap');
+          setBarVisualState(largest, 'swap');
+          updateStatusText(`Kupac helyreállítás (sift-down): csere &harr; <span class="text-rose-400 font-mono font-bold">${array[root]}</span>`);
+          if (!(await waitStep())) return;
+
+          resetVisualHighlights([root, largest]);
+          await heapify(size, largest);
+        }
+      }
+
+      updateStatusText("1. Max-kupac felépítése a levelektől a gyökér felé...");
+      for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+        if (shouldCancel) return;
+        await heapify(n, i);
+      }
+
+      updateStatusText("2. Kupacgyökér kivétele és a kupacméret folyamatos zsugorítása...");
+      for (let i = n - 1; i > 0; i--) {
+        if (shouldCancel) return;
+        swaps++;
+        swapCountEl.innerText = swaps;
+        [array[0], array[i]] = [array[i], array[0]];
+        updateBarValue(0, array[0]);
+        updateBarValue(i, array[i]);
+        playTone(array[i], 'triangle', 0.09);
+
+        markAsSorted(i);
+        updateStatusText(`Kupac csúcsa (${array[i]}) véglegesen a helyére került (${i}. pozíció)`);
+        if (!(await waitStep())) return;
+
+        await heapify(i, 0);
+      }
+      markAsSorted(0);
+    }
+
+    // 10. Shell Sort
+    async function shellSort() {
+      const n = array.length;
+      for (let gap = Math.floor(n / 2); gap > 0; gap = Math.floor(gap / 2)) {
+        updateStatusText(`Aktuális lépésköz (Gap): <span class="text-purple-400 font-mono font-bold">${gap}</span>`);
+        for (let i = gap; i < n; i++) {
+          if (shouldCancel) return;
+          let temp = array[i];
+          let j = i;
+          setBarVisualState(i, 'pivot');
+          if (!(await waitStep())) return;
+
+          while (j >= gap) {
+            comparisons++;
+            compareCountEl.innerText = comparisons;
+            playTone(array[j - gap], 'sine', 0.04);
+            setBarVisualState(j - gap, 'compare');
+            setBarVisualState(j, 'compare');
+            if (!(await waitStep())) return;
+
+            if (array[j - gap] > temp) {
+              swaps++;
+              swapCountEl.innerText = swaps;
+              array[j] = array[j - gap];
+              updateBarValue(j, array[j]);
+              playTone(array[j], 'triangle', 0.06);
+
+              setBarVisualState(j - gap, 'swap');
+              setBarVisualState(j, 'swap');
+              if (!(await waitStep())) return;
+
+              resetVisualHighlights([j - gap, j]);
+              j -= gap;
+            } else {
+              resetVisualHighlights([j - gap, j]);
+              break;
+            }
+          }
+          array[j] = temp;
+          updateBarValue(j, temp);
+          resetVisualHighlights([i, j]);
+        }
+      }
+      for (let k = 0; k < n; k++) markAsSorted(k);
+    }
+
+    // 11. TimSort
+    async function timSort() {
+      const n = array.length;
+      const RUN = 8;
+
+      updateStatusText(`1. Szakasz: Kis futamok (${RUN} elem) megrendezése beszúrással`);
+      for (let i = 0; i < n; i += RUN) {
+        let left = i;
+        let right = Math.min(i + RUN - 1, n - 1);
+
+        for (let j = left + 1; j <= right; j++) {
+          if (shouldCancel) return;
+          let temp = array[j];
+          let k = j - 1;
+          setBarVisualState(j, 'pivot');
+          if (!(await waitStep())) return;
+
+          while (k >= left) {
+            comparisons++;
+            compareCountEl.innerText = comparisons;
+            playTone(array[k], 'sine', 0.04);
+            setBarVisualState(k, 'compare');
+            if (!(await waitStep())) return;
+
+            if (array[k] > temp) {
+              swaps++;
+              swapCountEl.innerText = swaps;
+              array[k + 1] = array[k];
+              updateBarValue(k + 1, array[k + 1]);
+              playTone(array[k + 1], 'triangle', 0.06);
+              setBarVisualState(k + 1, 'swap');
+              if (!(await waitStep())) return;
+
+              resetVisualHighlights([k, k + 1]);
+              k--;
+            } else {
+              resetVisualHighlights([k]);
+              break;
+            }
+          }
+          array[k + 1] = temp;
+          updateBarValue(k + 1, temp);
+          resetVisualHighlights([j]);
+        }
+      }
+
+      updateStatusText("2. Szakasz: Rendezett futamok lépcsőzetes összefésülése (Merge)");
+      for (let size = RUN; size < n; size = 2 * size) {
+        for (let left = 0; left < n; left += 2 * size) {
+          if (shouldCancel) return;
+          let mid = left + size - 1;
+          let right = Math.min(left + 2 * size - 1, n - 1);
+
+          if (mid < right) {
+            let leftArr = array.slice(left, mid + 1);
+            let rightArr = array.slice(mid + 1, right + 1);
+            let p1 = 0, p2 = 0, k = left;
+
+            while (p1 < leftArr.length && p2 < rightArr.length) {
+              if (shouldCancel) return;
+              comparisons++;
+              compareCountEl.innerText = comparisons;
+              playTone(leftArr[p1], 'sine', 0.04);
+              setBarVisualState(k, 'compare');
+              if (!(await waitStep())) return;
+
+              if (leftArr[p1] <= rightArr[p2]) {
+                swaps++;
+                swapCountEl.innerText = swaps;
+                array[k] = leftArr[p1];
+                p1++;
+              } else {
+                swaps++;
+                swapCountEl.innerText = swaps;
+                array[k] = rightArr[p2];
+                p2++;
+              }
+              updateBarValue(k, array[k]);
+              setBarVisualState(k, 'swap');
+              playTone(array[k], 'triangle', 0.07);
+              if (!(await waitStep())) return;
+
+              resetVisualHighlights([k]);
+              k++;
+            }
+
+            while (p1 < leftArr.length) {
+              if (shouldCancel) return;
+              swaps++;
+              swapCountEl.innerText = swaps;
+              array[k] = leftArr[p1];
+              updateBarValue(k, array[k]);
+              playTone(array[k], 'triangle', 0.07);
+              if (!(await waitStep())) return;
+              p1++; k++;
+            }
+
+            while (p2 < rightArr.length) {
+              if (shouldCancel) return;
+              swaps++;
+              swapCountEl.innerText = swaps;
+              array[k] = rightArr[p2];
+              updateBarValue(k, array[k]);
+              playTone(array[k], 'triangle', 0.07);
+              if (!(await waitStep())) return;
+              p2++; k++;
+            }
+          }
+        }
+      }
+      for (let k = 0; k < n; k++) markAsSorted(k);
+    }
+
+    // 12. Counting Sort
+    async function countingSort() {
+      const n = array.length;
+      let min = Math.min(...array);
+      let max = Math.max(...array);
+      let range = max - min + 1;
+      let count = new Array(range).fill(0);
+
+      updateStatusText("1. Fázis: Értékek gyakoriságának összeszámlálása a tömbben...");
+      for (let i = 0; i < n; i++) {
+        if (shouldCancel) return;
+        comparisons++;
+        compareCountEl.innerText = comparisons;
+        count[array[i] - min]++;
+        playTone(array[i], 'sine', 0.04);
+        setBarVisualState(i, 'compare');
+        if (!(await waitStep())) return;
+        resetVisualHighlights([i]);
+      }
+
+      updateStatusText("2. Fázis: Elemek közvetlen visszaírása a gyakorisági felosztás szerint...");
+      let targetIdx = 0;
+      for (let valOffset = 0; valOffset < range; valOffset++) {
+        while (count[valOffset] > 0) {
+          if (shouldCancel) return;
+          swaps++;
+          swapCountEl.innerText = swaps;
+          const actualVal = valOffset + min;
+          array[targetIdx] = actualVal;
+          updateBarValue(targetIdx, actualVal);
+          playTone(actualVal, 'triangle', 0.08);
+
+          markAsSorted(targetIdx);
+          updateStatusText(`Érték kiírása a végleges helyére: <span class="text-emerald-400 font-mono font-bold">${actualVal}</span> (${targetIdx}. index)`);
+          if (!(await waitStep())) return;
+
+          targetIdx++;
+          count[valOffset]--;
+        }
+      }
+    }
+
+    // 13. Radix Sort
+    async function radixSort() {
+      const n = array.length;
+      let max = Math.max(...array);
+
+      for (let exp = 1; Math.floor(max / exp) > 0; exp *= 10) {
+        if (shouldCancel) return;
+        updateStatusText(`Rendezés a(z) <span class="text-purple-400 font-mono font-bold">${exp}</span>-es helyiérték (számjegy) szerint...`);
+        let output = new Array(n).fill(0);
+        let count = new Array(10).fill(0);
+
+        for (let i = 0; i < n; i++) {
+          if (shouldCancel) return;
+          comparisons++;
+          compareCountEl.innerText = comparisons;
+          let digit = Math.floor(array[i] / exp) % 10;
+          count[digit]++;
+          playTone(array[i], 'sine', 0.04);
+          setBarVisualState(i, 'compare');
+          if (!(await waitStep())) return;
+          resetVisualHighlights([i]);
+        }
+
+        for (let i = 1; i < 10; i++) {
+          count[i] += count[i - 1];
+        }
+
+        for (let i = n - 1; i >= 0; i--) {
+          let digit = Math.floor(array[i] / exp) % 10;
+          output[count[digit] - 1] = array[i];
+          count[digit]--;
+        }
+
+        for (let i = 0; i < n; i++) {
+          if (shouldCancel) return;
+          swaps++;
+          swapCountEl.innerText = swaps;
+          array[i] = output[i];
+          updateBarValue(i, array[i]);
+          playTone(array[i], 'triangle', 0.06);
+          setBarVisualState(i, 'swap');
+          if (!(await waitStep())) return;
+          resetVisualHighlights([i]);
+        }
+      }
+      for (let k = 0; k < n; k++) markAsSorted(k);
+    }
+
+    // 14. Bucket Sort
+    async function bucketSort() {
+      const n = array.length;
+      const numBuckets = Math.min(6, Math.max(3, Math.floor(n / 6)));
+      let min = Math.min(...array);
+      let max = Math.max(...array);
+      let range = (max - min) / numBuckets || 1;
+
+      let buckets = Array.from({ length: numBuckets }, () => []);
+
+      updateStatusText(`${numBuckets} értékkategóriás vödör kialakítása és az elemek szétosztása...`);
+      for (let i = 0; i < n; i++) {
+        if (shouldCancel) return;
+        comparisons++;
+        compareCountEl.innerText = comparisons;
+        let bIdx = Math.floor((array[i] - min) / range);
+        if (bIdx >= numBuckets) bIdx = numBuckets - 1;
+        buckets[bIdx].push(array[i]);
+        playTone(array[i], 'sine', 0.04);
+        setBarVisualState(i, 'aux');
+        if (!(await waitStep())) return;
+        resetVisualHighlights([i]);
+      }
+
+      updateStatusText("Az egyes vödrök soronkénti rendezése és összefűzése a főtömbbe...");
+      let targetIdx = 0;
+
+      for (let b = 0; b < numBuckets; b++) {
+        let bucket = buckets[b];
+        for (let i = 1; i < bucket.length; i++) {
+          let key = bucket[i];
+          let j = i - 1;
+          while (j >= 0 && bucket[j] > key) {
+            bucket[j + 1] = bucket[j];
+            j--;
+          }
+          bucket[j + 1] = key;
+        }
+
+        for (let val of bucket) {
+          if (shouldCancel) return;
+          swaps++;
+          swapCountEl.innerText = swaps;
+          array[targetIdx] = val;
+          updateBarValue(targetIdx, val);
+          playTone(val, 'triangle', 0.07);
+          markAsSorted(targetIdx);
+          if (!(await waitStep())) return;
+          targetIdx++;
+        }
+      }
+    }
+
+    async function playCompletionWave() {
+      stopTimer();
+      updateStatusText("🎉 <span class='text-emerald-400 font-bold'>A rendezés sikeresen befejeződött!</span> Minden elem rendezett sorrendben.");
+      const n = array.length;
+      for (let i = 0; i < n; i++) {
+        markAsSorted(i);
+        playTone(array[i], 'sine', 0.05, 100);
+        await new Promise(r => setTimeout(r, Math.max(10, Math.floor(350 / n))));
+      }
+      await playVictoryChime();
+    }
+
+    async function startOrPauseSorting() {
+      if (isRunning && !isPaused) {
+        isPaused = true;
+        updatePlayButtonState(false, true);
+        updateStatusText("Szüneteltetve. Kattints a „Folytatás” gombra vagy léptess manuálisan!");
+        return;
+      }
+
+      if (isPaused) {
+        isPaused = false;
+        updatePlayButtonState(true);
+        updateStatusText("Szimuláció folytatása...");
+        return;
+      }
+
+      initAudio();
+      isRunning = true;
+      isPaused = false;
+      shouldCancel = false;
+      updatePlayButtonState(true);
+      startTimer();
+      setControlsDisabled(true);
+
+      const algo = currentAlgo || algoSelect.value;
+
+      try {
+        switch (algo) {
+          case 'bubble': await bubbleSort(); break;
+          case 'exchange': await exchangeSort(); break;
+          case 'insertion': await insertionSort(); break;
+          case 'selection': await selectionSort(); break;
+          case 'cocktail': await cocktailSort(); break;
+          case 'gnome': await gnomeSort(); break;
+          case 'quick': await quickSort(); break;
+          case 'merge': await mergeSort(); break;
+          case 'heap': await heapSort(); break;
+          case 'shell': await shellSort(); break;
+          case 'tim': await timSort(); break;
+          case 'counting': await countingSort(); break;
+          case 'radix': await radixSort(); break;
+          case 'bucket': await bucketSort(); break;
+          default: await bubbleSort(); break;
+        }
+
+        if (!shouldCancel) {
+          await playCompletionWave();
+        }
+      } catch (err) {
+        console.error("Sorting error:", err);
+      } finally {
+        isRunning = false;
+        isPaused = false;
+        shouldCancel = false;
+        stopTimer();
+        updatePlayButtonState(false);
+        setControlsDisabled(false);
+      }
+    }
+
+    function updatePlayButtonState(running, paused = false) {
+      if (running) {
+        playIcon.setAttribute('data-lucide', 'pause');
+        playText.innerText = 'Szünet';
+        playBtn.className = 'flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-sm shadow-lg shadow-amber-500/25 transition-all transform active:scale-95';
+      } else if (paused) {
+        playIcon.setAttribute('data-lucide', 'play');
+        playText.innerText = 'Folytatás';
+        playBtn.className = 'flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm shadow-lg shadow-emerald-500/25 transition-all transform active:scale-95';
+      } else {
+        playIcon.setAttribute('data-lucide', 'play');
+        playText.innerText = 'Indítás';
+        playBtn.className = 'flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 transition-all transform active:scale-95';
+      }
+      lucide.createIcons();
+    }
+
+    function setControlsDisabled(disabled) {
+      algoSelect.disabled = disabled;
+      patternSelect.disabled = disabled;
+      sizeSlider.disabled = disabled;
+      if (disabled) {
+        algoSelect.classList.add('opacity-50', 'cursor-not-allowed');
+        patternSelect.classList.add('opacity-50', 'cursor-not-allowed');
+        sizeSlider.classList.add('opacity-50', 'cursor-not-allowed');
+      } else {
+        algoSelect.classList.remove('opacity-50', 'cursor-not-allowed');
+        patternSelect.classList.remove('opacity-50', 'cursor-not-allowed');
+        sizeSlider.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    function updateInfoPanel() {
+      const algoKey = currentAlgo || algoSelect.value;
+      const data = ALGORITHMS[algoKey];
+      if (!data) return;
+
+      infoTitle.innerHTML = `<i data-lucide="book-open" class="w-5 h-5 text-indigo-400"></i> ${data.name}`;
+      infoStability.innerText = data.stability;
+      if (data.stability.includes('Stabil')) {
+        infoStability.className = 'px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+      } else {
+        infoStability.className = 'px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20';
+      }
+      infoDescription.innerText = data.desc;
+      infoPseudocode.innerText = data.pseudo;
+
+      compBest.innerText = data.best;
+      compAvg.innerText = data.avg;
+      compWorst.innerText = data.worst;
+      compSpace.innerText = data.space;
+
+      lucide.createIcons();
+    }
+
+    // Visual Algorithm Card clicks
+    document.querySelectorAll('.algo-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const algoKey = card.getAttribute('data-algo');
+        selectAlgorithm(algoKey);
+      });
+    });
+
+    // Native dropdown event listener (change and input)
+    algoSelect.addEventListener('change', (e) => {
+      selectAlgorithm(e.target.value);
+    });
+    algoSelect.addEventListener('input', (e) => {
+      selectAlgorithm(e.target.value);
+    });
+
+    playBtn.addEventListener('click', () => {
+      startOrPauseSorting();
+    });
+
+    stepBtn.addEventListener('click', () => {
+      initAudio();
+      if (!isRunning) {
+        isPaused = true;
+        startOrPauseSorting();
+        stepRequested = true;
+      } else if (isPaused) {
+        stepRequested = true;
+      } else {
+        isPaused = true;
+        updatePlayButtonState(false, true);
+        stepRequested = true;
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      generateArray();
+    });
+
+    soundTestBtn.addEventListener('click', () => {
+      initAudio();
+      playTone(45, 'triangle', 0.14);
+      setTimeout(() => playTone(85, 'sine', 0.16), 110);
+    });
+
+    patternSelect.addEventListener('change', () => {
+      generateArray();
+    });
+
+    sizeSlider.addEventListener('input', (e) => {
+      sizeValue.innerText = e.target.value;
+      generateArray();
+    });
+
+    speedSlider.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value);
+      if (v < 30) speedValue.innerText = 'Lassú';
+      else if (v < 70) speedValue.innerText = 'Közepes';
+      else speedValue.innerText = 'Nagyon gyors';
+    });
+
+    soundToggleBtn.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      if (soundEnabled) {
+        soundIcon.setAttribute('data-lucide', 'volume-2');
+        soundLabel.innerText = 'Hang: Be';
+        soundToggleBtn.classList.remove('opacity-50');
+      } else {
+        soundIcon.setAttribute('data-lucide', 'volume-x');
+        soundLabel.innerText = 'Hang: Ki';
+        soundToggleBtn.classList.add('opacity-50');
+      }
+      lucide.createIcons();
+    });
+
+    function initializeVisualizer() {
+      setupCategoryTabs();
+      selectAlgorithm('bubble');
+      lucide.createIcons();
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', initializeVisualizer);
+    } else {
+      initializeVisualizer();
+    }
+  </script>
+</body>
+</html>
